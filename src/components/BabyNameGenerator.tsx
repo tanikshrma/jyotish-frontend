@@ -372,10 +372,10 @@ export const BabyNameGenerator = () => {
                     <Label htmlFor="tob">Time of Birth</Label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-12 px-4 rounded-xl border-2 border-[#f5c27a]/50 bg-[#fdfbf7] text-[#7a0808] font-sans shadow-sm hover:border-[#f5c27a] hover:shadow-[0_4px_15px_-3px_rgba(245,194,122,0.3)] transition-all duration-300 relative overflow-hidden", errors.tob && "border-destructive")} style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }}>
+                        <Button type="button" variant="outline" className={cn("w-full justify-start text-left font-normal h-12 px-4 rounded-xl border-2 border-[#f5c27a]/50 bg-[#fdfbf7] text-[#7a0808] hover:text-[#7a0808] hover:bg-[#fdfbf7] font-sans shadow-sm hover:border-[#f5c27a] hover:shadow-[0_4px_15px_-3px_rgba(245,194,122,0.3)] transition-all duration-300 relative overflow-hidden", errors.tob && "border-destructive")} style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }}>
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#f5c27a]/5 to-transparent pointer-events-none" />
                           <Clock className="mr-2 h-5 w-5 text-[#f5c27a] opacity-80 relative z-10" />
-                          <span className="relative z-10">{timeState.hour}:{timeState.minute}</span>
+                          <span className="relative z-10 font-semibold text-[#7a0808]">{timeState.hour}:{timeState.minute}</span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-6 rounded-2xl border-2 border-[#f5c27a]/60 bg-[#fdfbf7] shadow-[0_10px_30px_-5px_rgba(122,8,8,0.2)] font-sans" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }} align="start">

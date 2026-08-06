@@ -886,7 +886,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
             <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Date of Birth</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button type="button" className={cn("w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg", !currDate && "text-muted-foreground/60", currDate && "text-foreground font-semibold", errors[dobKey] && "border-destructive")}>
+                <Button type="button" variant="outline" className={cn("w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:text-foreground hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg", !currDate && "text-muted-foreground/60", currDate && "text-foreground font-semibold", errors[dobKey] && "border-destructive")}>
                   <span>{currDate ? format(currDate, "PPP") : <span>DD/MM/YYYY</span>}</span>
                   <CalendarIcon className="h-5 w-5 text-primary/70" />
                 </Button>
@@ -927,7 +927,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
             <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Time of Birth</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button type="button" className="w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg">
+                <Button type="button" variant="outline" className="w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:text-foreground hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg">
                   <span className="font-semibold text-foreground">{currTime.hour}:{currTime.minute}</span>
                   <Clock className="h-5 w-5 text-primary/70" />
                 </Button>

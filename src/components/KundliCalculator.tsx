@@ -481,9 +481,9 @@ export function KundliCalculator() {
                   <Label htmlFor="tob" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Time of Birth</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="ghost" className={cn("w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/50 bg-background/50 text-foreground shadow-sm hover:bg-background/80 hover:border-secondary/50 focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg", errors.tob && "border-destructive")}>
-                        <span>{timeState.hour}:{timeState.minute}</span>
-                        <Clock className="h-5 w-5 text-secondary" />
+                      <Button type="button" variant="outline" className={cn("w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:text-foreground hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg", errors.tob && "border-destructive")}>
+                        <span className="font-semibold text-foreground">{timeState.hour}:{timeState.minute}</span>
+                        <Clock className="h-5 w-5 text-primary/70" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-6 rounded-2xl border border-border/50 bg-background shadow-xl" align="start">
