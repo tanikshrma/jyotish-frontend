@@ -365,11 +365,6 @@ const GetConsultation = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between mt-auto pt-6 border-t border-primary/20 gap-4">
                     <div className="text-lg font-bold text-foreground w-full sm:w-auto text-center sm:text-left">Price: {formatINR(getPrice1())}</div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <BookingModal defaultService="Consultation Call">
-                        <Button variant="outline" className="w-full sm:w-auto px-8">
-                          Book Now
-                        </Button>
-                      </BookingModal>
                       <RazorpayButton
                         service="consultation-call"
                         variant={variant1}
@@ -445,11 +440,6 @@ const GetConsultation = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between mt-auto pt-6 border-t border-primary/20 gap-4">
                     <div className="text-lg font-bold text-foreground w-full sm:w-auto text-center sm:text-left">Price: {formatINR(getPrice2())}</div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <BookingModal defaultService="Couple Consultation">
-                        <Button variant="outline" className="w-full sm:w-auto px-8">
-                          Book Now
-                        </Button>
-                      </BookingModal>
                       <RazorpayButton
                         service="couple-consultation"
                         variant={variant2}
@@ -535,11 +525,6 @@ const GetConsultation = () => {
                       <div className="text-2xl font-bold text-foreground">{formatINR(FACE_TO_FACE_PRICE)}</div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <BookingModal defaultService="Face to Face Consultation">
-                        <Button variant="outline" className="w-full sm:w-auto px-10">
-                          Consult Now
-                        </Button>
-                      </BookingModal>
                       <RazorpayButton
                         service="face-to-face"
                         description="Face to Face Consultation (1 Hour, Delhi/NCR Office)"
@@ -613,11 +598,6 @@ const GetConsultation = () => {
                     <div className="text-2xl font-bold text-foreground">{formatINR(BABY_MUHURAT_PRICE)}</div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <BookingModal defaultService="Baby Birth Muhurat">
-                      <Button variant="outline" className="w-full sm:w-auto px-10">
-                        Consult Now
-                      </Button>
-                    </BookingModal>
                     <RazorpayButton
                       service="baby-muhurat"
                       description="Baby Birth Muhurat Consultation"
