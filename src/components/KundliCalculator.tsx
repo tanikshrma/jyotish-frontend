@@ -114,14 +114,14 @@ export function KundliCalculator() {
     return () => clearTimeout(delayDebounceFn);
   }, [locationSearch]);
 
-  const validateForm = () => {
+  const validateForm = (dataToValidate = formData) => {
     const newErrors: { [key: string]: string } = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.phone.trim()) newErrors.phone = "Phone is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    if (!formData.gender) newErrors.gender = "Gender is required";
-    if (!date) newErrors.dob = "Date of Birth is required";
-    if (!formData.pob) newErrors.pob = "Place of Birth is required";
+    if (!dataToValidate.name?.trim()) newErrors.name = "Name is required";
+    if (!dataToValidate.phone?.trim()) newErrors.phone = "Phone is required";
+    if (!dataToValidate.email?.trim()) newErrors.email = "Email is required";
+    if (!dataToValidate.gender) newErrors.gender = "Gender is required";
+    if (!date && !dataToValidate.dob) newErrors.dob = "Date of Birth is required";
+    if (!dataToValidate.pob?.trim()) newErrors.pob = "Place of Birth is required";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -130,7 +130,7 @@ export function KundliCalculator() {
   const handleSubmit = async (e: React.FormEvent | null, dataToSubmit = formData) => {
     e?.preventDefault?.();
     
-    if (!validateForm()) {
+    if (!validateForm(dataToSubmit)) {
       return;
     }
 
@@ -274,19 +274,28 @@ export function KundliCalculator() {
         vedicAstroApi.getPlanetReport(params).catch(() => null),
       ]);
 
+      const getChartSvgString = (chartRes: any): string => {
+        if (!chartRes) return '';
+        if (typeof chartRes === 'string') return chartRes;
+        if (typeof chartRes.response === 'string') return chartRes.response;
+        if (typeof chartRes.svg === 'string') return chartRes.svg;
+        if (typeof chartRes.data === 'string') return chartRes.data;
+        return '';
+      };
+
       setKundliData({
-        user: formData,
-        panchang: panchang?.response,
-        planets: planets?.response,
+        user: dataToSubmit,
+        panchang: panchang?.response || panchang,
+        planets: Array.isArray(planets?.response) ? planets.response : (Array.isArray(planets) ? planets : (planets?.response ? Object.values(planets.response) : [])),
         charts: {
-          d1North,
-          d1South,
-          d9North
+          d1North: getChartSvgString(d1North),
+          d1South: getChartSvgString(d1South),
+          d9North: getChartSvgString(d9North)
         },
         doshas,
-        yogas: yogas?.response,
-        dasha: dasha?.response,
-        lucky: lucky?.response,
+        yogas: yogas?.response || yogas,
+        dasha: dasha?.response || dasha,
+        lucky: lucky?.response || lucky,
         planetReport: planetReport?.response || planetReport
       });
 
@@ -628,35 +637,52 @@ export function KundliCalculator() {
             <div className="p-6 sm:p-8 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
               
               {/* Basic Astro Summary Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Ascendant (Lagna)</span>
-                  <span className="text-lg font-serif font-bold text-primary">
-                    {kundliData.planets?.[0]?.zodiac || "Calculated"}
-                  </span>
-                </div>
-                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Rashi (Moon Sign)</span>
-                  <span className="text-lg font-serif font-bold text-primary">
-                    {kundliData.panchang?.moon_sign || kundliData.planets?.find((p: any) => p.name === "Moon")?.zodiac || "Calculated"}
-                  </span>
-                </div>
-                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Nakshatra</span>
-                  <span className="text-lg font-serif font-bold text-primary">
-                    {kundliData.panchang?.nakshatra || "Pushya"}
-                  </span>
-                </div>
-                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Sun Sign</span>
-                  <span className="text-lg font-serif font-bold text-primary">
-                    {kundliData.planets?.find((p: any) => p.name === "Sun")?.zodiac || "Calculated"}
-                  </span>
-                </div>
-              </div>
+              {(() => {
+                const planetsList = Array.isArray(kundliData?.planets)
+                  ? kundliData.planets
+                  : (typeof kundliData?.planets === 'object' && kundliData?.planets !== null ? Object.values(kundliData.planets) : []);
+                
+                const moonPlanet = planetsList.find((p: any) => p?.name === "Moon" || p?.planet === "Moon");
+                const sunPlanet = planetsList.find((p: any) => p?.name === "Sun" || p?.planet === "Sun");
+                const lagnaPlanet = planetsList.find((p: any) => p?.name === "Ascendant" || p?.name === "Lagna" || p?.planet === "Ascendant") || planetsList[0];
+
+                const moonSign = kundliData?.panchang?.moon_sign || moonPlanet?.zodiac || moonPlanet?.sign || "Calculated";
+                const sunSign = sunPlanet?.zodiac || sunPlanet?.sign || "Calculated";
+                const lagnaSign = lagnaPlanet?.zodiac || lagnaPlanet?.sign || "Calculated";
+                const nakshatra = kundliData?.panchang?.nakshatra || "Pushya";
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Ascendant (Lagna)</span>
+                      <span className="text-lg font-serif font-bold text-primary">
+                        {lagnaSign}
+                      </span>
+                    </div>
+                    <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Rashi (Moon Sign)</span>
+                      <span className="text-lg font-serif font-bold text-primary">
+                        {moonSign}
+                      </span>
+                    </div>
+                    <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Nakshatra</span>
+                      <span className="text-lg font-serif font-bold text-primary">
+                        {nakshatra}
+                      </span>
+                    </div>
+                    <div className="bg-secondary/10 border border-secondary/30 p-4 rounded-2xl text-center">
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1">Sun Sign</span>
+                      <span className="text-lg font-serif font-bold text-primary">
+                        {sunSign}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* D1 Lagna Chart Preview */}
-              {kundliData.charts?.d1North && (
+              {kundliData?.charts?.d1North && (
                 <div className="bg-[#FFFDF9] border border-secondary/20 p-6 rounded-2xl text-center shadow-inner">
                   <h4 className="font-serif font-bold text-primary text-xl mb-4 flex items-center justify-center gap-2">
                     <Star className="w-5 h-5 text-secondary" /> D1 Lagna Chart (Basic Preview)
