@@ -43,6 +43,40 @@ const fetchCalendarFreeSlots = async (
   return await fetchProspectIQCalendarSlots(calendarId, startDate, endDate, getBrowserTimezone());
 };
 
+export function normalizeSlotMap(rawData: any): Record<string, string[]> {
+  if (!rawData || typeof rawData !== 'object') return {};
+
+  const sourceObj = (rawData.slots && typeof rawData.slots === 'object' && !Array.isArray(rawData.slots))
+    ? rawData.slots
+    : rawData;
+
+  const normalized: Record<string, string[]> = {};
+
+  for (const [key, val] of Object.entries(sourceObj)) {
+    const match = key.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (!match) continue;
+
+    const y = match[1];
+    const m = match[2].padStart(2, '0');
+    const d = match[3].padStart(2, '0');
+    const normKey = `${y}-${m}-${d}`;
+
+    let slotsList: string[] = [];
+
+    if (Array.isArray(val)) {
+      slotsList = val.map(String);
+    } else if (val && typeof val === 'object' && Array.isArray((val as any).slots)) {
+      slotsList = (val as any).slots.map(String);
+    }
+
+    if (slotsList.length > 0) {
+      normalized[normKey] = slotsList;
+    }
+  }
+
+  return normalized;
+}
+
 export function BookingModal({ children, defaultService }: BookingModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,7 +93,7 @@ export function BookingModal({ children, defaultService }: BookingModalProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [slotsData, setSlotsData] = useState<Record<string, { slots: string[] }>>({});
+  const [slotsData, setSlotsData] = useState<Record<string, string[]>>({});
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
   useEffect(() => {
@@ -81,48 +115,33 @@ export function BookingModal({ children, defaultService }: BookingModalProps) {
     setIsLoadingSlots(true);
     try {
       const activeCalendarId = getCalendarIdForService(targetService);
-      const startMs = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
-      const endMs = new Date(date.getFullYear(), date.getMonth() + 1, 0).getTime();
-      const data = await fetchCalendarFreeSlots(activeCalendarId, startMs, endMs);
-      const slotMap = data || {};
-      setSlotsData(slotMap);
-
-      // Auto-select the first available date and time slot
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const sortedDateKeys = Object.keys(slotMap).sort();
+      const startMs = today.getTime();
+      const endMs = startMs + 45 * 24 * 60 * 60 * 1000;
+      const data = await fetchCalendarFreeSlots(activeCalendarId, startMs, endMs);
+      const slotMap = normalizeSlotMap(data);
+      setSlotsData(slotMap);
 
-      // Check if current selectedDate has slots
-      let selectedHasSlots = false;
-      if (selectedDate) {
-        const sYear = selectedDate.getFullYear();
-        const sMonth = String(selectedDate.getMonth() + 1).padStart(2, '0');
-        const sDay = String(selectedDate.getDate()).padStart(2, '0');
-        const sKey = `${sYear}-${sMonth}-${sDay}`;
-        if (slotMap[sKey]?.slots?.length > 0) {
-          selectedHasSlots = true;
-          if (!selectedSlot && slotMap[sKey].slots[0]) {
-            setSelectedSlot(slotMap[sKey].slots[0]);
-          }
-        }
-      }
+      const availableDateKeys = Object.keys(slotMap)
+        .filter(dKey => slotMap[dKey] && slotMap[dKey].length > 0)
+        .sort();
 
-      if (!selectedHasSlots) {
-        // Find first future date key with available slots
-        const firstAvailableKey = sortedDateKeys.find(dKey => {
+      if (availableDateKeys.length > 0) {
+        const firstAvailableKey = availableDateKeys.find(dKey => {
           const [y, m, d] = dKey.split('-').map(Number);
           const dObj = new Date(y, m - 1, d);
-          return dObj >= today && slotMap[dKey]?.slots?.length > 0;
-        });
+          return dObj >= today;
+        }) || availableDateKeys[0];
 
-        if (firstAvailableKey) {
-          const [y, m, d] = firstAvailableKey.split('-').map(Number);
-          const autoDate = new Date(y, m - 1, d);
-          setSelectedDate(autoDate);
-          if (slotMap[firstAvailableKey]?.slots?.[0]) {
-            setSelectedSlot(slotMap[firstAvailableKey].slots[0]);
-          }
+        const [y, m, d] = firstAvailableKey.split('-').map(Number);
+        const autoDate = new Date(y, m - 1, d);
+
+        setSelectedDate(autoDate);
+        setCurrentMonth(new Date(y, m - 1, 1));
+        if (slotMap[firstAvailableKey]?.[0]) {
+          setSelectedSlot(slotMap[firstAvailableKey][0]);
         }
       }
     } catch (error) {
@@ -136,13 +155,12 @@ export function BookingModal({ children, defaultService }: BookingModalProps) {
   const availableSlotsForSelectedDate = useMemo(() => {
     if (!selectedDate) return [];
     
-    // Format date as YYYY-MM-DD in local time
     const year = selectedDate.getFullYear();
     const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
     const day = String(selectedDate.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
     
-    return slotsData[dateString]?.slots || [];
+    return slotsData[dateString] || [];
   }, [selectedDate, slotsData]);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -519,7 +537,8 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                       const monthStr = String(month + 1).padStart(2, '0');
                       const dayStr = String(day).padStart(2, '0');
                       const dateKey = `${year}-${monthStr}-${dayStr}`;
-                      const hasApiSlots = slotsData[dateKey]?.slots && slotsData[dateKey].slots.length > 0;
+                      const daySlots = slotsData[dateKey] || [];
+                      const hasApiSlots = daySlots.length > 0;
 
                       cells.push(
                         <button
@@ -528,7 +547,6 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                           disabled={isPast}
                           onClick={() => {
                             setSelectedDate(dateObj);
-                            const daySlots = slotsData[dateKey]?.slots || [];
                             if (daySlots.length > 0) {
                               setSelectedSlot(daySlots[0]);
                             } else {
@@ -583,7 +601,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                       const monthStr = String(activeDate.getMonth() + 1).padStart(2, '0');
                       const dayStr = String(activeDate.getDate()).padStart(2, '0');
                       const dateKey = `${year}-${monthStr}-${dayStr}`;
-                      const rawApiSlots = slotsData[dateKey]?.slots;
+                      const rawApiSlots = slotsData[dateKey] || [];
 
                       if (!rawApiSlots || rawApiSlots.length === 0) {
                         return (
