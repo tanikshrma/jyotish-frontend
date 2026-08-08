@@ -84,7 +84,47 @@ export function BookingModal({ children, defaultService }: BookingModalProps) {
       const startMs = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
       const endMs = new Date(date.getFullYear(), date.getMonth() + 1, 0).getTime();
       const data = await fetchCalendarFreeSlots(activeCalendarId, startMs, endMs);
-      setSlotsData(data || {});
+      const slotMap = data || {};
+      setSlotsData(slotMap);
+
+      // Auto-select the first available date and time slot
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const sortedDateKeys = Object.keys(slotMap).sort();
+
+      // Check if current selectedDate has slots
+      let selectedHasSlots = false;
+      if (selectedDate) {
+        const sYear = selectedDate.getFullYear();
+        const sMonth = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const sDay = String(selectedDate.getDate()).padStart(2, '0');
+        const sKey = `${sYear}-${sMonth}-${sDay}`;
+        if (slotMap[sKey]?.slots?.length > 0) {
+          selectedHasSlots = true;
+          if (!selectedSlot && slotMap[sKey].slots[0]) {
+            setSelectedSlot(slotMap[sKey].slots[0]);
+          }
+        }
+      }
+
+      if (!selectedHasSlots) {
+        // Find first future date key with available slots
+        const firstAvailableKey = sortedDateKeys.find(dKey => {
+          const [y, m, d] = dKey.split('-').map(Number);
+          const dObj = new Date(y, m - 1, d);
+          return dObj >= today && slotMap[dKey]?.slots?.length > 0;
+        });
+
+        if (firstAvailableKey) {
+          const [y, m, d] = firstAvailableKey.split('-').map(Number);
+          const autoDate = new Date(y, m - 1, d);
+          setSelectedDate(autoDate);
+          if (slotMap[firstAvailableKey]?.slots?.[0]) {
+            setSelectedSlot(slotMap[firstAvailableKey].slots[0]);
+          }
+        }
+      }
     } catch (error) {
       console.error("Failed to load slots", error);
       toast.error("Failed to load availability. Please try again.");
@@ -488,7 +528,12 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                           disabled={isPast}
                           onClick={() => {
                             setSelectedDate(dateObj);
-                            setSelectedSlot(null);
+                            const daySlots = slotsData[dateKey]?.slots || [];
+                            if (daySlots.length > 0) {
+                              setSelectedSlot(daySlots[0]);
+                            } else {
+                              setSelectedSlot(null);
+                            }
                           }}
                           className={cn(
                             "h-8 sm:h-9 w-full rounded-xl text-xs font-semibold transition-all flex items-center justify-center relative",
