@@ -343,9 +343,14 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
             });
 
             setIsOpen(false);
+            const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
             toast.success("Consultation Booked & Payment Confirmed!", {
-              description: `Receipt sent to ${email || 'your email'} & WhatsApp confirmation sent to ${phone || 'your phone'}.`,
+              description: `Payment ID: ${response.razorpay_payment_id}. Receipt generated.`,
               icon: <Sparkles className="w-5 h-5 text-secondary" />,
+              action: waUrl ? {
+                label: "WhatsApp Receipt",
+                onClick: () => window.open(waUrl, "_blank"),
+              } : undefined,
             });
           } catch (err: any) {
             toast.error("Payment Verification Error", {

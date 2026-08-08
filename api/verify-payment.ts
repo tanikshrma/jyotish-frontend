@@ -221,10 +221,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Format WhatsApp receipt URLs
+    const adminWaText = encodeURIComponent(`*JyotishNow Payment Notification* 🔔\n--------------------------------\n*Service:* ${serviceName}\n*Amount:* ${amountStr}\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId}\n*Customer:* ${customerName}\n*Email:* ${customerEmail || 'N/A'}\n*Phone:* ${customerPhone || 'N/A'}\n*Status:* PAID & CONFIRMED ✅`);
+    const whatsappAdminUrl = `https://wa.me/917015544187?text=${adminWaText}`;
+
+    const cleanCustomerPhone = customerPhone.replace(/\D/g, "");
+    const targetCustPhone = cleanCustomerPhone.length === 10 ? `91${cleanCustomerPhone}` : cleanCustomerPhone;
+    const custWaText = encodeURIComponent(`*JyotishNow Payment Receipt* 📜\n--------------------------------\n*Service:* ${serviceName}\n*Amount Paid:* ${amountStr}\n*Payment ID:* ${paymentId}\n*Customer Name:* ${customerName}\n*Status:* CONFIRMED ✅\n\nThank you for choosing JyotishNow (Dr. Sandeep Sawhney)! For support, contact us at myjyotishnow@gmail.com or +91-7015544187.`);
+    const whatsappCustomerUrl = targetCustPhone ? `https://wa.me/${targetCustPhone}?text=${custWaText}` : whatsappAdminUrl;
+
     return res.status(200).json({
       verified: true,
       order_id: orderId,
       payment_id: paymentId,
+      whatsappAdminUrl,
+      whatsappCustomerUrl,
       receiptDetails: {
         customerName,
         customerEmail,
