@@ -761,12 +761,25 @@ export function KundliCalculator() {
                         theme: { color: "#7A0808" },
                         handler: async (resp: any) => {
                           try {
-                            await verifyPayment(resp);
+                            const verificationResult = await verifyPayment({
+                              ...resp,
+                              customer: {
+                                name: kundliData?.user?.name || "Client",
+                                email: kundliData?.user?.email || "",
+                                phone: kundliData?.user?.phone || "",
+                              },
+                              service: "Full Lifetime Kundli Unlock",
+                              amount: "₹999",
+                            });
                             setIsPaid(true);
                             setGenerationStep('book');
                             toast.success("Full Kundli Report Unlocked!", {
+                              description: "Payment receipt sent to your email & myjyotishnow@gmail.com",
                               icon: <Sparkles className="w-5 h-5 text-secondary" />
                             });
+                            if (verificationResult.whatsappAdminUrl) {
+                              window.open(verificationResult.whatsappAdminUrl, "_blank");
+                            }
                           } catch (e: any) {
                             toast.error("Payment verification failed", { description: e.message });
                           } finally {

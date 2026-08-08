@@ -313,7 +313,16 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
         theme: { color: "#7A0808" },
         handler: async (response: any) => {
           try {
-            await verifyPayment(response);
+            const verificationResult = await verifyPayment({
+              ...response,
+              customer: {
+                name: `${firstName} ${lastName}`.trim(),
+                email,
+                phone,
+              },
+              service: `${service} (Consultation)`,
+              amount: formatINR(order.amount / 100),
+            });
             
             // Confirm appointment on Prospect IQ calendar upon payment confirmation
             const activeCalendarId = getCalendarIdForService(service);
@@ -329,9 +338,13 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
 
             setIsOpen(false);
             toast.success("Consultation Booked & Payment Confirmed!", {
-              description: `Payment ID: ${response.razorpay_payment_id}. Slot confirmed.`,
+              description: `Receipt sent to ${email || 'your email'} & myjyotishnow@gmail.com.`,
               icon: <Sparkles className="w-5 h-5 text-secondary" />,
             });
+
+            if (verificationResult.whatsappAdminUrl) {
+              window.open(verificationResult.whatsappAdminUrl, "_blank");
+            }
           } catch (err: any) {
             toast.error("Payment Verification Error", {
               description: err.message || "Please contact support with your Payment ID.",

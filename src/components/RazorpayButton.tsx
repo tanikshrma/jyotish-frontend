@@ -70,10 +70,21 @@ export function RazorpayButton({
         theme: { color: "#7A0808" },
         handler: async (response: RazorpaySuccess) => {
           try {
-            const result = await verifyPayment(response);
-            toast.success("Payment Successful!", {
-              description: `Payment ID: ${result.payment_id}`,
+            const result = await verifyPayment({
+              ...response,
+              customer: {
+                name: prefill?.name || "Valued Client",
+                email: prefill?.email || "",
+                phone: prefill?.contact || "",
+              },
+              service: description || service,
             });
+            toast.success("Payment Successful!", {
+              description: `Receipt sent to ${prefill?.email || 'your email'} & myjyotishnow@gmail.com.`,
+            });
+            if (result.whatsappAdminUrl) {
+              window.open(result.whatsappAdminUrl, "_blank");
+            }
             onSuccess?.({
               order_id: result.order_id,
               payment_id: result.payment_id,

@@ -125,8 +125,18 @@ export const createOrder = async (input: {
  * until this resolves — the browser result alone is not trustworthy.
  */
 export const verifyPayment = async (
-  payload: RazorpaySuccess,
-): Promise<{ verified: true; order_id: string; payment_id: string }> => {
+  payload: RazorpaySuccess & {
+    customer?: { name?: string; email?: string; phone?: string };
+    service?: string;
+    amount?: number | string;
+  },
+): Promise<{
+  verified: true;
+  order_id: string;
+  payment_id: string;
+  whatsappAdminUrl?: string;
+  whatsappCustomerUrl?: string;
+}> => {
   const response = await fetch("/api/verify-payment", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -141,6 +151,8 @@ export const verifyPayment = async (
     verified: true;
     order_id: string;
     payment_id: string;
+    whatsappAdminUrl?: string;
+    whatsappCustomerUrl?: string;
   };
 };
 
