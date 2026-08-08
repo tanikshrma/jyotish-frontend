@@ -14,11 +14,10 @@ interface BookingModalProps {
   defaultService?: string;
 }
 
-import { fetchProspectIQCalendarSlots, bookProspectIQAppointment, submitProspectIQLead } from "@/lib/prospectiq";
+import { fetchProspectIQCalendarSlots, bookProspectIQAppointment, submitProspectIQLead, getCalendarIdForService } from "@/lib/prospectiq";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
 import { getPriceInRupees, formatINR, type ServiceId } from "../../shared/pricing";
 
-const CALENDAR_ID = "uosO7oexR0QEsUWZR6Bq";
 const LOCATION_ID = "FTD8wmuYqCT7XoIpXJQG";
 const SERVICE_CUSTOM_FIELD_ID = "GQbW8PBfcMus3Opakqn0";
 
@@ -74,17 +73,18 @@ export function BookingModal({ children, defaultService }: BookingModalProps) {
 
   useEffect(() => {
     if (isOpen && step === 2) {
-      loadSlots(currentMonth);
+      loadSlots(currentMonth, service);
     }
-  }, [isOpen, step, currentMonth]);
+  }, [isOpen, step, currentMonth, service]);
 
-  const loadSlots = async (date: Date) => {
+  const loadSlots = async (date: Date, targetService: string) => {
     setIsLoadingSlots(true);
     try {
+      const activeCalendarId = getCalendarIdForService(targetService);
       const startMs = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
       const endMs = new Date(date.getFullYear(), date.getMonth() + 1, 0).getTime();
-      const data = await fetchCalendarFreeSlots(CALENDAR_ID, startMs, endMs);
-      setSlotsData(data);
+      const data = await fetchCalendarFreeSlots(activeCalendarId, startMs, endMs);
+      setSlotsData(data || {});
     } catch (error) {
       console.error("Failed to load slots", error);
       toast.error("Failed to load availability. Please try again.");
@@ -254,8 +254,9 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
             await verifyPayment(response);
             
             // Confirm appointment on Prospect IQ calendar upon payment confirmation
+            const activeCalendarId = getCalendarIdForService(service);
             await bookProspectIQAppointment({
-              calendarId: CALENDAR_ID,
+              calendarId: activeCalendarId,
               firstName,
               lastName,
               email,
@@ -475,6 +476,11 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                         selectedDate.getMonth() === month && 
                         selectedDate.getDate() === day;
 
+                      const monthStr = String(month + 1).padStart(2, '0');
+                      const dayStr = String(day).padStart(2, '0');
+                      const dateKey = `${year}-${monthStr}-${dayStr}`;
+                      const hasApiSlots = slotsData[dateKey]?.slots && slotsData[dateKey].slots.length > 0;
+
                       cells.push(
                         <button
                           key={`day-${day}`}
@@ -493,6 +499,9 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                           )}
                         >
                           {day}
+                          {!isPast && hasApiSlots && (
+                            <span className={cn("absolute bottom-1 w-1 h-1 rounded-full", isSelected ? "bg-white" : "bg-primary")} />
+                          )}
                         </button>
                       );
                     }
@@ -531,35 +540,23 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                       const dateKey = `${year}-${monthStr}-${dayStr}`;
                       const rawApiSlots = slotsData[dateKey]?.slots;
 
-                      let slotsList: { raw: string; label: string }[] = [];
-
-                      if (rawApiSlots && rawApiSlots.length > 0) {
-                        slotsList = rawApiSlots.map(slot => {
-                          const d = new Date(slot);
-                          return {
-                            raw: slot,
-                            label: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                          };
-                        });
-                      } else {
-                        const standardTimes = [
-                          "10:00 AM", "11:30 AM", "01:00 PM", 
-                          "02:30 PM", "04:00 PM", "05:30 PM", 
-                          "07:00 PM", "08:30 PM"
-                        ];
-                        slotsList = standardTimes.map(time => {
-                          const [timeStr, period] = time.split(' ');
-                          let [h, m] = timeStr.split(':').map(Number);
-                          if (period === 'PM' && h < 12) h += 12;
-                          if (period === 'AM' && h === 12) h = 0;
-                          const slotDate = new Date(activeDate);
-                          slotDate.setHours(h, m, 0, 0);
-                          return {
-                            raw: slotDate.toISOString(),
-                            label: time
-                          };
-                        });
+                      if (!rawApiSlots || rawApiSlots.length === 0) {
+                        return (
+                          <div className="col-span-full py-6 px-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-center">
+                            <p className="text-xs font-semibold text-amber-800">
+                              No available consultation slots on this date. Please choose another date on the calendar above.
+                            </p>
+                          </div>
+                        );
                       }
+
+                      const slotsList = rawApiSlots.map(slot => {
+                        const d = new Date(slot);
+                        return {
+                          raw: slot,
+                          label: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        };
+                      });
 
                       return slotsList.map((slotObj) => {
                         const isSelected = selectedSlot === slotObj.raw;

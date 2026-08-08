@@ -24,6 +24,34 @@ export interface BookingData extends LeadData {
   timezone?: string;
 }
 
+export const PROSPECTIQ_SERVICE_CALENDARS: Record<string, string> = {
+  "matchmaking-consultation": "CsQSF9Jj4lgrsgUcUX4A",
+  "couple-consultation": "CsQSF9Jj4lgrsgUcUX4A",
+  "matchmaking": "CsQSF9Jj4lgrsgUcUX4A",
+  "complete-horoscope": "EJ8nazswCDPvy9hOMIef",
+  "consultation-call": "EJ8nazswCDPvy9hOMIef",
+  "annual-horoscope": "RqMmAZTbpjpXKhGXZXgv",
+  "yearly": "RqMmAZTbpjpXKhGXZXgv",
+  "vastu-consultancy": "a7Dh1KSYvqUx20Sz7QHL",
+  "vastu": "a7Dh1KSYvqUx20Sz7QHL",
+  "career-guidance": "nuxprER9d0Nq1o798pO7",
+  "career": "nuxprER9d0Nq1o798pO7",
+  "face-to-face": "EJ8nazswCDPvy9hOMIef",
+  "baby-muhurat": "EJ8nazswCDPvy9hOMIef",
+  "gemstone-analysis": "EJ8nazswCDPvy9hOMIef",
+  "gemstone": "EJ8nazswCDPvy9hOMIef",
+  "lalkitab-consultation": "EJ8nazswCDPvy9hOMIef"
+};
+
+export function getCalendarIdForService(serviceKey?: string): string {
+  if (!serviceKey) return "EJ8nazswCDPvy9hOMIef";
+  const lower = serviceKey.toLowerCase().trim();
+  for (const [key, calId] of Object.entries(PROSPECTIQ_SERVICE_CALENDARS)) {
+    if (lower.includes(key) || key.includes(lower)) return calId;
+  }
+  return "EJ8nazswCDPvy9hOMIef";
+}
+
 export const submitProspectIQLead = async (lead: LeadData) => {
   try {
     const res = await fetch("/api/prospectiq", {
@@ -88,13 +116,15 @@ export const bookProspectIQAppointment = async (booking: BookingData) => {
 
     const contactId = contactResult?.contact?.id;
 
+    const targetCalendarId = booking.calendarId || getCalendarIdForService(booking.service);
+
     // 2. Create appointment
     const res = await fetch("/api/prospectiq", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "create-appointment",
-        calendarId: booking.calendarId,
+        calendarId: targetCalendarId,
         contactId,
         selectedSlot: booking.selectedSlot,
         title: `Astrology Consultation - ${booking.firstName} ${booking.lastName || ""}`.trim(),

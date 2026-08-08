@@ -365,16 +365,11 @@ const GetConsultation = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between mt-auto pt-6 border-t border-primary/20 gap-4">
                     <div className="text-lg font-bold text-foreground w-full sm:w-auto text-center sm:text-left">Price: {formatINR(getPrice1())}</div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <RazorpayButton
-                        service="consultation-call"
-                        variant={variant1}
-                        description={`Consultation Call — ${consultationDuration1} ${consultationType1}`}
-                        notes={{
-                          duration: consultationDuration1,
-                          mode: consultationType1,
-                        }}
-                        className="w-full sm:w-auto h-10 px-8 rounded-md text-sm"
-                      />
+                      <BookingModal defaultService="consultation-call">
+                        <Button className="w-full sm:w-auto h-10 px-8 rounded-md text-sm bg-primary hover:bg-primary/90 text-white font-medium">
+                          Pay {formatINR(getPrice1())}
+                        </Button>
+                      </BookingModal>
                     </div>
                   </div>
                 </motion.div>
@@ -440,16 +435,11 @@ const GetConsultation = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between mt-auto pt-6 border-t border-primary/20 gap-4">
                     <div className="text-lg font-bold text-foreground w-full sm:w-auto text-center sm:text-left">Price: {formatINR(getPrice2())}</div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <RazorpayButton
-                        service="couple-consultation"
-                        variant={variant2}
-                        description={`Couple Consultation — ${consultationDuration2} ${consultationType2}`}
-                        notes={{
-                          duration: consultationDuration2,
-                          mode: consultationType2,
-                        }}
-                        className="w-full sm:w-auto h-10 px-8 rounded-md text-sm"
-                      />
+                      <BookingModal defaultService="couple-consultation">
+                        <Button className="w-full sm:w-auto h-10 px-8 rounded-md text-sm bg-primary hover:bg-primary/90 text-white font-medium">
+                          Pay {formatINR(getPrice2())}
+                        </Button>
+                      </BookingModal>
                     </div>
                   </div>
                 </motion.div>
@@ -525,11 +515,11 @@ const GetConsultation = () => {
                       <div className="text-2xl font-bold text-foreground">{formatINR(FACE_TO_FACE_PRICE)}</div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <RazorpayButton
-                        service="face-to-face"
-                        description="Face to Face Consultation (1 Hour, Delhi/NCR Office)"
-                        className="w-full sm:w-auto h-10 px-8 rounded-md text-sm"
-                      />
+                      <BookingModal defaultService="face-to-face">
+                        <Button className="w-full sm:w-auto h-10 px-8 rounded-md text-sm bg-primary hover:bg-primary/90 text-white font-medium">
+                          Pay {formatINR(FACE_TO_FACE_PRICE)}
+                        </Button>
+                      </BookingModal>
                     </div>
                   </div>
                 </div>
@@ -598,11 +588,11 @@ const GetConsultation = () => {
                     <div className="text-2xl font-bold text-foreground">{formatINR(BABY_MUHURAT_PRICE)}</div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <RazorpayButton
-                      service="baby-muhurat"
-                      description="Baby Birth Muhurat Consultation"
-                      className="w-full sm:w-auto h-10 px-8 rounded-md text-sm"
-                    />
+                    <BookingModal defaultService="baby-muhurat">
+                      <Button className="w-full sm:w-auto h-10 px-8 rounded-md text-sm bg-primary hover:bg-primary/90 text-white font-medium">
+                        Pay {formatINR(BABY_MUHURAT_PRICE)}
+                      </Button>
+                    </BookingModal>
                   </div>
                 </div>
               </div>
