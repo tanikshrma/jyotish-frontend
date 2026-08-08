@@ -96,22 +96,26 @@ export function BookingModal({ children, defaultService }: BookingModalProps) {
   const [slotsData, setSlotsData] = useState<Record<string, string[]>>({});
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
+  const [hasLoadedSlots, setHasLoadedSlots] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setStep(1);
       setSelectedDate(undefined);
       setSelectedSlot(null);
       setCurrentMonth(new Date());
+      setHasLoadedSlots(false);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && step === 2) {
-      loadSlots(currentMonth, service);
+    if (isOpen && step === 2 && !hasLoadedSlots) {
+      setHasLoadedSlots(true);
+      loadSlots(service);
     }
-  }, [isOpen, step, currentMonth, service]);
+  }, [isOpen, step, service, hasLoadedSlots]);
 
-  const loadSlots = async (date: Date, targetService: string) => {
+  const loadSlots = async (targetService: string) => {
     setIsLoadingSlots(true);
     try {
       const activeCalendarId = getCalendarIdForService(targetService);
