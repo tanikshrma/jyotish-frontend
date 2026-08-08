@@ -16,6 +16,7 @@ import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
 import { KaalSarpPDF } from "./KaalSarpPDF";
 import { MatchmakingPDF } from "./MatchmakingPDF";
+import { DateInputField, TimeInputField } from "./FormDateInput";
 
 export function formatDobForApi(rawDob: string, dateObj?: Date): string {
   if (dateObj) {
@@ -884,83 +885,29 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
 
           <div className="space-y-2 relative group flex flex-col">
             <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Date of Birth</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button type="button" variant="outline" className={cn("w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:text-foreground hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg", !currDate && "text-muted-foreground/60", currDate && "text-foreground font-semibold", errors[dobKey] && "border-destructive")}>
-                  <span>{currDate ? format(currDate, "PPP") : <span>DD/MM/YYYY</span>}</span>
-                  <CalendarIcon className="h-5 w-5 text-primary/70" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-none" align="start">
-                <div className="bg-white border border-border/60 rounded-xl shadow-xl overflow-hidden flex flex-col p-3 gap-3">
-                  <div className="flex items-center border border-border/60 rounded-md bg-white">
-                    <Select value={currMonth.getMonth().toString()} onValueChange={(v) => { const newDate = new Date(currMonth); newDate.setMonth(parseInt(v)); setCurrMonth(newDate); }}>
-                      <SelectTrigger className="h-10 flex-1 border-none bg-transparent shadow-none focus:ring-0 text-foreground font-medium px-4"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-white border-border/60 max-h-[250px]">
-                        {Array.from({ length: 12 }).map((_, i) => {
-                          const d = new Date(2000, i, 1);
-                          return <SelectItem key={i} value={i.toString()}>{format(d, 'MMMM')}</SelectItem>;
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <div className="w-px h-6 bg-border/50"></div>
-                    <Select value={currMonth.getFullYear().toString()} onValueChange={(v) => { const newDate = new Date(currMonth); newDate.setFullYear(parseInt(v)); setCurrMonth(newDate); }}>
-                      <SelectTrigger className="h-10 flex-1 border-none bg-transparent shadow-none focus:ring-0 text-foreground font-medium px-4"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-white border-border/60 max-h-[250px]">
-                        {Array.from({ length: 130 }).map((_, i) => {
-                          const year = new Date().getFullYear() - i;
-                          return <SelectItem key={year} value={year.toString()}>{year}</SelectItem>;
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="border border-border/60 rounded-md bg-white pb-1">
-                    <Calendar mode="single" month={currMonth} onMonthChange={setCurrMonth} selected={currDate} onSelect={(d) => { setCurrDate(d); if (d) setCurrMonth(d); setErrors({...errors, [dobKey]: ''}) }} initialFocus disabled={(d) => d > new Date() || d < new Date("1900-01-01")} className="border-none shadow-none bg-transparent p-2" />
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <DateInputField
+              date={currDate}
+              onDateChange={(d, formattedStr) => {
+                setCurrDate(d);
+                setCurrData({ dob: formattedStr });
+                setErrors({ ...errors, [dobKey]: '' });
+              }}
+              calendarMonth={currMonth}
+              onMonthChange={setCurrMonth}
+              error={errors[dobKey]}
+            />
             {errors[dobKey] && <p className="text-destructive text-xs absolute -bottom-5">{errors[dobKey]}</p>}
           </div>
 
           <div className="space-y-2 relative group flex flex-col">
             <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Time of Birth</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button type="button" variant="outline" className="w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:text-foreground hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg">
-                  <span className="font-semibold text-foreground">{currTime.hour}:{currTime.minute}</span>
-                  <Clock className="h-5 w-5 text-primary/70" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-6 rounded-2xl border border-border/60 bg-white shadow-xl" align="start">
-                <div className="flex gap-4">
-                  <div className="flex flex-col gap-3">
-                    <Label className="text-sm font-bold text-primary text-center uppercase tracking-wider">Hour</Label>
-                    <Select value={currTime.hour} onValueChange={(v) => setCurrTime({...currTime, hour: v})}>
-                      <SelectTrigger className="w-[90px] h-12 text-lg px-3 bg-white border-b-2 border-0 border-border/60 text-foreground rounded-none shadow-none focus:ring-0 focus:border-primary"><SelectValue /></SelectTrigger>
-                      <SelectContent className="h-[200px] bg-white border-border/60">
-                        {Array.from({ length: 24 }).map((_, i) => {
-                          const val = i.toString().padStart(2, '0');
-                          return <SelectItem key={val} value={val}>{val}</SelectItem>;
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <Label className="text-sm font-bold text-primary text-center uppercase tracking-wider">Minute</Label>
-                    <Select value={currTime.minute} onValueChange={(v) => setCurrTime({...currTime, minute: v})}>
-                      <SelectTrigger className="w-[90px] h-12 text-lg px-3 bg-white border-b-2 border-0 border-border/60 text-foreground rounded-none shadow-none focus:ring-0 focus:border-primary"><SelectValue /></SelectTrigger>
-                      <SelectContent className="h-[200px] bg-white border-border/60">
-                        {Array.from({ length: 60 }).map((_, i) => {
-                          const val = i.toString().padStart(2, '0');
-                          return <SelectItem key={val} value={val}>{val}</SelectItem>;
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <TimeInputField
+              time={currTime}
+              onTimeChange={(newTime) => {
+                setCurrTime(newTime);
+                setCurrData({ tob: `${newTime.hour}:${newTime.minute}` });
+              }}
+            />
           </div>
 
           <div className="space-y-2 relative group flex flex-col md:col-span-2" ref={activeLocationField === fieldId ? locationRef : null}>

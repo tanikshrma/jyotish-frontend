@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
 import { formatDobForApi, formatFullLocationName } from "./CalculatorForm";
+import { DateInputField, TimeInputField } from "./FormDateInput";
 
 export function KundliCalculator() {
   const navigate = useNavigate();
@@ -404,130 +405,31 @@ export function KundliCalculator() {
                 {/* Date of Birth */}
                 <div className="space-y-2 relative group flex flex-col">
                   <Label htmlFor="dob" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Date of Birth</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button type="button" className={cn("w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg", !date && "text-muted-foreground/60", date && "text-foreground font-semibold", errors.dob && "border-destructive")}>
-                        <span>{date ? format(date, "PPP") : <span>DD/MM/YYYY</span>}</span>
-                        <CalendarIcon className="h-5 w-5 text-primary/70" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-none" align="start">
-                      <div className="bg-background border border-border/50 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col p-3 gap-3">
-                        {/* Custom Month/Year Dropdowns to match reference */}
-                        <div className="flex items-center border border-border/50 rounded-md bg-white">
-                          <Select 
-                            value={calendarMonth.getMonth().toString()} 
-                            onValueChange={(v) => {
-                              const newDate = new Date(calendarMonth);
-                              newDate.setMonth(parseInt(v));
-                              setCalendarMonth(newDate);
-                            }}
-                          >
-                            <SelectTrigger className="h-10 flex-1 border-none bg-transparent shadow-none focus:ring-0 text-foreground font-medium px-4">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-background border-border/50 max-h-[250px]">
-                              {Array.from({ length: 12 }).map((_, i) => {
-                                const d = new Date(2000, i, 1);
-                                return <SelectItem key={i} value={i.toString()} className="text-foreground focus:bg-primary/5 focus:text-primary">{format(d, 'MMMM')}</SelectItem>;
-                              })}
-                            </SelectContent>
-                          </Select>
-                          
-                          <div className="w-px h-6 bg-border/50"></div>
-                          
-                          <Select 
-                            value={calendarMonth.getFullYear().toString()} 
-                            onValueChange={(v) => {
-                              const newDate = new Date(calendarMonth);
-                              newDate.setFullYear(parseInt(v));
-                              setCalendarMonth(newDate);
-                            }}
-                          >
-                            <SelectTrigger className="h-10 flex-1 border-none bg-transparent shadow-none focus:ring-0 text-foreground font-medium px-4">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-background border-border/50 max-h-[250px]">
-                              {Array.from({ length: 130 }).map((_, i) => {
-                                const year = new Date().getFullYear() - i;
-                                return <SelectItem key={year} value={year.toString()} className="text-foreground focus:bg-primary/5 focus:text-primary">{year}</SelectItem>;
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="border border-border/50 rounded-md bg-white pb-1">
-                          <Calendar
-                            mode="single"
-                            month={calendarMonth}
-                            onMonthChange={setCalendarMonth}
-                            selected={date}
-                            onSelect={(d) => {
-                              setDate(d); 
-                              if (d) setCalendarMonth(d);
-                              setErrors({...errors, dob: ''})
-                            }}
-                            initialFocus
-                            disabled={(d) => d > new Date() || d < new Date("1900-01-01")}
-                            className="border-none shadow-none bg-transparent p-2"
-                            fromYear={1900}
-                            toYear={new Date().getFullYear()}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between pt-1 px-1">
-                          <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 h-8 px-4 text-xs font-bold rounded-md" onClick={() => {const d = new Date(); setDate(d); setCalendarMonth(d); setErrors({...errors, dob: ''})}}>Today</Button>
-                          <Button variant="ghost" size="sm" className="text-foreground/60 hover:bg-muted h-8 px-4 text-xs font-bold rounded-md" onClick={() => setDate(undefined)}>Clear</Button>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  {errors.dob && <p className="text-red-500 text-xs absolute -bottom-5">{errors.dob}</p>}
+                  <DateInputField
+                    date={date}
+                    onDateChange={(d, formattedStr) => {
+                      setDate(d);
+                      setFormData(prev => ({ ...prev, dob: formattedStr }));
+                      setErrors(prev => ({ ...prev, dob: '' }));
+                    }}
+                    calendarMonth={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    error={errors.dob}
+                  />
+                  {errors.dob && <p className="text-destructive text-xs absolute -bottom-5">{errors.dob}</p>}
                 </div>
                 
                 {/* Time of Birth */}
                 <div className="space-y-2 relative group flex flex-col">
-                  <Label htmlFor="tob" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Time of Birth</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" className={cn("w-full justify-between text-left font-normal h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm hover:bg-white hover:text-foreground hover:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg", errors.tob && "border-destructive")}>
-                        <span className="font-semibold text-foreground">{timeState.hour}:{timeState.minute}</span>
-                        <Clock className="h-5 w-5 text-primary/70" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-6 rounded-2xl border border-border/50 bg-background shadow-xl" align="start">
-                      <div className="flex gap-4">
-                        <div className="flex flex-col gap-3">
-                          <Label className="text-sm font-bold text-primary text-center uppercase tracking-wider">Hour</Label>
-                          <Select value={timeState.hour} onValueChange={(v) => {setTimeState({...timeState, hour: v}); setErrors({...errors, tob: ''})}}>
-                            <SelectTrigger className="w-[90px] h-12 text-lg px-3 bg-transparent border-b-2 border-0 border-border/50 text-foreground rounded-none shadow-none focus:ring-0 focus:border-primary">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="h-[200px] bg-background border-border/50 rounded-xl">
-                              {Array.from({ length: 24 }).map((_, i) => {
-                                const val = i.toString().padStart(2, '0');
-                                return <SelectItem key={val} value={val} className="text-foreground focus:bg-primary/5 focus:text-primary cursor-pointer">{val}</SelectItem>;
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                          <Label className="text-sm font-bold text-primary text-center uppercase tracking-wider">Minute</Label>
-                          <Select value={timeState.minute} onValueChange={(v) => {setTimeState({...timeState, minute: v}); setErrors({...errors, tob: ''})}}>
-                            <SelectTrigger className="w-[90px] h-12 text-lg px-3 bg-transparent border-b-2 border-0 border-border/50 text-foreground rounded-none shadow-none focus:ring-0 focus:border-primary">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="h-[200px] bg-background border-border/50 rounded-xl">
-                              {Array.from({ length: 60 }).map((_, i) => {
-                                const val = i.toString().padStart(2, '0');
-                                return <SelectItem key={val} value={val} className="text-foreground focus:bg-primary/5 focus:text-primary cursor-pointer">{val}</SelectItem>;
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                  <Label htmlFor="tob" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Time of Birth</Label>
+                  <TimeInputField
+                    time={timeState}
+                    onTimeChange={(newTime) => {
+                      setTimeState(newTime);
+                      setFormData(prev => ({ ...prev, tob: `${newTime.hour}:${newTime.minute}` }));
+                      setErrors(prev => ({ ...prev, tob: '' }));
+                    }}
+                  />
                   {errors.tob && <p className="text-destructive text-xs absolute -bottom-5">{errors.tob}</p>}
                 </div>
 

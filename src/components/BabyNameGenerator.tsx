@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
 import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
+import { DateInputField, TimeInputField } from "./FormDateInput";
 
 // Mock interface for the API response
 interface AstroReport {
@@ -345,72 +346,29 @@ export const BabyNameGenerator = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2 flex flex-col">
                     <Label htmlFor="dob">Date of Birth</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-12 px-4 rounded-xl border-2 border-[#f5c27a]/50 bg-[#fdfbf7] text-[#7a0808] font-sans shadow-sm hover:border-[#f5c27a] hover:shadow-[0_4px_15px_-3px_rgba(245,194,122,0.3)] transition-all duration-300 relative overflow-hidden", !date && "text-[#7a0808]/50", errors.dob && "border-destructive")} style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }}>
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#f5c27a]/5 to-transparent pointer-events-none" />
-                          <Calendar className="mr-2 h-5 w-5 text-[#f5c27a] opacity-80 relative z-10" />
-                          <span className="relative z-10">{date ? format(date, "PPP") : <span>Pick a date</span>}</span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 border-none bg-transparent shadow-none" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={date}
-                          onSelect={(d) => {setDate(d); setErrors({...errors, dob: ''})}}
-                          initialFocus
-                          disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                          captionLayout="dropdown-buttons"
-                          fromYear={1900}
-                          toYear={new Date().getFullYear()}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateInputField
+                      date={date}
+                      onDateChange={(d, formattedStr) => {
+                        setDate(d);
+                        setFormData(prev => ({ ...prev, dob: formattedStr }));
+                        setErrors(prev => ({ ...prev, dob: '' }));
+                      }}
+                      calendarMonth={date || new Date()}
+                      onMonthChange={() => {}}
+                      error={errors.dob}
+                    />
                     {errors.dob && <p className="text-destructive text-sm">{errors.dob}</p>}
                   </div>
                   <div className="space-y-2 flex flex-col">
                     <Label htmlFor="tob">Time of Birth</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" className={cn("w-full justify-start text-left font-normal h-12 px-4 rounded-xl border-2 border-[#f5c27a]/50 bg-[#fdfbf7] text-[#7a0808] hover:text-[#7a0808] hover:bg-[#fdfbf7] font-sans shadow-sm hover:border-[#f5c27a] hover:shadow-[0_4px_15px_-3px_rgba(245,194,122,0.3)] transition-all duration-300 relative overflow-hidden", errors.tob && "border-destructive")} style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }}>
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#f5c27a]/5 to-transparent pointer-events-none" />
-                          <Clock className="mr-2 h-5 w-5 text-[#f5c27a] opacity-80 relative z-10" />
-                          <span className="relative z-10 font-semibold text-[#7a0808]">{timeState.hour}:{timeState.minute}</span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-6 rounded-2xl border-2 border-[#f5c27a]/60 bg-[#fdfbf7] shadow-[0_10px_30px_-5px_rgba(122,8,8,0.2)] font-sans" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }} align="start">
-                        <div className="flex gap-4">
-                          <div className="flex flex-col gap-3">
-                            <Label className="text-sm font-bold text-[#7a0808] text-center">Hour (24h)</Label>
-                            <Select value={timeState.hour} onValueChange={(v) => {setTimeState({...timeState, hour: v}); setErrors({...errors, tob: ''})}}>
-                              <SelectTrigger className="w-[90px] h-12 text-lg px-3">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="h-[200px]">
-                                {Array.from({ length: 24 }).map((_, i) => {
-                                  const val = i.toString().padStart(2, '0');
-                                  return <SelectItem key={val} value={val}>{val}</SelectItem>;
-                                })}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex flex-col gap-3">
-                            <Label className="text-sm font-bold text-[#7a0808] text-center">Minute</Label>
-                            <Select value={timeState.minute} onValueChange={(v) => {setTimeState({...timeState, minute: v}); setErrors({...errors, tob: ''})}}>
-                              <SelectTrigger className="w-[90px] h-12 text-lg px-3">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="h-[200px]">
-                                {Array.from({ length: 60 }).map((_, i) => {
-                                  const val = i.toString().padStart(2, '0');
-                                  return <SelectItem key={val} value={val}>{val}</SelectItem>;
-                                })}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    <TimeInputField
+                      time={timeState}
+                      onTimeChange={(newTime) => {
+                        setTimeState(newTime);
+                        setFormData(prev => ({ ...prev, tob: `${newTime.hour}:${newTime.minute}` }));
+                        setErrors(prev => ({ ...prev, tob: '' }));
+                      }}
+                    />
                     {errors.tob && <p className="text-destructive text-sm">{errors.tob}</p>}
                   </div>
                 </div>
