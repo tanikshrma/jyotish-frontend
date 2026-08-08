@@ -374,9 +374,9 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+      <div onClick={() => setIsOpen(true)} className="contents cursor-pointer">
         {children}
-      </DialogTrigger>
+      </div>
       <DialogContent className="sm:max-w-[550px] w-[95vw] p-0 max-h-[90vh] flex flex-col border border-secondary/30 shadow-[0_20px_70px_-10px_rgba(129,9,9,0.15)] rounded-2xl bg-gradient-to-b from-white to-[#faf8f5] overflow-hidden [&>button]:text-white [&>button]:bg-white/10 [&>button]:hover:bg-white/20 [&>button]:rounded-full [&>button]:p-1.5 [&>button]:top-4 [&>button]:right-4 [&>button_svg]:w-5 [&>button_svg]:h-5">
         
         {/* ================= FIXED HEADER ================= */}
