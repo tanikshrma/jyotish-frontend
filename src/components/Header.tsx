@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { BookingModal } from "./BookingModal";
 
-export function Header() {
+export const Header = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement>>(
+  (props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -38,7 +39,7 @@ export function Header() {
 
   return (
     <>
-      <header className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+      <header ref={ref} className={`fixed top-0 w-full z-50 transition-all duration-500 ${
         isVisible || isOpen ? "translate-y-0" : "-translate-y-full"
       } ${
         !isScrolled && !isOpen
@@ -270,4 +271,6 @@ export function Header() {
       </div>
     </>
   );
-}
+});
+
+Header.displayName = "Header";

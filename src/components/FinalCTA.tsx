@@ -1,3 +1,4 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -12,16 +13,16 @@ interface FinalCTAProps {
   secondaryBtnLink?: string;
 }
 
-export function FinalCTA({
+export const FinalCTA = React.forwardRef<HTMLElement, FinalCTAProps>(({
   title,
   description,
   primaryBtnText,
   primaryBtnLink = "/get-consultation",
   secondaryBtnText,
   secondaryBtnLink = "/contact-us"
-}: FinalCTAProps) {
+}: FinalCTAProps, ref) => {
   return (
-    <section className="relative overflow-hidden bg-primary text-primary-foreground pt-32 pb-14">
+    <section ref={ref} className="relative overflow-hidden bg-primary text-primary-foreground pt-32 pb-14">
       {/* Decorative background elements */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[url('https://vibe.filesafe.space/1782888190245745251/assets/9b28bd02-75c8-4ecb-ae83-b9ae0e279fe3.png')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
@@ -63,4 +64,6 @@ export function FinalCTA({
       </div>
     </section>
   );
-}
+});
+
+FinalCTA.displayName = "FinalCTA";

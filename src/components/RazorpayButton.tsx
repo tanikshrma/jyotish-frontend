@@ -79,20 +79,8 @@ export function RazorpayButton({
               },
               service: description || service,
             });
-            const waUrl = result.whatsappCustomerUrl || result.whatsappAdminUrl;
-            if (waUrl) {
-              try {
-                window.open(waUrl, "_blank");
-              } catch (e) {
-                console.warn("Popup blocked:", e);
-              }
-            }
             toast.success("Payment Successful!", {
-              description: `Payment ID: ${result.payment_id}. Click below if WhatsApp did not open automatically.`,
-              action: waUrl ? {
-                label: "WhatsApp Receipt",
-                onClick: () => window.open(waUrl, "_blank"),
-              } : undefined,
+              description: `Payment ID: ${result.payment_id}. Confirmation sent to your Email & WhatsApp.`,
             });
             onSuccess?.({
               order_id: result.order_id,

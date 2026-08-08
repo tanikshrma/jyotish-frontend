@@ -77,7 +77,10 @@ export function normalizeSlotMap(rawData: any): Record<string, string[]> {
   return normalized;
 }
 
-export function BookingModal({ children, defaultService }: BookingModalProps) {
+import React from "react";
+
+export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
+  ({ children, defaultService }: BookingModalProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
@@ -340,21 +343,9 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
             });
 
             setIsOpen(false);
-            const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
-            if (waUrl) {
-              try {
-                window.open(waUrl, "_blank");
-              } catch (e) {
-                console.warn("Popup blocked:", e);
-              }
-            }
             toast.success("Consultation Booked & Payment Confirmed!", {
-              description: `Payment ID: ${response.razorpay_payment_id}. Click below if WhatsApp did not open.`,
+              description: `Receipt sent to ${email || 'your email'} & WhatsApp confirmation sent to ${phone || 'your phone'}.`,
               icon: <Sparkles className="w-5 h-5 text-secondary" />,
-              action: waUrl ? {
-                label: "WhatsApp Receipt",
-                onClick: () => window.open(waUrl, "_blank"),
-              } : undefined,
             });
           } catch (err: any) {
             toast.error("Payment Verification Error", {
@@ -738,4 +729,6 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+BookingModal.displayName = "BookingModal";

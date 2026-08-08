@@ -1,7 +1,7 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 
-export const WhatsAppButton = () => {
+export const WhatsAppButton = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>((props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("Hello! Jyotish now");
 
@@ -14,7 +14,7 @@ export const WhatsAppButton = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div ref={ref} className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
       {isOpen && (
         <div className="mb-4 w-80 bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col transform transition-all duration-300 origin-bottom-right animate-in zoom-in-95 duration-200">
           {/* Header */}
@@ -87,4 +87,6 @@ export const WhatsAppButton = () => {
       </button>
     </div>
   );
-};
+});
+
+WhatsAppButton.displayName = "WhatsAppButton";
