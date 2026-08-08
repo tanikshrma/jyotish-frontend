@@ -774,8 +774,15 @@ export function KundliCalculator() {
                             setIsPaid(true);
                             setGenerationStep('book');
                             const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
+                            if (waUrl) {
+                              try {
+                                window.open(waUrl, "_blank");
+                              } catch (e) {
+                                console.warn("Popup blocked:", e);
+                              }
+                            }
                             toast.success("Full Kundli Report Unlocked!", {
-                              description: "Payment verified. Receipt generated.",
+                              description: "Payment verified. Click below if WhatsApp did not open.",
                               icon: <Sparkles className="w-5 h-5 text-secondary" />,
                               action: waUrl ? {
                                 label: "WhatsApp Receipt",
