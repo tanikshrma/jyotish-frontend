@@ -773,13 +773,15 @@ export function KundliCalculator() {
                             });
                             setIsPaid(true);
                             setGenerationStep('book');
+                            const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
                             toast.success("Full Kundli Report Unlocked!", {
-                              description: "Payment receipt sent to your email & myjyotishnow@gmail.com",
-                              icon: <Sparkles className="w-5 h-5 text-secondary" />
+                              description: "Payment verified. Receipt generated.",
+                              icon: <Sparkles className="w-5 h-5 text-secondary" />,
+                              action: waUrl ? {
+                                label: "WhatsApp Receipt",
+                                onClick: () => window.open(waUrl, "_blank"),
+                              } : undefined,
                             });
-                            if (verificationResult.whatsappAdminUrl) {
-                              window.open(verificationResult.whatsappAdminUrl, "_blank");
-                            }
                           } catch (e: any) {
                             toast.error("Payment verification failed", { description: e.message });
                           } finally {

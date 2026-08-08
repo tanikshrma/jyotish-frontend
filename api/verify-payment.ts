@@ -69,15 +69,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const customerName = customer.name || body.name || "Valued Client";
   const customerEmail = customer.email || body.email || "";
   const customerPhone = customer.phone || body.phone || "";
-  const serviceName = body.service || "Astrology Consultation";
-  const amountStr = body.amount ? `₹${body.amount}` : "Paid";
+  const host = (req.headers && req.headers.host) ? String(req.headers.host) : "";
+  const isLocalDev = process.env.NODE_ENV !== "production" || host.includes("localhost") || host.includes("127.0.0.1");
 
-  const adminEmail = "myjyotishnow@gmail.com";
-  const adminPhone = "+917015544187";
+  // In local development, do not send to production admin unless ADMIN_EMAIL or ADMIN_PHONE is explicitly set
+  const adminEmail = process.env.ADMIN_EMAIL || (isLocalDev ? "" : "myjyotishnow@gmail.com");
+  const adminPhone = process.env.ADMIN_PHONE || (isLocalDev ? "" : "+917015544187");
 
   // 1. Send Email Receipt via Resend / API to Admin & Customer
   const resendApiKey = process.env.RESEND_API_KEY;
-  const emailRecipients = [adminEmail];
+  const emailRecipients: string[] = [];
+  if (adminEmail) emailRecipients.push(adminEmail);
   if (customerEmail && customerEmail.includes("@")) {
     emailRecipients.push(customerEmail);
   }

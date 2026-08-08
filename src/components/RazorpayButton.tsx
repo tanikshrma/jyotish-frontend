@@ -79,12 +79,14 @@ export function RazorpayButton({
               },
               service: description || service,
             });
+            const waUrl = result.whatsappCustomerUrl || result.whatsappAdminUrl;
             toast.success("Payment Successful!", {
-              description: `Receipt sent to ${prefill?.email || 'your email'} & myjyotishnow@gmail.com.`,
+              description: `Payment ID: ${result.payment_id}. Receipt generated.`,
+              action: waUrl ? {
+                label: "WhatsApp Receipt",
+                onClick: () => window.open(waUrl, "_blank"),
+              } : undefined,
             });
-            if (result.whatsappAdminUrl) {
-              window.open(result.whatsappAdminUrl, "_blank");
-            }
             onSuccess?.({
               order_id: result.order_id,
               payment_id: result.payment_id,
