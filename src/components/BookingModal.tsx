@@ -298,6 +298,9 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
         throw new Error("Razorpay Checkout is unavailable");
       }
 
+      // Close BookingModal FIRST so Radix UI releases focus & backdrop pointer-events
+      setIsOpen(false);
+
       const checkout = new window.Razorpay({
         key: order.key_id,
         amount: order.amount,
