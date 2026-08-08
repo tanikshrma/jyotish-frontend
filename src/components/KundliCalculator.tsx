@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
 import { formatDobForApi, formatFullLocationName } from "./CalculatorForm";
 import { DateInputField, TimeInputField } from "./FormDateInput";
+import { generateNorthIndianChartSvg } from "./KundliBook";
 
 export function KundliCalculator() {
   const navigate = useNavigate();
@@ -277,10 +278,15 @@ export function KundliCalculator() {
 
       const getChartSvgString = (chartRes: any): string => {
         if (!chartRes) return '';
-        if (typeof chartRes === 'string') return chartRes;
-        if (typeof chartRes.response === 'string') return chartRes.response;
-        if (typeof chartRes.svg === 'string') return chartRes.svg;
-        if (typeof chartRes.data === 'string') return chartRes.data;
+        let rawStr = '';
+        if (typeof chartRes === 'string') rawStr = chartRes;
+        else if (typeof chartRes?.response === 'string') rawStr = chartRes.response;
+        else if (typeof chartRes?.svg === 'string') rawStr = chartRes.svg;
+        else if (typeof chartRes?.data === 'string') rawStr = chartRes.data;
+
+        if (rawStr && rawStr.trim().toLowerCase().startsWith('<svg')) {
+          return rawStr;
+        }
         return '';
       };
 
@@ -536,7 +542,7 @@ export function KundliCalculator() {
             </div>
 
             {/* Content Body */}
-            <div className="p-6 sm:p-8 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div className="p-6 sm:p-8 pb-24 sm:pb-28 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
               
               {/* Basic Astro Summary Badges */}
               {(() => {
@@ -583,18 +589,54 @@ export function KundliCalculator() {
                 );
               })()}
 
-              {/* D1 Lagna Chart Preview */}
-              {kundliData?.charts?.d1North && (
-                <div className="bg-[#FFFDF9] border border-secondary/20 p-6 rounded-2xl text-center shadow-inner">
-                  <h4 className="font-serif font-bold text-primary text-xl mb-4 flex items-center justify-center gap-2">
-                    <Star className="w-5 h-5 text-secondary" /> D1 Lagna Chart (Basic Preview)
-                  </h4>
-                  <div 
-                    className="w-full max-w-[340px] mx-auto flex items-center justify-center border border-secondary/30 rounded-xl p-3 bg-white"
-                    dangerouslySetInnerHTML={{ __html: typeof kundliData.charts.d1North === 'string' ? kundliData.charts.d1North : '' }}
-                  />
-                </div>
-              )}
+              {/* D1 Lagna Chart Preview & Consultation Banner */}
+              {(() => {
+                const planetsList = Array.isArray(kundliData?.planets)
+                  ? kundliData.planets
+                  : (typeof kundliData?.planets === 'object' && kundliData?.planets !== null ? Object.values(kundliData.planets) : []);
+                const lagnaPlanet = planetsList.find((p: any) => p?.name === "Ascendant" || p?.name === "Lagna" || p?.planet === "Ascendant") || planetsList[0];
+                const lagnaSign = lagnaPlanet?.zodiac || lagnaPlanet?.sign || "Aries";
+
+                const chartSvg = kundliData?.charts?.d1North && kundliData.charts.d1North.trim().startsWith('<svg')
+                  ? kundliData.charts.d1North
+                  : generateNorthIndianChartSvg(planetsList, 'd1', lagnaSign);
+
+                return (
+                  <div className="space-y-6">
+                    <div className="bg-[#FFFDF9] border border-secondary/20 p-6 rounded-2xl text-center shadow-inner">
+                      <h4 className="font-serif font-bold text-primary text-xl mb-4 flex items-center justify-center gap-2">
+                        <Star className="w-5 h-5 text-secondary" /> D1 Lagna Chart (Basic Preview)
+                      </h4>
+                      <div 
+                        className="w-full max-w-[340px] mx-auto flex items-center justify-center border border-secondary/30 rounded-xl p-3 bg-white shadow-sm"
+                        dangerouslySetInnerHTML={{ __html: chartSvg }}
+                      />
+                    </div>
+
+                    {/* Book Astrologer Consultation Option */}
+                    <div className="bg-gradient-to-r from-amber-500/10 via-primary/5 to-amber-500/10 border border-secondary/30 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                      <div className="flex items-center gap-3 text-left">
+                        <div className="w-11 h-11 rounded-full bg-secondary/20 flex items-center justify-center text-primary shrink-0">
+                          <Sparkles className="w-6 h-6 text-secondary fill-secondary" />
+                        </div>
+                        <div>
+                          <h5 className="font-serif font-bold text-primary text-base sm:text-lg">Need In-Depth Personal Chart Guidance?</h5>
+                          <p className="text-xs sm:text-sm text-foreground/70">Connect 1-on-1 with our Senior Vedic Astrologers to discuss remedies, dashas & timings.</p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setGenerationStep('idle');
+                          navigate('/get-consultation');
+                        }}
+                        className="bg-secondary hover:bg-secondary/90 text-primary font-bold px-6 h-12 rounded-xl text-sm shadow-md shrink-0 whitespace-nowrap flex items-center gap-2"
+                      >
+                        <CalendarIcon className="w-4 h-4" /> Book Consultation Now
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Locked Teaser Cards with Suspense */}
               <div className="space-y-4 pt-4 border-t border-border/40">

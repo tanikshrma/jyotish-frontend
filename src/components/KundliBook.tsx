@@ -65,7 +65,7 @@ const Page = React.forwardRef<HTMLDivElement, { children: React.ReactNode; numbe
 );
 Page.displayName = 'Page';
 
-function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' | 'd9' = 'd1', ascendantZodiacSign: string = 'Aries') {
+export function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' | 'd9' = 'd1', ascendantZodiacSign: string = 'Aries') {
   const zodiacMap: Record<string, number> = {
     'aries': 1, 'taurus': 2, 'gemini': 3, 'cancer': 4, 'leo': 5, 'virgo': 6,
     'libra': 7, 'scorpio': 8, 'sagittarius': 9, 'capricorn': 10, 'aquarius': 11, 'pisces': 12
