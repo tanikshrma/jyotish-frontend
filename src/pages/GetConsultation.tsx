@@ -310,13 +310,29 @@ const GetConsultation = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: 0.1 }}
-                  className="bg-white border border-border/40 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:border-primary/20 hover:-translate-y-1 transition-all duration-500 flex flex-col h-full p-6 md:p-8"
+                  className="bg-white border border-[#E6D5B8] rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_-15px_rgba(74,28,8,0.12)] hover:border-primary/40 hover:-translate-y-1 transition-all duration-500 flex flex-col h-full p-6 md:p-8 relative"
                 >
+                  {/* Discount Badge */}
+                  <div className="absolute top-4 right-4 bg-[#4A1C08] text-white text-xs font-bold px-3 py-1 rounded-xl shadow-sm">
+                    50% OFF
+                  </div>
+
                   <div className="flex items-center gap-4 mb-3">
                     <div className="w-14 h-14 rounded-full overflow-hidden shrink-0 border border-primary/20">
                       <img src="https://vibe.filesafe.space/1782888190245745251/attachments/9045c8d0-c8d3-4310-aa9d-ea95b999bd8b.png" alt="Dr. Sandeep" className="w-full h-full object-cover bg-primary/5" />
                     </div>
-                    <h3 className="text-2xl font-serif font-bold text-foreground">Consultation Call</h3>
+                    <div>
+                      <h3 className="text-2xl font-serif font-bold text-foreground">Consultation Call</h3>
+                      {/* Rating Badge */}
+                      <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 rounded-full mt-1">
+                        <div className="flex gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          ))}
+                        </div>
+                        <span className="text-[11px] font-bold text-gray-700 ml-1">(52)</span>
+                      </div>
+                    </div>
                   </div>
                   
                   <p className="text-foreground/70 text-sm mb-6">Ideal for individuals seeking clarity and solutions.</p>
@@ -363,11 +379,14 @@ const GetConsultation = () => {
                   </div>
                   
                   <div className="flex flex-col sm:flex-row items-center justify-between mt-auto pt-6 border-t border-primary/20 gap-4">
-                    <div className="text-lg font-bold text-foreground w-full sm:w-auto text-center sm:text-left">Price: {formatINR(getPrice1())}</div>
+                    <div className="flex items-baseline gap-2 w-full sm:w-auto text-center sm:text-left">
+                      <span className="text-xs text-gray-400 line-through">{formatINR(getPrice1() * 2)}</span>
+                      <span className="text-xl font-bold text-[#810909]">{formatINR(getPrice1())}</span>
+                    </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                       <BookingModal defaultService="consultation-call">
-                        <Button className="w-full sm:w-auto h-10 px-8 rounded-md text-sm bg-primary hover:bg-primary/90 text-white font-medium">
-                          Pay {formatINR(getPrice1())}
+                        <Button className="w-full sm:w-auto h-11 px-8 rounded-xl text-sm bg-[#4A1C08] hover:bg-[#341305] text-white font-semibold shadow-md">
+                          + Add to Cart / Pay {formatINR(getPrice1())}
                         </Button>
                       </BookingModal>
                     </div>

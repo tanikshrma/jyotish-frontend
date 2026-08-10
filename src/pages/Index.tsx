@@ -2,6 +2,7 @@ import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { TrustBadges } from "@/components/TrustBadges";
 import { Services } from "@/components/Services";
+import { Intentions } from "@/components/Intentions";
 import { DiscoverBlueprint } from "@/components/DiscoverBlueprint";
 import { LeadForm } from "@/components/LeadForm";
 import { Features } from "@/components/Features";
@@ -16,9 +17,9 @@ const Index = () => {
   return (
     <div className="relative min-h-screen bg-background">
       <SEO 
-        title="JyotishNow — India's No.1 Vedic Astrologer" 
-        description="Get personalized Kundli, expert astrology consultation, and accurate life predictions from Dr. Sandeep Sawhney. Transform your life with Vedic wisdom."
-        keywords="Vedic Astrology, Kundli, Horoscope, Dr. Sandeep Sawhney, JyotishNow, Astrology Consultation"
+        title="JyotishNow — India's No.1 Vedic Astrologer & Certified Rudrakshas" 
+        description="Get personalized Kundli, expert astrology consultation, certified Rudraksha malas, and accurate life predictions from Dr. Sandeep Sawhney."
+        keywords="Vedic Astrology, Rudraksha Mala, Kundli, Horoscope, Dr. Sandeep Sawhney, JyotishNow"
       />
       {/* Global Pattern Overlay */}
       <div 
@@ -34,11 +35,12 @@ const Index = () => {
         <main className="flex-grow">
           <Hero />
           <Services />
+          <Zodiac />
+          <Intentions />
           <TrustBadges />
           <DiscoverBlueprint />
           <LeadForm />
           <Features />
-          <Zodiac />
           <VideoGuides />
           <Testimonials />
           <FinalCTA 
