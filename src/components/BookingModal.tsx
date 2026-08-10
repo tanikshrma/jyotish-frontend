@@ -92,6 +92,13 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
   const [phone, setPhone] = useState("");
   const [service, setService] = useState(defaultService || "complete-horoscope");
 
+  // Sync service whenever modal opens with defaultService prop
+  useEffect(() => {
+    if (isOpen && defaultService) {
+      setService(defaultService);
+    }
+  }, [isOpen, defaultService]);
+
   // Calendar State
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -176,10 +183,22 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
     e.preventDefault();
     
     const newErrors: { [key: string]: string } = {};
-    if (!firstName) newErrors.firstName = "First name is required";
-    if (!lastName) newErrors.lastName = "Last name is required";
-    if (!email) newErrors.email = "Email is required";
-    if (!phone) newErrors.phone = "Phone is required";
+    if (!firstName.trim()) newErrors.firstName = "First name is required";
+    if (!lastName.trim()) newErrors.lastName = "Last name is required";
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(email.trim())) {
+      newErrors.email = "Please enter a valid email address (must include '@' and '.com' domain)";
+    }
+
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phone.trim()) {
+      newErrors.phone = "Phone is required";
+    } else if (phoneDigits.length < 10) {
+      newErrors.phone = "Please enter a valid 10-digit phone number";
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -463,7 +482,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                 <Label htmlFor="phone" className="text-xs font-semibold text-foreground/80 ml-1">Phone Number</Label>
                 <div className="relative group">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
-                  <Input id="phone" type="tel" value={phone} onChange={e => {setPhone(e.target.value); setErrors({...errors, phone: ''})}} className={cn("pl-10 bg-white border-secondary/30 focus-visible:ring-primary focus-visible:border-primary h-11 rounded-xl shadow-sm text-foreground transition-all duration-300", errors.phone && "border-destructive")} placeholder="+91 98765 43210" />
+                  <Input id="phone" type="tel" value={phone} onChange={e => {setPhone(e.target.value.replace(/[^0-9+]/g, '')); setErrors({...errors, phone: ''})}} className={cn("pl-10 bg-white border-secondary/30 focus-visible:ring-primary focus-visible:border-primary h-11 rounded-xl shadow-sm text-foreground transition-all duration-300", errors.phone && "border-destructive")} placeholder="Enter 10-digit phone number" />
                 </div>
                 {errors.phone && <p className="text-destructive text-xs ml-1">{errors.phone}</p>}
               </div>

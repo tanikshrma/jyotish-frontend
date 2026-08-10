@@ -134,20 +134,21 @@ export function DateInputField({
   };
 
   return (
-    <div className="relative group">
-      <Input
-        type="text"
-        placeholder={placeholder}
-        value={inputValue}
-        onFocus={() => setIsFocused(true)}
-        onBlur={handleBlur}
-        onChange={handleInputChange}
-        className={cn(
-          "h-14 px-4 pr-12 rounded-xl border border-border/60 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg hover:border-primary/60 placeholder:text-muted-foreground/60",
-          error && "border-destructive",
-          className
-        )}
-      />
+    <div className="flex flex-col gap-1 w-full relative">
+      <div className="relative group">
+        <Input
+          type="text"
+          placeholder={placeholder}
+          value={inputValue}
+          onFocus={() => setIsFocused(true)}
+          onBlur={handleBlur}
+          onChange={handleInputChange}
+          className={cn(
+            "h-14 px-4 pr-12 rounded-xl border border-border/60 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg hover:border-primary/60 placeholder:text-muted-foreground/60",
+            error && "border-destructive",
+            className
+          )}
+        />
 
       <Popover>
         <PopoverTrigger asChild>
@@ -221,6 +222,8 @@ export function DateInputField({
           </div>
         </PopoverContent>
       </Popover>
+      </div>
+      {error && <span className="text-xs text-red-600 font-medium ml-1 block">{error}</span>}
     </div>
   );
 }

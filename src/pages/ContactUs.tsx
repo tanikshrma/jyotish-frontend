@@ -22,10 +22,56 @@ export default function ContactUs() {
     subject: '',
     message: ''
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = "First name is required";
+    }
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = "Last name is required";
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!formData.email.trim()) {
+      newErrors.email = "Email address is required";
+    } else if (!emailRegex.test(formData.email.trim())) {
+      newErrors.email = "Please enter a valid email address (must include '@' and '.com' domain)";
+    }
+
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (phoneDigits.length < 10) {
+      newErrors.phone = "Please enter a valid 10-digit phone number";
+    }
+
+    if (!formData.subject.trim()) {
+      newErrors.subject = "Subject is required";
+    }
+    if (!formData.message.trim()) {
+      newErrors.message = "Message is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericVal = e.target.value.replace(/[^0-9+]/g, '');
+    setFormData({ ...formData, phone: numericVal });
+    if (errors.phone) {
+      setErrors(prev => ({ ...prev, phone: '' }));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
 
     submitProspectIQLead({
@@ -84,6 +130,7 @@ export default function ContactUs() {
         subject: '',
         message: ''
       });
+      setErrors({});
     }, 1000);
   };
 
@@ -252,31 +299,36 @@ export default function ContactUs() {
                     <p className="text-foreground/70 text-lg">Fill out the form below and we'll get back to you shortly.</p>
                   </div>
                   
-                  <form className="space-y-6" onSubmit={handleSubmit}>
+                  <form className="space-y-6" onSubmit={handleSubmit} noValidate>
                     <div className="grid sm:grid-cols-2 gap-6">
                       <div className="space-y-2 relative group">
                         <label htmlFor="firstName" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">First Name</label>
-                        <Input id="firstName" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="h-14 px-4 rounded-xl border border-border/50 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50" placeholder="Enter first name" required />
+                        <Input id="firstName" value={formData.firstName} onChange={e => { setFormData({...formData, firstName: e.target.value}); if(errors.firstName) setErrors({...errors, firstName: ''}); }} className={`h-14 px-4 rounded-xl border bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg ${errors.firstName ? 'border-red-500' : 'border-border/50 hover:border-secondary/50'}`} placeholder="Enter first name" />
+                        {errors.firstName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.firstName}</span>}
                       </div>
                       <div className="space-y-2 relative group">
                         <label htmlFor="lastName" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Last Name</label>
-                        <Input id="lastName" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="h-14 px-4 rounded-xl border border-border/50 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50" placeholder="Enter last name" required />
+                        <Input id="lastName" value={formData.lastName} onChange={e => { setFormData({...formData, lastName: e.target.value}); if(errors.lastName) setErrors({...errors, lastName: ''}); }} className={`h-14 px-4 rounded-xl border bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg ${errors.lastName ? 'border-red-500' : 'border-border/50 hover:border-secondary/50'}`} placeholder="Enter last name" />
+                        {errors.lastName && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.lastName}</span>}
                       </div>
                     </div>
                     
                     <div className="space-y-2 relative group">
                       <label htmlFor="email" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Email Address</label>
-                      <Input id="email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="h-14 px-4 rounded-xl border border-border/50 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50" placeholder="Enter email address" required />
+                      <Input id="email" type="email" value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); if(errors.email) setErrors({...errors, email: ''}); }} className={`h-14 px-4 rounded-xl border bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg ${errors.email ? 'border-red-500' : 'border-border/50 hover:border-secondary/50'}`} placeholder="Enter email address" />
+                      {errors.email && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.email}</span>}
                     </div>
                     
                     <div className="space-y-2 relative group">
                       <label htmlFor="phone" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Phone Number</label>
-                      <Input id="phone" type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="h-14 px-4 rounded-xl border border-border/50 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50" placeholder="Enter phone number" required />
+                      <Input id="phone" type="tel" value={formData.phone} onChange={handlePhoneChange} className={`h-14 px-4 rounded-xl border bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg ${errors.phone ? 'border-red-500' : 'border-border/50 hover:border-secondary/50'}`} placeholder="Enter 10-digit phone number" />
+                      {errors.phone && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.phone}</span>}
                     </div>
                     
                     <div className="space-y-2 relative group">
                       <label htmlFor="subject" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Subject</label>
-                      <Input id="subject" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="h-14 px-4 rounded-xl border border-border/50 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50" placeholder="What is this regarding?" required />
+                      <Input id="subject" value={formData.subject} onChange={e => { setFormData({...formData, subject: e.target.value}); if(errors.subject) setErrors({...errors, subject: ''}); }} className={`h-14 px-4 rounded-xl border bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg ${errors.subject ? 'border-red-500' : 'border-border/50 hover:border-secondary/50'}`} placeholder="What is this regarding?" />
+                      {errors.subject && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.subject}</span>}
                     </div>
                     
                     <div className="space-y-2 relative group">
@@ -284,11 +336,11 @@ export default function ContactUs() {
                       <Textarea 
                         id="message" 
                         value={formData.message} 
-                        onChange={e => setFormData({...formData, message: e.target.value})}
-                        className="min-h-[150px] px-4 pt-4 rounded-xl border border-border/50 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50 resize-y"
+                        onChange={e => { setFormData({...formData, message: e.target.value}); if(errors.message) setErrors({...errors, message: ''}); }}
+                        className={`min-h-[150px] px-4 pt-4 rounded-xl border bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg resize-y ${errors.message ? 'border-red-500' : 'border-border/50 hover:border-secondary/50'}`}
                         placeholder="How can we help you?"
-                        required
                       />
+                      {errors.message && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.message}</span>}
                     </div>
                     
                     <Button type="submit" disabled={isSubmitting} className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 text-white rounded-xl text-lg font-bold shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 ease-out hover:-translate-y-1 relative overflow-hidden group mt-4">

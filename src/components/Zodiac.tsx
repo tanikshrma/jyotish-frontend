@@ -18,20 +18,20 @@ const zodiacSigns = [
 
 export const Zodiac: FC = () => {
   return (
-    <section className="py-24 relative overflow-hidden bg-[#1a1a1a]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(249,90,20,0.15)_0,transparent_50%)]" />
+    <section className="py-24 relative overflow-hidden bg-gradient-to-b from-[#3D0404] via-[#2A0303] to-[#1A0202] text-white border-y border-[#F5C27A]/20">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,194,124,0.1)_0,transparent_60%)]" />
       
       <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center max-w-4xl mx-auto mb-16 space-y-8">
-          <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
+        <div className="text-center max-w-4xl mx-auto mb-16 space-y-4">
+          <h2 className="text-3xl md:text-5xl font-bold font-serif text-white leading-tight">
             Know What Your Zodiac Sign Says About You
           </h2>
-          <p className="text-xl text-white/80 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto font-light">
             Click on the Rashi to know about your Personality, Traits, Life Predictions, and Remedies!
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8 md:gap-10 max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 md:gap-8 max-w-6xl mx-auto">
           {zodiacSigns.map((sign) => (
             <Link 
               to={`/zodiac/${sign.id}`}
@@ -39,31 +39,28 @@ export const Zodiac: FC = () => {
               key={sign.name} 
               className="flex flex-col items-center group cursor-pointer"
             >
-              <div className="relative w-32 h-32 md:w-36 md:h-36 mb-6 flex items-center justify-center transition-all duration-500 group-hover:-translate-y-2">
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 flex items-center justify-center transition-all duration-500 group-hover:-translate-y-2">
                 {/* Background decorative circle */}
-                <div className="absolute inset-0 bg-white/5 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.2)] border border-white/10 backdrop-blur-md group-hover:bg-primary/20 transition-all duration-500"></div>
+                <div className="absolute inset-0 bg-white/10 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.3)] border border-white/20 backdrop-blur-md group-hover:bg-[#F5C27A]/20 group-hover:border-[#F5C27A]/50 transition-all duration-500"></div>
                 
                 {/* Spinning dashed ring on hover */}
-                <div className="absolute inset-2 rounded-full border border-dashed border-secondary/20 group-hover:border-secondary/60 group-hover:rotate-180 transition-all duration-1000"></div>
+                <div className="absolute inset-2 rounded-full border border-dashed border-white/30 group-hover:border-[#F5C27A] group-hover:rotate-180 transition-all duration-1000"></div>
                 
                 {sign.image ? (
                   <img 
                     src={sign.image} 
                     alt={sign.name}
                     loading="lazy"
-                    className="w-20 h-20 md:w-24 md:h-24 object-contain relative z-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-sm"
+                    className="w-20 h-20 md:w-24 md:h-24 object-contain relative z-10 transition-transform duration-500 group-hover:scale-110 drop-shadow-md"
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full flex items-center justify-center relative z-10">
-                    <span className="text-4xl text-primary font-serif leading-none">
+                    <span className="text-4xl text-secondary font-serif leading-none">
                       {sign.symbol}
                     </span>
                   </div>
                 )}
               </div>
-              <span className="text-white font-bold text-sm md:text-base tracking-widest uppercase group-hover:text-secondary transition-colors duration-300">
-                {sign.name}
-              </span>
             </Link>
           ))}
         </div>

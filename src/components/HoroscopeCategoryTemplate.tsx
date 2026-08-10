@@ -737,11 +737,11 @@ export const HoroscopeCategoryTemplate = ({ title, timeframe, category, descript
                 ][index] : faq.answer;
 
                 return (
-                  <AccordionItem key={index} value={`item-${index}`}>
-                    <AccordionTrigger>
+                  <AccordionItem key={index} value={`item-${index}`} className="border border-[#E9DED3] bg-white rounded-2xl mb-4 px-6 md:px-8 shadow-sm overflow-hidden text-left">
+                    <AccordionTrigger className="text-left font-bold text-lg md:text-xl text-primary hover:no-underline py-5">
                       {translatedQuestion}
                     </AccordionTrigger>
-                    <AccordionContent>
+                    <AccordionContent className="text-foreground/80 text-base md:text-lg leading-relaxed pb-6 text-left">
                       {translatedAnswer}
                     </AccordionContent>
                   </AccordionItem>

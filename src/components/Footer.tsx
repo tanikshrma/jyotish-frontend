@@ -2,8 +2,17 @@ import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 import { Link } from "react-router-dom";
 export function Footer() {
   return (
-    <footer className="bg-[#1a1a1a] text-white pt-20 pb-10 border-t border-secondary/20">
-      <div className="container mx-auto px-4">
+    <footer className="bg-gradient-to-b from-[#3D0404] via-[#2D0303] to-[#1A0202] text-white pt-20 pb-10 border-t border-[#f5c178]/30 relative overflow-hidden">
+      {/* Background Overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: 'url("https://vibe.filesafe.space/meta/1782888190245745251/mandala-pattern.png")',
+          backgroundSize: '350px',
+          backgroundRepeat: 'repeat'
+        }}
+      />
+      <div className="container mx-auto px-4 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div className="space-y-6">
             <div className="flex items-center gap-2">

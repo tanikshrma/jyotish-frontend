@@ -62,10 +62,10 @@ export function Testimonials() {
             }}
             className="w-full"
           >
-            <CarouselContent className="-ml-4 md:-ml-8">
+            <CarouselContent className="-ml-4 md:-ml-8 py-8">
               {testimonials.map((testimonial, index) => (
                 <CarouselItem key={index} className="pl-4 md:pl-8 md:basis-1/2 lg:basis-1/2">
-                  <Card className="h-full bg-white border border-[#E9DED3] shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(245,194,122,0.2)] hover:border-[#F5C27A]/50 transition-all duration-500 overflow-hidden relative group">
+                  <Card className="h-full bg-white border border-[#E9DED3] shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-2xl relative z-10 hover:z-20 hover:-translate-y-1.5 hover:shadow-[0_12px_30px_rgba(120,8,8,0.1)] hover:border-[#F5C27A]/60 transition-all duration-500 overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#F5C27A]/10 to-transparent rounded-bl-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <CardContent className="p-8 md:p-10 relative h-full flex flex-col">
                       <Quote className="absolute top-8 right-8 w-16 h-16 text-[#F5C27A]/10 group-hover:text-[#F5C27A]/20 transition-colors duration-500" />
