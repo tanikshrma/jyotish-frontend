@@ -109,19 +109,21 @@ export function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' 
     housePlanets[12] = ['Ma'];
   }
 
+  // Geometry coordinates for North Indian chart:
+  // (numX, numY) for Zodiac Rashi number, (textX, textY) for Planet symbols
   const houseCoords: Record<number, { numX: number; numY: number; textX: number; textY: number }> = {
-    1:  { numX: 200, numY: 155, textX: 200, textY: 115 },
-    2:  { numX: 115, numY: 75,  textX: 85,  textY: 45 },
-    3:  { numX: 75,  numY: 115, textX: 45,  textY: 85 },
-    4:  { numX: 155, numY: 200, textX: 105, textY: 200 },
-    5:  { numX: 75,  numY: 285, textX: 45,  textY: 315 },
-    6:  { numX: 115, numY: 325, textX: 85,  textY: 355 },
-    7:  { numX: 200, numY: 245, textX: 200, textY: 285 },
-    8:  { numX: 285, numY: 325, textX: 315, textY: 355 },
-    9:  { numX: 325, numY: 285, textX: 355, textY: 315 },
-    10: { numX: 245, numY: 200, textX: 295, textY: 200 },
-    11: { numX: 325, numY: 115, textX: 355, textY: 85 },
-    12: { numX: 285, numY: 75,  textX: 315, textY: 45 }
+    1:  { numX: 200, numY: 160, textX: 200, textY: 95 },
+    2:  { numX: 165, numY: 75,  textX: 115, textY: 45 },
+    3:  { numX: 75,  numY: 165, textX: 45,  textY: 115 },
+    4:  { numX: 160, numY: 200, textX: 95,  textY: 200 },
+    5:  { numX: 75,  numY: 235, textX: 45,  textY: 285 },
+    6:  { numX: 165, numY: 325, textX: 115, textY: 355 },
+    7:  { numX: 200, numY: 240, textX: 200, textY: 305 },
+    8:  { numX: 235, numY: 325, textX: 285, textY: 355 },
+    9:  { numX: 325, numY: 235, textX: 355, textY: 285 },
+    10: { numX: 240, numY: 200, textX: 305, textY: 200 },
+    11: { numX: 325, numY: 165, textX: 355, textY: 115 },
+    12: { numX: 235, numY: 75,  textX: 285, textY: 45 }
   };
 
   let svgContent = `<svg viewBox="0 0 400 400" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
@@ -134,12 +136,29 @@ export function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' 
   for (let house = 1; house <= 12; house++) {
     const coords = houseCoords[house];
     const signNum = ((ascSignNum - 1 + (house - 1)) % 12) + 1;
-    svgContent += `<text x="${coords.numX}" y="${coords.numY}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="13px" font-weight="700" fill="#B98A45" text-anchor="middle" dominant-baseline="central">${signNum}</text>`;
+    svgContent += `<text x="${coords.numX}" y="${coords.numY}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="12.5px" font-weight="700" fill="#B98A45" text-anchor="middle" dominant-baseline="central">${signNum}</text>`;
 
     const planetsInHouse = housePlanets[house] || [];
     if (planetsInHouse.length > 0) {
-      const planetStr = planetsInHouse.join(' ');
-      svgContent += `<text x="${coords.textX}" y="${coords.textY}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="14px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${planetStr}</text>`;
+      if (planetsInHouse.length === 1) {
+        svgContent += `<text x="${coords.textX}" y="${coords.textY}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="13px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${planetsInHouse[0]}</text>`;
+      } else if (planetsInHouse.length === 2) {
+        svgContent += `<text x="${coords.textX}" y="${coords.textY}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="12px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${planetsInHouse.join(' ')}</text>`;
+      } else if (planetsInHouse.length <= 4) {
+        const row1 = planetsInHouse.slice(0, 2).join(' ');
+        const row2 = planetsInHouse.slice(2).join(' ');
+        svgContent += `<text x="${coords.textX}" y="${coords.textY - 7}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="11px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${row1}</text>`;
+        svgContent += `<text x="${coords.textX}" y="${coords.textY + 8}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="11px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${row2}</text>`;
+      } else {
+        const row1 = planetsInHouse.slice(0, 2).join(' ');
+        const row2 = planetsInHouse.slice(2, 4).join(' ');
+        const row3 = planetsInHouse.slice(4).join(' ');
+        svgContent += `<text x="${coords.textX}" y="${coords.textY - 12}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="10px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${row1}</text>`;
+        svgContent += `<text x="${coords.textX}" y="${coords.textY}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="10px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${row2}</text>`;
+        if (row3) {
+          svgContent += `<text x="${coords.textX}" y="${coords.textY + 12}" font-family="'Cinzel', 'Cormorant Garamond', serif" font-size="10px" font-weight="700" fill="#7A0808" text-anchor="middle" dominant-baseline="central">${row3}</text>`;
+        }
+      }
     }
   }
 
@@ -240,8 +259,10 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
 
   const extractDasha = (input: any): { planet: string; start: string; end: string }[] => {
     if (!input) return [];
-    let data = input.response || input.dasha || input.mahadasha || input;
+    let data = input;
     if (data?.response) data = data.response;
+    if (data?.dasha && typeof data.dasha === 'object' && !Array.isArray(data.dasha)) data = data.dasha;
+    
     if (data && Array.isArray(data.mahadasha)) {
       const planets = data.mahadasha;
       const order = Array.isArray(data.mahadasha_order) ? data.mahadasha_order : [];
@@ -249,8 +270,9 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
       return planets.map((p: string, idx: number) => {
         const orderDate = order[idx] ? new Date(order[idx]) : null;
         const endYear = orderDate && !isNaN(orderDate.getFullYear()) ? String(orderDate.getFullYear()) : (idx === planets.length - 1 ? "Beyond" : "");
+        const planetName = typeof p === 'string' ? p : renderSafeString(p, "Planet");
         const dashaObj = {
-          planet: renderSafeString(p, "Planet"),
+          planet: planetName,
           start: prevDate,
           end: endYear || "Ongoing"
         };
@@ -258,9 +280,10 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         return dashaObj;
       });
     }
+
     if (Array.isArray(data)) {
       return data.map((item: any) => ({
-        planet: renderSafeString(item?.planet || item?.planet_name || item?.name, "Dasha"),
+        planet: typeof item === 'string' ? item : renderSafeString(item?.planet || item?.planet_name || item?.name, "Planet"),
         start: renderSafeString(item?.start || item?.start_year || item?.start_date, "-"),
         end: renderSafeString(item?.end || item?.end_year || item?.end_date, "-")
       }));
@@ -337,9 +360,9 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
   );
 
   const pobParts = kundliData?.user?.pob ? kundliData.user.pob.split(',').map((s: string) => s.trim()) : [];
-  const city = pobParts[0] || kundliData?.user?.pob || "-";
-  const state = pobParts[1] || (pobParts.length > 2 ? pobParts[1] : "-");
-  const country = pobParts[2] || (pobParts.length === 2 ? pobParts[1] : (pobParts.length === 1 ? "India" : "-"));
+  const city = kundliData?.user?.city || pobParts[0] || kundliData?.user?.pob || "-";
+  const state = kundliData?.user?.state || (pobParts.length >= 3 ? pobParts[1] : (pobParts.length === 2 && pobParts[1].toLowerCase() !== "india" ? pobParts[1] : "-"));
+  const country = kundliData?.user?.country || (pobParts.length >= 3 ? pobParts[2] : (pobParts.length >= 1 ? pobParts[pobParts.length - 1] : "India"));
 
   const formatPlanetDegree = (planet: any) => {
     if (!planet || typeof planet !== 'object') return "-";
@@ -354,20 +377,26 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
     return "-";
   };
 
-
-
   const formatChartSvg = (chartInput: any, fallbackType: 'd1' | 'd9' = 'd1') => {
     let svg = '';
     if (chartInput) {
       if (typeof chartInput === 'object') {
-        svg = chartInput.response || chartInput.svg || chartInput.chart || '';
+        svg = chartInput.response || chartInput.svg || chartInput.chart || chartInput.data || '';
       } else if (typeof chartInput === 'string' && chartInput.includes('<svg')) {
         svg = chartInput;
       }
     }
 
+    if (svg && svg.includes('<svg')) {
+      const svgStart = svg.indexOf('<svg');
+      const svgEnd = svg.lastIndexOf('</svg>');
+      if (svgStart !== -1 && svgEnd !== -1) {
+        svg = svg.substring(svgStart, svgEnd + 6);
+      }
+    }
+
     if (!svg || !svg.includes('<svg')) {
-      const ascSign = p.sun_sign || "Aries";
+      const ascSign = p.sun_sign || p.moon_sign || "Aries";
       svg = generateNorthIndianChartSvg(pl, fallbackType, ascSign);
     }
 
@@ -391,13 +420,18 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
       .replace(/stroke="[^"]*"/g, 'stroke="#7A0808"')
       .replace(/stroke-width="[^"]*"/g, 'stroke-width="2.2"');
 
-    svg = svg.replace(/<text\b([^>]*)>/g, (match, attrs) => {
+    svg = svg.replace(/<text\b([^>]*)>(.*?)<\/text>/g, (match, attrs, content) => {
+      const trimmed = content.trim();
+      const isNumber = /^\d+$/.test(trimmed);
+      const color = isNumber ? '#B98A45' : '#7A0808';
+      const fontSize = isNumber ? '12.5px' : '13.5px';
       let cleanedAttrs = attrs
         .replace(/font-family="[^"]*"/g, '')
         .replace(/font-size="[^"]*"/g, '')
         .replace(/font-weight="[^"]*"/g, '')
-        .replace(/fill="[^"]*"/g, '');
-      return `<text ${cleanedAttrs} font-family="'Cinzel', 'Cormorant Garamond', serif" font-weight="700" font-size="15px" fill="#7A0808">`;
+        .replace(/fill="[^"]*"/g, '')
+        .replace(/style="[^"]*"/g, '');
+      return `<text ${cleanedAttrs} font-family="'Cinzel', 'Cormorant Garamond', serif" font-weight="700" font-size="${fontSize}" fill="${color}">${content}</text>`;
     });
 
     svg = svg
@@ -732,16 +766,24 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
           { planet: "Jupiter", start: `${birthYear + 41}`, end: `${birthYear + 57}` },
           { planet: "Saturn", start: `${birthYear + 57}`, end: `${birthYear + 76}` },
           { planet: "Mercury", start: `${birthYear + 76}`, end: `${birthYear + 93}` }
-        ]).slice(0, 7).map((d: any, i: number) => (
-          <div key={i} className="flex justify-between items-center p-2.5 border-b border-[#B98A45]/30">
-            <span className="font-bold text-base text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>
-              {renderSafeString(d.planet, "Planet")} Dasha
-            </span>
-            <span className="font-serif text-sm font-bold text-[#5C3A21]">
-              {renderSafeString(d.start, "-")} - {renderSafeString(d.end, "-")}
-            </span>
-          </div>
-        ))}
+        ]).slice(0, 9).map((d: any, i: number) => {
+          const rawPlanet = renderSafeString(d.planet, "Planet").replace(/\s*dasha$/i, '');
+          const cleanPlanet = rawPlanet === "Planet" || rawPlanet === "Dasha"
+            ? ["Rahu", "Jupiter", "Saturn", "Mercury", "Ketu", "Venus", "Sun", "Moon", "Mars"][i] || "Dasha"
+            : rawPlanet;
+          const displayStart = d.start && d.start !== "-" ? d.start : (validBirthDate ? String(birthYear + i * 7) : "-");
+          const displayEnd = d.end && d.end !== "-" ? d.end : (validBirthDate ? String(birthYear + (i + 1) * 7) : "-");
+          return (
+            <div key={i} className="flex justify-between items-center p-2.5 border-b border-[#B98A45]/30">
+              <span className="font-bold text-base text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>
+                {cleanPlanet} Dasha
+              </span>
+              <span className="font-serif text-sm font-bold text-[#5C3A21]">
+                {displayStart} - {displayEnd}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </Page>,
     <Page number={11} key="p11">

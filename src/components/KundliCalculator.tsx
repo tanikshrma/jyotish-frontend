@@ -255,6 +255,14 @@ export function KundliCalculator() {
         lat = Number(location.lat ?? location.latitude ?? lat);
         lon = Number(location.lon ?? location.longitude ?? lon);
         tz = Number(location.tz ?? 5.5);
+
+        // Auto-enrich user pob details with resolved city, state, country
+        if (location.name) dataToSubmit.city = location.name;
+        if (location.state || location.region) dataToSubmit.state = location.state || location.region;
+        if (location.country) dataToSubmit.country = location.country;
+        if (!dataToSubmit.pob?.includes(',')) {
+          dataToSubmit.pob = [location.name, location.state || location.region, location.country].filter(Boolean).join(', ');
+        }
       }
 
       const formattedDob = formatDobForApi(dataToSubmit.dob || formData.dob, date);
@@ -282,7 +290,12 @@ export function KundliCalculator() {
         else if (typeof chartRes?.svg === 'string') rawStr = chartRes.svg;
         else if (typeof chartRes?.data === 'string') rawStr = chartRes.data;
 
-        if (rawStr && rawStr.trim().toLowerCase().startsWith('<svg')) {
+        if (rawStr && rawStr.includes('<svg')) {
+          const svgStart = rawStr.indexOf('<svg');
+          const svgEnd = rawStr.lastIndexOf('</svg>');
+          if (svgStart !== -1 && svgEnd !== -1) {
+            return rawStr.substring(svgStart, svgEnd + 6);
+          }
           return rawStr;
         }
         return '';
