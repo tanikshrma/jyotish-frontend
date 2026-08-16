@@ -816,12 +816,6 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         </div>
       </div>
     </Page>,
-    <Page number={12} key="p12">
-      <div className="w-full h-full bg-[#F8F1E4]"></div>
-    </Page>,
-    <Page key="inside-back-cover">
-      <div className="w-full h-full bg-[#F8F1E4]"></div>
-    </Page>,
     <Page isCover key="back">
       <div className="w-full h-full flex flex-col items-center justify-center cursor-pointer" onClick={() => bookRef.current?.pageFlip().flipPrev()}>
         <img src="https://vibe.filesafe.space/1782888190245745251/attachments/53ab10a6-dcc4-4eef-954f-c47b36673eef.png" alt="Jyotish Now" className="w-[140px] h-auto object-contain mix-blend-multiply mb-5 opacity-80" />
@@ -858,8 +852,9 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
       setBookScale(fitScale);
       
       const cScaleX = (containerW * padW) / 550;
-      const cScaleY = (containerH * padH) / targetH;
-      setCoverScale(Math.min(cScaleX, cScaleY));
+      const cScaleY = (containerH * padH) / 750;
+      const cFitScale = Math.min(cScaleX, cScaleY);
+      setCoverScale(cFitScale);
     };
 
     handleResize();
@@ -878,12 +873,12 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         <X className="w-5 h-5 md:w-6 md:h-6" />
       </button>
 
-      <div className={`absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 sm:gap-2 bg-[#5C3A21]/95 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-2xl border border-[#B98A45]/40 text-[#F8F1E4] no-print transition-all duration-300 ${currentPage >= 15 ? 'opacity-0 pointer-events-none translate-y-[-20px]' : 'opacity-100 translate-y-0'}`}>
+      <div className={`absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-1.5 sm:gap-2 bg-[#5C3A21]/95 backdrop-blur-md px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-2xl border border-[#B98A45]/40 text-[#F8F1E4] no-print transition-all duration-300 ${currentPage >= 12 ? 'opacity-0 pointer-events-none translate-y-[-20px]' : 'opacity-100 translate-y-0'}`}>
         <button onClick={prevButtonClick} className="p-1.5 sm:p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors active:scale-95" title="Previous Page">
           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
         <span className="font-serif text-xs sm:text-sm px-2 min-w-[55px] text-center font-bold">
-          {currentPage === 0 ? 'Cover' : `Pg ${currentPage}`}
+          {currentPage === 0 ? 'Cover' : (currentPage >= 12 ? 'Back' : `Pg ${currentPage}`)}
         </span>
         <button onClick={nextButtonClick} className="p-1.5 sm:p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors active:scale-95" title="Next Page">
           <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -910,10 +905,10 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
       </div>
 
       <div className="no-print w-full h-full flex items-center justify-center overflow-hidden pt-8 sm:pt-12" style={{ perspective: '2000px' }}>
-        <div style={{ transform: `scale(${((currentPage === 0 || currentPage >= 15) && !isMobile) ? (coverScale * zoom) : (bookScale * zoom)})`, transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)', transformOrigin: 'center center' }}>
+        <div style={{ transform: `scale(${((currentPage === 0 || currentPage >= 12) && !isMobile) ? (coverScale * zoom) : (bookScale * zoom)})`, transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)', transformOrigin: 'center center' }}>
           <div 
             style={{ 
-              transform: !isMobile ? `translateX(${currentPage === 0 ? '-25%' : (currentPage >= 15 ? '25%' : '0')})` : 'none',
+              transform: !isMobile ? `translateX(${currentPage === 0 ? '-25%' : (currentPage >= 12 ? '25%' : '0')})` : 'none',
               transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)'
             }}
           >
