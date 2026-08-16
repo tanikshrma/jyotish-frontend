@@ -69,7 +69,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const adminPhone = process.env.ADMIN_PHONE || (isLocalDev ? "" : "+917015544187");
 
     const serviceName = String(body.service || "Astrology Consultation");
-    const amountStr = body.amount ? `₹${body.amount}` : "Paid";
+    const rawAmount = body.amount ? String(body.amount) : "";
+    const amountStr = rawAmount ? (rawAmount.startsWith("₹") ? rawAmount : `₹${rawAmount}`) : "Paid";
 
     const htmlEmailContent = `
       <div style="font-family: Arial, sans-serif; background-color: #fdfbf7; padding: 20px;">

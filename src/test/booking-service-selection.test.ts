@@ -16,6 +16,7 @@ describe("BookingModal service selection and normalization", () => {
     expect(normalizeServiceKey("career-guidance")).toBe("career-guidance");
     expect(normalizeServiceKey("vastu-consultancy")).toBe("vastu-consultancy");
     expect(normalizeServiceKey("lalkitab-consultation")).toBe("lalkitab-consultation");
+    expect(normalizeServiceKey("kundli-pdf")).toBe("kundli-pdf");
   });
 
   it("normalizes human-readable names and partial strings to canonical service keys", () => {
@@ -23,6 +24,8 @@ describe("BookingModal service selection and normalization", () => {
     expect(normalizeServiceKey("Baby Birth Muhurat Consultation")).toBe("baby-muhurat");
     expect(normalizeServiceKey("Couple Consultation")).toBe("couple-consultation");
     expect(normalizeServiceKey("Personal Consultation Call")).toBe("consultation-call");
+    expect(normalizeServiceKey("Kundli PDF Export")).toBe("kundli-pdf");
+    expect(normalizeServiceKey("Download Kundli Report")).toBe("kundli-pdf");
     expect(normalizeServiceKey("Vastu Consultancy")).toBe("vastu-consultancy");
     expect(normalizeServiceKey("Residential Vastu")).toBe("vastu-consultancy");
     expect(normalizeServiceKey("Commercial Vastu")).toBe("vastu-consultancy");

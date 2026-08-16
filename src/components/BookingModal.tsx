@@ -33,6 +33,15 @@ export function normalizeServiceKey(val?: string): string {
     return lower;
   }
 
+  if (
+    lower === "kundli-pdf" ||
+    lower.includes("kundli-pdf") ||
+    lower.includes("pdf export") ||
+    lower.includes("pdf report") ||
+    (lower.includes("kundli") && (lower.includes("pdf") || lower.includes("export") || lower.includes("report") || lower.includes("download")))
+  ) {
+    return "kundli-pdf";
+  }
   if (lower.includes("face") || lower.includes("personal meeting") || lower.includes("in person") || lower.includes("offline")) {
     return "face-to-face";
   }
