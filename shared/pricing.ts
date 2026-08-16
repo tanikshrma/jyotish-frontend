@@ -19,7 +19,8 @@ export type ServiceId =
   | "vastu-consultancy"
   | "annual-horoscope"
   | "lalkitab-consultation"
-  | "complete-horoscope";
+  | "complete-horoscope"
+  | "kundli-pdf";
 
 export type Service = {
   label: string;
@@ -28,6 +29,14 @@ export type Service = {
 };
 
 export const SERVICES: Record<ServiceId, Service> = {
+  "kundli-pdf": {
+    label: "Full Kundli PDF Report Download",
+    variants: {
+      default: 299,
+      "report-only": 299,
+      "report-consultation": 1100,
+    },
+  },
   "consultation-call": {
     label: "Personal Consultation Call",
     variants: {

@@ -344,10 +344,10 @@ export function KundliCalculator() {
     try {
       await loadRazorpayScript();
       const order = await createOrder({
-        service: "complete-horoscope",
+        service: "kundli-pdf",
         variant: "default",
         notes: {
-          type: "Full Kundli PDF Export & Consultation",
+          type: "Full Kundli PDF Report Download",
           name: kundliData?.user?.name || formData.name,
           email: kundliData?.user?.email || formData.email,
           phone: kundliData?.user?.phone || formData.phone,
@@ -361,7 +361,7 @@ export function KundliCalculator() {
         amount: order.amount,
         currency: order.currency,
         name: "JyotishNow",
-        description: "Full Lifetime Kundli PDF Export & Astrologer Consultation",
+        description: "Full Lifetime Kundli PDF Report Download",
         order_id: order.order_id,
         prefill: {
           name: kundliData?.user?.name || formData.name,
@@ -379,7 +379,7 @@ export function KundliCalculator() {
                 phone: kundliData?.user?.phone || formData.phone || "",
               },
               service: "Full Lifetime Kundli PDF Export",
-              amount: "₹999",
+              amount: "₹299",
             });
 
             setIsPaid(true);
@@ -395,7 +395,7 @@ export function KundliCalculator() {
               timeOfBirth: kundliData?.user?.tob || formData.tob,
               placeOfBirth: kundliData?.user?.pob || formData.pob,
               service: 'kundli',
-              amountPaid: "₹999",
+              amountPaid: "₹299",
               tags: ['Paid: Full Kundli PDF Export', 'Kundli Export Customer', 'Paid Customer'],
             });
 
@@ -841,7 +841,7 @@ export function KundliCalculator() {
             <div className="p-6 bg-[#FFFDF9] border-t border-secondary/30 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider block">Full Lifetime Kundli + PDF Report</span>
-                <span className="text-2xl font-serif font-bold text-primary">Special Unlock Price: ₹999</span>
+                <span className="text-2xl font-serif font-bold text-primary">Special Launch Price: ₹299 <span className="text-sm font-normal text-muted-foreground line-through ml-1.5">₹1,100</span></span>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -859,7 +859,7 @@ export function KundliCalculator() {
                     try {
                       await loadRazorpayScript();
                       const order = await createOrder({
-                        service: "consultation-call",
+                        service: "kundli-pdf",
                         variant: "default",
                         notes: {
                           type: "Full Kundli Unlock",
@@ -894,7 +894,7 @@ export function KundliCalculator() {
                                 phone: kundliData?.user?.phone || "",
                               },
                               service: "Full Lifetime Kundli Unlock",
-                              amount: "₹999",
+                              amount: "₹299",
                             });
                             setIsPaid(true);
                             setGenerationStep('book');
@@ -935,7 +935,7 @@ export function KundliCalculator() {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-secondary fill-secondary" /> Unlock Full Kundli (₹999)
+                      <Sparkles className="w-4 h-4 text-secondary fill-secondary" /> Unlock Full Kundli (₹299)
                     </>
                   )}
                 </Button>

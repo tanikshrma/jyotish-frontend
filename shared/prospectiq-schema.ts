@@ -96,6 +96,7 @@ export const PIQ_DEFAULT_CALENDAR = PIQ_CALENDARS.completeHoroscope;
 
 /** Maps a site service key onto the calendar that should hold the booking. */
 export const SERVICE_TO_CALENDAR: Record<string, string> = {
+  "kundli-pdf": PIQ_CALENDARS.completeHoroscope,
   "consultation-call": PIQ_CALENDARS.completeHoroscope,
   "complete-horoscope": PIQ_CALENDARS.completeHoroscope,
   "face-to-face": PIQ_CALENDARS.completeHoroscope,
@@ -111,6 +112,7 @@ export const SERVICE_TO_CALENDAR: Record<string, string> = {
 
 /** Maps a site service key onto the "Service Interest" picklist value. */
 export const SERVICE_TO_INTEREST: Record<string, string> = {
+  "kundli-pdf": "Complete Horoscope Analysis",
   "consultation-call": "Complete Horoscope Analysis",
   "complete-horoscope": "Complete Horoscope Analysis",
   "face-to-face": "Complete Horoscope Analysis",
@@ -128,6 +130,7 @@ export const SERVICE_TO_INTEREST: Record<string, string> = {
 
 /** Maps a site service/report key onto the "Report Type" picklist value. */
 export const SERVICE_TO_REPORT_TYPE: Record<string, string> = {
+  "kundli-pdf": "Yearly Horoscope",
   "baby-name": "Baby Name",
   "lalkitab-consultation": "Lal Kitab",
   "lal-kitab": "Lal Kitab",

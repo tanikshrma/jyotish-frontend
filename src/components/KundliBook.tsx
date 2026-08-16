@@ -806,12 +806,12 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
             className="w-full py-2.5 px-4 bg-[#7A0808] hover:bg-[#5C0606] text-white rounded-lg font-serif text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
           >
             <Download className="w-4 h-4 text-[#F5C27A]" />
-            {isPaid ? "Download & Print Full PDF Report" : "Unlock Full Kundli PDF Export (₹999)"}
+            {isPaid ? "Download & Print Full PDF Report" : "Unlock Full Kundli PDF Export (₹299)"}
           </button>
           <p className="text-[11px] text-[#5C3A21]/80 font-medium">
             {isPaid 
               ? "✓ High-Resolution 16-Page Printable Report Unlocked" 
-              : "Includes printable 16-page PDF report + personal astrologer consultation"}
+              : "Special Launch Offer: ₹299 (Original ₹1,100 — 73% OFF)"}
           </p>
         </div>
       </div>
@@ -900,7 +900,7 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         </button>
         <button onClick={handleExportClick} className="p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors hidden md:flex items-center gap-1.5" title={isPaid ? "Download PDF" : "Unlock Full PDF Export"}>
           <Download className="w-5 h-5" />
-          {!isPaid && <span className="text-[10px] font-bold uppercase tracking-wider text-[#F5C27A]">PDF Export</span>}
+          {!isPaid && <span className="text-[10px] font-bold uppercase tracking-wider text-[#F5C27A]">PDF (₹299)</span>}
         </button>
       </div>
 
