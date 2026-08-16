@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar as CalendarComponent } from "./ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PhoneInput } from "@/components/PhoneInput";
+import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
 import { postTrackingEvent } from "@/lib/tracking";
@@ -53,6 +55,7 @@ export const BabyNameGenerator = () => {
   const locationRef = useRef<HTMLDivElement>(null);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -90,8 +93,10 @@ export const BabyNameGenerator = () => {
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.phone.trim()) newErrors.phone = "Phone is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
+    const phoneError = validatePhone(formData.phone, countryIso);
+    if (phoneError) newErrors.phone = phoneError;
+    const emailError = validateEmail(formData.email);
+    if (emailError) newErrors.email = emailError;
     if (!date) newErrors.dob = "Date of Birth is required";
     if (!formData.pob) newErrors.pob = "Place of Birth is required";
     
@@ -113,8 +118,15 @@ export const BabyNameGenerator = () => {
 
     try {
       // 1. Get Geo Details
-      const geoRes = await fetch(`https://api.vedicastroapi.com/v3-json/utilities/geo-search?api_key=d2c18f93-e2dd-554c-9232-b586c646bc13&city=${encodeURIComponent(formData.pob)}`);
-      const geoData = await geoRes.json();
+      const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(formData.pob)}`);
+      const geoJson = await geoRes.json();
+      // Reshaped to the geo-search format the code below already expects.
+      const geoData = {
+        response: (geoJson.results ?? []).map((r: { lat: number; lon: number; tzOffset: number }) => ({
+          coordinates: [r.lat, r.lon],
+          tz: r.tzOffset,
+        })),
+      };
       
       if (!geoData.response || geoData.response.length === 0) {
         throw new Error("Could not find coordinates for the given place of birth.");
@@ -151,7 +163,7 @@ export const BabyNameGenerator = () => {
       const formattedDob = `${day}/${month}/${year}`;
 
       // 2. Get Panchang for Nakshatra, Rashi
-      const panchangRes = await fetch(`https://api.vedicastroapi.com/v3-json/panchang/panchang?api_key=d2c18f93-e2dd-554c-9232-b586c646bc13&dob=${formattedDob}&tob=${finalTob}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`);
+      const panchangRes = await fetch(`/api/astro?endpoint=panchang&date=${formattedDob}&time=${finalTob}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`);
       const panchangData = await panchangRes.json();
       
       if (panchangData.status !== 200) {
@@ -161,7 +173,7 @@ export const BabyNameGenerator = () => {
       const p = panchangData.response;
 
       // 3. Get Planet details for Ascendant
-      const planetRes = await fetch(`https://api.vedicastroapi.com/v3-json/horoscope/planet-details?api_key=d2c18f93-e2dd-554c-9232-b586c646bc13&dob=${formattedDob}&tob=${finalTob}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`);
+      const planetRes = await fetch(`/api/astro?endpoint=planet-details&dob=${formattedDob}&tob=${finalTob}&lat=${lat}&lon=${lon}&tz=${tz}&lang=en`);
       const planetData = await planetRes.json();
       
       if (planetData.status !== 200) {
@@ -197,7 +209,7 @@ export const BabyNameGenerator = () => {
         firstName: formData.name.split(' ')[0] || formData.name,
         lastName: formData.name.split(' ').slice(1).join(' ') || '',
         email: formData.email,
-        phone: formData.phone,
+        phone: toE164(formData.phone, countryIso),
         dateOfBirth: formattedDob,
         timeOfBirth: finalTob,
         placeOfBirth: formData.pob,
@@ -214,7 +226,7 @@ export const BabyNameGenerator = () => {
           first_name: formData.name.split(' ')[0] || formData.name,
           last_name: formData.name.split(' ').slice(1).join(' ') || '',
           email: formData.email,
-          phone: formData.phone,
+          phone: toE164(formData.phone, countryIso),
           date_of_birth: formattedDob,
         },
         formLabels: {
@@ -299,7 +311,7 @@ export const BabyNameGenerator = () => {
               <CardTitle className="text-3xl font-serif font-bold text-primary text-center">Birth Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name</Label>
@@ -316,16 +328,15 @@ export const BabyNameGenerator = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number</Label>
-                      <Input
+                      <PhoneInput
                         id="phone"
-                        type="tel"
-                        placeholder="Enter phone number"
-                        className={cn("h-12 rounded-xl border-2 border-[#f5c27a]/50 bg-[#fdfbf7] text-[#7a0808] font-sans shadow-sm hover:border-[#f5c27a] focus-visible:ring-[#7a0808] focus-visible:border-[#f5c27a] transition-all duration-300 placeholder:text-[#7a0808]/50 text-base", errors.phone && "border-destructive")}
-                        style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }}
                         value={formData.phone}
-                        onChange={e => {setFormData({...formData, phone: e.target.value}); setErrors({...errors, phone: ''})}}
+                        onChange={(v) => { setFormData({ ...formData, phone: v }); setErrors({ ...errors, phone: '' }); }}
+                        countryIso={countryIso}
+                        onCountryChange={setCountryIso}
+                        error={errors.phone}
+                        className="h-12 text-base text-[#7a0808]"
                       />
-                      {errors.phone && <p className="text-destructive text-sm">{errors.phone}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email Address</Label>
@@ -357,7 +368,6 @@ export const BabyNameGenerator = () => {
                       onMonthChange={() => {}}
                       error={errors.dob}
                     />
-                    {errors.dob && <p className="text-destructive text-sm">{errors.dob}</p>}
                   </div>
                   <div className="space-y-2 flex flex-col">
                     <Label htmlFor="tob">Time of Birth</Label>

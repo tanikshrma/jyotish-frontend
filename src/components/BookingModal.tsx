@@ -9,9 +9,71 @@ import { toast } from "sonner";
 import { Calendar, Clock, User, Phone, Mail, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { postTrackingEvent } from "@/lib/tracking";
+import { PhoneInput } from "@/components/PhoneInput";
+import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
+export const BOOKING_SERVICES = [
+  { value: "consultation-call", label: "Personal Consultation Call" },
+  { value: "couple-consultation", label: "Couple Consultation" },
+  { value: "face-to-face", label: "Face to Face Consultation" },
+  { value: "baby-muhurat", label: "Baby Birth Muhurat Consultation" },
+  { value: "complete-horoscope", label: "Complete Horoscope Analysis" },
+  { value: "annual-horoscope", label: "Annual Horoscope Analysis" },
+  { value: "matchmaking-consultation", label: "Matchmaking Consultation" },
+  { value: "gemstone-analysis", label: "Gemstone Analysis" },
+  { value: "career-guidance", label: "Career Guidance Consultation" },
+  { value: "vastu-consultancy", label: "Vastu Consultancy" },
+  { value: "lalkitab-consultation", label: "Lal Kitab Consultation" },
+] as const;
+
+export function normalizeServiceKey(val?: string): string {
+  if (!val) return "consultation-call";
+  const lower = val.toLowerCase().trim();
+  
+  if (BOOKING_SERVICES.some((s) => s.value === lower)) {
+    return lower;
+  }
+
+  if (lower.includes("face") || lower.includes("personal meeting") || lower.includes("in person") || lower.includes("offline")) {
+    return "face-to-face";
+  }
+  if (lower.includes("baby") || lower.includes("muhurat") || lower.includes("birth")) {
+    return "baby-muhurat";
+  }
+  if (lower.includes("couple") || lower.includes("relationship") || lower.includes("love")) {
+    return "couple-consultation";
+  }
+  if (lower.includes("matchmaking") || lower.includes("kundli matching") || lower.includes("match making") || lower.includes("milan")) {
+    return "matchmaking-consultation";
+  }
+  if (lower.includes("gemstone") || lower.includes("crystal") || lower.includes("ratna")) {
+    return "gemstone-analysis";
+  }
+  if (lower.includes("career") || lower.includes("job") || lower.includes("business guidance")) {
+    return "career-guidance";
+  }
+  if (lower.includes("vastu")) {
+    return "vastu-consultancy";
+  }
+  if (lower.includes("annual") || lower.includes("yearly") || lower.includes("year")) {
+    return "annual-horoscope";
+  }
+  if (lower.includes("lal kitab") || lower.includes("lalkitab")) {
+    return "lalkitab-consultation";
+  }
+  if (lower.includes("complete") || lower.includes("horoscope")) {
+    return "complete-horoscope";
+  }
+  if (lower.includes("consultation") || lower.includes("call") || lower.includes("session")) {
+    return "consultation-call";
+  }
+
+  return "consultation-call";
+}
+
 interface BookingModalProps {
   children: React.ReactNode;
   defaultService?: string;
+  consultationVariant?: string;
 }
 
 import { fetchProspectIQCalendarSlots, bookProspectIQAppointment, submitProspectIQLead, getCalendarIdForService } from "@/lib/prospectiq";
@@ -80,7 +142,7 @@ export function normalizeSlotMap(rawData: any): Record<string, string[]> {
 import React from "react";
 
 export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
-  ({ children, defaultService }: BookingModalProps, ref) => {
+  ({ children, defaultService, consultationVariant }: BookingModalProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
@@ -90,12 +152,13 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [service, setService] = useState(defaultService || "complete-horoscope");
+  const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
+  const [service, setService] = useState(() => normalizeServiceKey(defaultService));
 
   // Sync service whenever modal opens with defaultService prop
   useEffect(() => {
-    if (isOpen && defaultService) {
-      setService(defaultService);
+    if (isOpen) {
+      setService(normalizeServiceKey(defaultService));
     }
   }, [isOpen, defaultService]);
 
@@ -186,19 +249,11 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
     if (!firstName.trim()) newErrors.firstName = "First name is required";
     if (!lastName.trim()) newErrors.lastName = "Last name is required";
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    if (!email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!emailRegex.test(email.trim())) {
-      newErrors.email = "Please enter a valid email address (must include '@' and '.com' domain)";
-    }
+    const emailError = validateEmail(email);
+    if (emailError) newErrors.email = emailError;
 
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (!phone.trim()) {
-      newErrors.phone = "Phone is required";
-    } else if (phoneDigits.length < 10) {
-      newErrors.phone = "Please enter a valid 10-digit phone number";
-    }
+    const phoneError = validatePhone(phone, countryIso);
+    if (phoneError) newErrors.phone = phoneError;
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -211,39 +266,18 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
     setStep(2);
   };
 
-function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; variant: string } {
-  const lower = (serviceName || "").toLowerCase();
-  if (lower.includes("face") || lower.includes("personal meeting")) {
-    return { serviceId: "face-to-face", variant: "default" };
+function mapServiceToPricing(serviceName: string, customVariant?: string): { serviceId: ServiceId; variant: string } {
+  const serviceKey = normalizeServiceKey(serviceName) as ServiceId;
+  const entry = SERVICES[serviceKey];
+  
+  if (entry) {
+    if (customVariant && entry.variants[customVariant] !== undefined) {
+      return { serviceId: serviceKey, variant: customVariant };
+    }
+    return { serviceId: serviceKey, variant: "default" };
   }
-  if (lower.includes("baby") || lower.includes("muhurat")) {
-    return { serviceId: "baby-muhurat", variant: "default" };
-  }
-  if (lower.includes("couple") || lower.includes("relationship")) {
-    return { serviceId: "couple-consultation", variant: "30 Min|Video" };
-  }
-  if (lower.includes("matchmaking") || lower.includes("kundli matching")) {
-    return { serviceId: "matchmaking-consultation", variant: "default" };
-  }
-  if (lower.includes("gemstone")) {
-    return { serviceId: "gemstone-analysis", variant: "default" };
-  }
-  if (lower.includes("career")) {
-    return { serviceId: "career-guidance", variant: "default" };
-  }
-  if (lower.includes("vastu")) {
-    return { serviceId: "vastu-consultancy", variant: "default" };
-  }
-  if (lower.includes("annual") || lower.includes("yearly")) {
-    return { serviceId: "annual-horoscope", variant: "Video Call" };
-  }
-  if (lower.includes("lal kitab")) {
-    return { serviceId: "lalkitab-consultation", variant: "default" };
-  }
-  if (lower.includes("complete")) {
-    return { serviceId: "complete-horoscope", variant: "Video Call" };
-  }
-  return { serviceId: "consultation-call", variant: "30 Min|Video" };
+
+  return { serviceId: "consultation-call", variant: customVariant || "default" };
 }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -261,7 +295,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
         firstName,
         lastName,
         email,
-        phone,
+        phone: toE164(phone, countryIso),
         service,
         tags: ["Book Consultation Form", `Service: ${service}`],
       });
@@ -275,7 +309,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
           first_name: firstName,
           last_name: lastName,
           email: email,
-          phone: phone,
+          phone: toE164(phone, countryIso),
         },
         formLabels: {
           first_name: "First Name",
@@ -303,7 +337,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
 
       // 2. Trigger Razorpay Payment Checkout
       await loadRazorpayScript();
-      const pricing = mapServiceToPricing(service);
+      const pricing = mapServiceToPricing(service, consultationVariant);
       const order = await createOrder({
         service: pricing.serviceId,
         variant: pricing.variant,
@@ -311,7 +345,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
           service,
           customer_name: `${firstName} ${lastName}`,
           customer_email: email,
-          customer_phone: phone,
+          customer_phone: toE164(phone, countryIso),
           selected_slot: selectedSlot,
         },
       });
@@ -333,7 +367,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
         prefill: {
           name: `${firstName} ${lastName}`,
           email,
-          contact: phone,
+          contact: toE164(phone, countryIso),
         },
         theme: { color: "#7A0808" },
         handler: async (response: any) => {
@@ -343,7 +377,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
               customer: {
                 name: `${firstName} ${lastName}`.trim(),
                 email,
-                phone,
+                phone: toE164(phone, countryIso),
               },
               service: `${service} (Consultation)`,
               amount: formatINR(order.amount / 100),
@@ -356,7 +390,7 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
               firstName,
               lastName,
               email,
-              phone,
+              phone: toE164(phone, countryIso),
               selectedSlot,
               service,
             });
@@ -480,11 +514,15 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
 
               <div className="space-y-1.5">
                 <Label htmlFor="phone" className="text-xs font-semibold text-foreground/80 ml-1">Phone Number</Label>
-                <div className="relative group">
-                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40 group-focus-within:text-primary transition-colors" />
-                  <Input id="phone" type="tel" value={phone} onChange={e => {setPhone(e.target.value.replace(/[^0-9+]/g, '')); setErrors({...errors, phone: ''})}} className={cn("pl-10 bg-white border-secondary/30 focus-visible:ring-primary focus-visible:border-primary h-11 rounded-xl shadow-sm text-foreground transition-all duration-300", errors.phone && "border-destructive")} placeholder="Enter 10-digit phone number" />
-                </div>
-                {errors.phone && <p className="text-destructive text-xs ml-1">{errors.phone}</p>}
+                <PhoneInput
+                  id="phone"
+                  value={phone}
+                  onChange={(v) => { setPhone(v); setErrors({ ...errors, phone: '' }); }}
+                  countryIso={countryIso}
+                  onCountryChange={setCountryIso}
+                  error={errors.phone}
+                  className="h-11"
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -493,14 +531,12 @@ function mapServiceToPricing(serviceName: string): { serviceId: ServiceId; varia
                   <SelectTrigger className="h-11 px-4 rounded-xl">
                     <SelectValue placeholder="Select a service" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[200px]">
-                    <SelectItem value="complete-horoscope" className="py-2">Complete Horoscope Analysis</SelectItem>
-                    <SelectItem value="annual-horoscope" className="py-2">Annual Horoscope Analysis</SelectItem>
-                    <SelectItem value="matchmaking" className="py-2">Matchmaking Consultation</SelectItem>
-                    <SelectItem value="gemstone" className="py-2">Gemstone Analysis</SelectItem>
-                    <SelectItem value="career" className="py-2">Career Guidance</SelectItem>
-                    <SelectItem value="vastu" className="py-2">Vastu Consultancy</SelectItem>
-                    <SelectItem value="yearly" className="py-2">Yearly Horoscope</SelectItem>
+                  <SelectContent className="max-h-[260px]">
+                    {BOOKING_SERVICES.map((s) => (
+                      <SelectItem key={s.value} value={s.value} className="py-2">
+                        {s.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

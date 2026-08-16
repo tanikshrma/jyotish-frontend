@@ -96,13 +96,13 @@ const AboutUs = () => {
                     </div>
                     
                     {/* Floating Badge */}
-                    <div className="absolute -bottom-6 -left-6 lg:-left-8 z-20 bg-white p-5 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-secondary/20 flex items-center gap-5">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-secondary to-[#E8B25A] flex items-center justify-center text-white shadow-inner">
-                        <Award className="w-7 h-7" />
+                    <div className="absolute -bottom-5 left-3 sm:-bottom-6 sm:-left-6 lg:-left-8 z-20 bg-white p-3.5 sm:p-5 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] border border-secondary/20 flex items-center gap-3.5 sm:gap-5">
+                      <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-secondary to-[#E8B25A] flex items-center justify-center text-white shadow-inner shrink-0">
+                        <Award className="w-5 h-5 sm:w-7 sm:h-7" />
                       </div>
                       <div>
-                        <p className="font-serif font-bold text-2xl text-primary">10+ Years</p>
-                        <p className="text-sm font-medium text-black/60 uppercase tracking-wider">Experience</p>
+                        <p className="font-serif font-bold text-xl sm:text-2xl text-primary">10+ Years</p>
+                        <p className="text-xs sm:text-sm font-medium text-black/60 uppercase tracking-wider">Experience</p>
                       </div>
                     </div>
                   </div>
@@ -143,7 +143,7 @@ const AboutUs = () => {
                   </div>
                   
                   <div className="pt-4 flex flex-col sm:flex-row gap-6 items-center">
-                    <BookingModal>
+                    <BookingModal defaultService="consultation-call">
                       <Button size="lg" className="w-full sm:w-auto h-14 px-8 bg-gradient-to-r from-primary to-[#96161B] hover:from-[#96161B] hover:to-primary text-white shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 hover:-translate-y-1 text-lg font-medium rounded-xl">
                         Book a Consultation
                       </Button>

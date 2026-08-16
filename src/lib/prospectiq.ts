@@ -1,3 +1,11 @@
+import {
+  PIQ_FIELDS,
+  calendarForService,
+  reportTypeFor,
+  serviceInterestFor,
+  toIsoDate,
+} from "../../shared/prospectiq-schema";
+
 /**
  * Client-side helper module to communicate with /api/prospectiq
  * for Prospect IQ (GoHighLevel API v2) integrations.
@@ -14,8 +22,20 @@ export interface LeadData {
   timeOfBirth?: string;
   placeOfBirth?: string;
   tags?: string[];
+  /** Site service key, e.g. "consultation-call". Drives Service Interest + calendar. */
   service?: string;
+  /** Human label shown in the CRM, e.g. "Consultation Call — 1 Hour Video". */
+  serviceLabel?: string;
   message?: string;
+  /** Consultation variant, e.g. "1 Hour | Video". */
+  consultationType?: string;
+  amountPaid?: string;
+  rashi?: string;
+  partnerDateOfBirth?: string;
+  partnerTimeOfBirth?: string;
+  partnerPlaceOfBirth?: string;
+  /** Which page/form produced the lead — becomes a tag. */
+  sourceForm?: string;
 }
 
 export interface BookingData extends LeadData {
@@ -44,16 +64,41 @@ export const PROSPECTIQ_SERVICE_CALENDARS: Record<string, string> = {
 };
 
 export function getCalendarIdForService(serviceKey?: string): string {
-  if (!serviceKey) return "EJ8nazswCDPvy9hOMIef";
-  const lower = serviceKey.toLowerCase().trim();
-  for (const [key, calId] of Object.entries(PROSPECTIQ_SERVICE_CALENDARS)) {
-    if (lower.includes(key) || key.includes(lower)) return calId;
-  }
-  return "EJ8nazswCDPvy9hOMIef";
+  return calendarForService(serviceKey);
 }
 
 export const submitProspectIQLead = async (lead: LeadData) => {
   try {
+    const interest = serviceInterestFor(lead.service);
+    const reportType = reportTypeFor(lead.service);
+    const birthIso = toIsoDate(lead.dateOfBirth);
+    const partnerDobIso = toIsoDate(lead.partnerDateOfBirth);
+
+    // Only send fields that have a value — empty strings overwrite good CRM data.
+    const customFields = [
+      birthIso && { id: PIQ_FIELDS.birthDate, value: birthIso },
+      lead.timeOfBirth && { id: PIQ_FIELDS.timeOfBirth, value: lead.timeOfBirth },
+      lead.placeOfBirth && { id: PIQ_FIELDS.placeOfBirth, value: lead.placeOfBirth },
+      interest && { id: PIQ_FIELDS.serviceInterest, value: interest },
+      reportType && { id: PIQ_FIELDS.reportType, value: reportType },
+      lead.consultationType && { id: PIQ_FIELDS.consultationType, value: lead.consultationType },
+      lead.rashi && { id: PIQ_FIELDS.rashi, value: lead.rashi },
+      lead.message && { id: PIQ_FIELDS.guidanceWanted, value: lead.message },
+      partnerDobIso && { id: PIQ_FIELDS.partnerDateOfBirth, value: partnerDobIso },
+      lead.partnerTimeOfBirth && { id: PIQ_FIELDS.partnerTimeOfBirth, value: lead.partnerTimeOfBirth },
+      lead.partnerPlaceOfBirth && { id: PIQ_FIELDS.partnerPlaceOfBirth, value: lead.partnerPlaceOfBirth },
+      { id: PIQ_FIELDS.leadSource, value: "Website Form" },
+    ].filter(Boolean);
+
+    // Tags carry what the picklists can't express, so the CRM list is readable.
+    const tags = lead.tags ?? [];
+    const autoTags = [
+      "Website Lead",
+      lead.serviceLabel ? `Service: ${lead.serviceLabel}` : lead.service ? `Service: ${lead.service}` : null,
+      lead.sourceForm ? `Form: ${lead.sourceForm}` : null,
+      lead.amountPaid ? `Paid: ${lead.amountPaid}` : null,
+    ].filter(Boolean) as string[];
+
     const res = await fetch("/api/prospectiq", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,13 +110,9 @@ export const submitProspectIQLead = async (lead: LeadData) => {
         email: lead.email,
         phone: lead.phone,
         gender: lead.gender || "",
-        tags: lead.tags || ["Website Lead", lead.service ? `Service: ${lead.service}` : "General Lead"],
-        customFields: [
-          ...(lead.dateOfBirth ? [{ id: "date_of_birth", value: lead.dateOfBirth }] : []),
-          ...(lead.timeOfBirth ? [{ id: "time_of_birth", value: lead.timeOfBirth }] : []),
-          ...(lead.placeOfBirth ? [{ id: "place_of_birth", value: lead.placeOfBirth }] : []),
-          ...(lead.message ? [{ id: "message", value: lead.message }] : []),
-        ],
+        source: lead.sourceForm || "JyotishNow Website",
+        tags: Array.from(new Set([...tags, ...autoTags])),
+        customFields,
       }),
     });
     return await res.json();

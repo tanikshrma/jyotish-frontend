@@ -30,6 +30,7 @@ const CompleteHoroscopeAnalysis = () => {
     <ReportTemplate
       title="Complete Horoscope"
       highlightedTitle="Analysis"
+      defaultService="complete-horoscope"
       titleClassName="flex flex-col md:whitespace-nowrap md:text-[2.5rem] lg:text-[3.2rem] xl:text-[4rem]"
       description="A deep dive into your entire life journey. Uncover the hidden patterns of your destiny with our most comprehensive astrological reading."
       heroImage="https://vibe.filesafe.space/1782888190245745251/attachments/2c263412-76e8-4748-b833-8e9250b5ad61.png"

@@ -5,6 +5,7 @@ import {
   hasCredentials,
   readJsonBody,
   requirePost,
+  readJsonResponse,
 } from "./_razorpay.js";
 
 /**
@@ -151,7 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }),
         });
 
-        const contactData = await contactRes.json();
+        const contactData = await readJsonResponse(contactRes);
         const contactId = contactData?.contact?.id || contactData?.id;
 
         if (contactId) {

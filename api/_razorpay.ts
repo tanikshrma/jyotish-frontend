@@ -46,3 +46,20 @@ export const readJsonBody = (req: VercelRequest): Record<string, unknown> => {
   }
   return (req.body ?? {}) as Record<string, unknown>;
 };
+
+/**
+ * `Response.json()` is typed `unknown` under strict mode. Upstream APIs
+ * (Razorpay, Prospect IQ) return free-form JSON, so read it as an indexable
+ * record and let callers pick fields out defensively.
+ */
+export type JsonRecord = Record<string, any>;
+
+export const readJsonResponse = async (
+  response: Response,
+): Promise<JsonRecord> => {
+  try {
+    return ((await response.json()) ?? {}) as JsonRecord;
+  } catch {
+    return {};
+  }
+};

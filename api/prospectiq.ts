@@ -1,3 +1,4 @@
+import { readJsonResponse } from "./_razorpay.js";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 /**
@@ -60,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify(payload),
         });
 
-        const data = await response.json();
+        const data = await readJsonResponse(response);
         if (!response.ok) {
           console.error("[ProspectIQ API] Contact Upsert Failed:", data);
           return res.status(response.status).json({ error: "Failed to upsert contact", details: data });
@@ -98,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers,
         });
 
-        const data = await response.json();
+        const data = await readJsonResponse(response);
         if (!response.ok) {
           console.error("[ProspectIQ API] Get Calendar Slots Failed:", data);
           return res.status(response.status).json({ error: "Failed to fetch calendar slots", details: data });
@@ -133,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify(payload),
         });
 
-        const data = await response.json();
+        const data = await readJsonResponse(response);
         if (!response.ok) {
           console.error("[ProspectIQ API] Create Appointment Failed:", data);
           return res.status(response.status).json({ error: "Failed to create appointment", details: data });
@@ -167,7 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify(payload),
         });
 
-        const data = await response.json();
+        const data = await readJsonResponse(response);
         if (!response.ok) {
           return res.status(response.status).json({ error: "Failed to create opportunity", details: data });
         }

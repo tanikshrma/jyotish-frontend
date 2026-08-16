@@ -11,6 +11,8 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
+import { PhoneInput } from "@/components/PhoneInput";
+import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { toast } from "sonner";
 
 export default function ContactUs() {
@@ -22,6 +24,7 @@ export default function ContactUs() {
     subject: '',
     message: ''
   });
+  const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,19 +38,11 @@ export default function ContactUs() {
       newErrors.lastName = "Last name is required";
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    if (!formData.email.trim()) {
-      newErrors.email = "Email address is required";
-    } else if (!emailRegex.test(formData.email.trim())) {
-      newErrors.email = "Please enter a valid email address (must include '@' and '.com' domain)";
-    }
+    const emailError = validateEmail(formData.email);
+    if (emailError) newErrors.email = emailError;
 
-    const phoneDigits = formData.phone.replace(/\D/g, '');
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Phone number is required";
-    } else if (phoneDigits.length < 10) {
-      newErrors.phone = "Please enter a valid 10-digit phone number";
-    }
+    const phoneError = validatePhone(formData.phone, countryIso);
+    if (phoneError) newErrors.phone = phoneError;
 
     if (!formData.subject.trim()) {
       newErrors.subject = "Subject is required";
@@ -60,14 +55,6 @@ export default function ContactUs() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numericVal = e.target.value.replace(/[^0-9+]/g, '');
-    setFormData({ ...formData, phone: numericVal });
-    if (errors.phone) {
-      setErrors(prev => ({ ...prev, phone: '' }));
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -78,7 +65,7 @@ export default function ContactUs() {
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,
-      phone: formData.phone,
+      phone: toE164(formData.phone, countryIso),
       message: `${formData.subject}: ${formData.message}`,
       tags: ["Contact Us Form", "Website Inquiry"],
     });
@@ -91,7 +78,7 @@ export default function ContactUs() {
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
-        phone: formData.phone,
+        phone: toE164(formData.phone, countryIso),
         calendar_notes: formData.message,
       },
       formLabels: {
@@ -321,8 +308,15 @@ export default function ContactUs() {
                     
                     <div className="space-y-2 relative group">
                       <label htmlFor="phone" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Phone Number</label>
-                      <Input id="phone" type="tel" value={formData.phone} onChange={handlePhoneChange} className={`h-14 px-4 rounded-xl border bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg ${errors.phone ? 'border-red-500' : 'border-border/50 hover:border-secondary/50'}`} placeholder="Enter 10-digit phone number" />
-                      {errors.phone && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.phone}</span>}
+                      <PhoneInput
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(v) => { setFormData(prev => ({ ...prev, phone: v })); if (errors.phone) setErrors(prev => ({ ...prev, phone: '' })); }}
+                        countryIso={countryIso}
+                        onCountryChange={setCountryIso}
+                        error={errors.phone}
+                        className="h-14 px-4 text-lg"
+                      />
                     </div>
                     
                     <div className="space-y-2 relative group">

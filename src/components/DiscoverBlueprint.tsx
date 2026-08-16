@@ -55,7 +55,7 @@ export function DiscoverBlueprint() {
               </div>
             </div>
             
-            <BookingModal>
+            <BookingModal defaultService="consultation-call">
               <Button className="h-14 px-8 text-lg rounded-xl bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden">
                 <span className="relative z-10 flex items-center">
                   Get Your Consultation 
@@ -87,13 +87,13 @@ export function DiscoverBlueprint() {
             </div>
             
             {/* Floating badge */}
-            <div className="absolute -bottom-8 -left-8 bg-white p-4 rounded-2xl shadow-xl border border-secondary/20 flex items-center gap-4 animate-bounce" style={{ animationDuration: '4s' }}>
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                <span className="text-3xl">🕉️</span>
+            <div className="absolute -bottom-5 left-3 sm:-bottom-8 sm:-left-6 lg:-left-8 z-10 bg-white/95 backdrop-blur-sm p-3 sm:p-4 rounded-2xl shadow-xl border border-secondary/20 flex items-center gap-3 sm:gap-4 animate-bounce" style={{ animationDuration: '4s' }}>
+              <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                <span className="text-2xl sm:text-3xl">🕉️</span>
               </div>
               <div>
-                <p className="text-base font-bold text-primary">Vedic Wisdom</p>
-                <p className="text-sm text-foreground/60 font-medium">Ancient Knowledge</p>
+                <p className="text-sm sm:text-base font-bold text-primary">Vedic Wisdom</p>
+                <p className="text-xs sm:text-sm text-foreground/60 font-medium">Ancient Knowledge</p>
               </div>
             </div>
           </div>

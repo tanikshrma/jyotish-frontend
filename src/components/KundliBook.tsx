@@ -3,12 +3,15 @@ import HTMLFlipBookComponent from 'react-pageflip';
 const HTMLFlipBook = HTMLFlipBookComponent as any;
 import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize, Minimize, Download, X } from 'lucide-react';
+import { parseTypedDate } from './FormDateInput';
 
 interface KundliBookProps {
   kundliData: any;
   step: 'cover' | 'book';
   onOpenBook: () => void;
   onClose: () => void;
+  isPaid?: boolean;
+  onUnlockExport?: () => void;
 }
 
 const Page = React.forwardRef<HTMLDivElement, { children: React.ReactNode; number?: number; isCover?: boolean }>(
@@ -65,13 +68,17 @@ const Page = React.forwardRef<HTMLDivElement, { children: React.ReactNode; numbe
 );
 Page.displayName = 'Page';
 
-export function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' | 'd9' = 'd1', ascendantZodiacSign: string = 'Aries') {
+export function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' | 'd9' = 'd1', ascendantZodiacSign: any = 'Aries') {
   const zodiacMap: Record<string, number> = {
     'aries': 1, 'taurus': 2, 'gemini': 3, 'cancer': 4, 'leo': 5, 'virgo': 6,
     'libra': 7, 'scorpio': 8, 'sagittarius': 9, 'capricorn': 10, 'aquarius': 11, 'pisces': 12
   };
 
-  const ascSignNum = zodiacMap[ascendantZodiacSign.toLowerCase()] || 1;
+  const signStr = typeof ascendantZodiacSign === 'string'
+    ? ascendantZodiacSign
+    : (typeof ascendantZodiacSign === 'object' && ascendantZodiacSign !== null ? ascendantZodiacSign.name || ascendantZodiacSign.title || 'Aries' : 'Aries');
+
+  const ascSignNum = zodiacMap[signStr.toLowerCase()] || 1;
 
   const housePlanets: Record<number, string[]> = {
     1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: []
@@ -84,8 +91,9 @@ export function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' 
 
   if (Array.isArray(planetsData) && planetsData.length > 0) {
     planetsData.forEach((p: any) => {
-      const house = parseInt(p.house || p.house_number || "1");
-      const name = shortNames[p.name] || p.name?.substring(0, 2) || "";
+      const house = parseInt(p?.house || p?.house_number || "1");
+      const rawName = typeof p?.name === 'object' ? (p.name?.name || p.name?.planet || 'Planet') : (p?.name || p?.planet || '');
+      const name = shortNames[rawName] || rawName.substring(0, 2) || "";
       if (house >= 1 && house <= 12 && name) {
         if (!housePlanets[house].includes(name)) {
           housePlanets[house].push(name);
@@ -139,159 +147,214 @@ export function generateNorthIndianChartSvg(planetsData: any[], chartType: 'd1' 
   return svgContent;
 }
 
-export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBookProps) {
+export const renderSafeString = (val: any, fallback = ""): string => {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'object') {
+    return val.name || val.title || val.value || val.label || val.description || fallback;
+  }
+  return fallback;
+};
+
+export const getPlanetFullName = (name: string) => {
+  const map: Record<string, string> = {
+    'As': 'Ascendant (Lagna)',
+    'Su': 'Sun (Surya)',
+    'Mo': 'Moon (Chandra)',
+    'Ma': 'Mars (Mangal)',
+    'Me': 'Mercury (Budh)',
+    'Ju': 'Jupiter (Guru)',
+    'Ve': 'Venus (Shukra)',
+    'Sa': 'Saturn (Shani)',
+    'Ra': 'Rahu',
+    'Ke': 'Ketu'
+  };
+  return map[name] || name;
+};
+
+const normalizePlanet = (item: any) => {
+  if (!item || typeof item !== 'object') return item;
+  return {
+    ...item,
+    name: renderSafeString(item.name || item.planet, "Planet"),
+    zodiac: renderSafeString(item.zodiac || item.sign || item.rasi, "-"),
+    sign: renderSafeString(item.sign || item.zodiac || item.rasi, "-"),
+    house: typeof item.house === 'object' ? renderSafeString(item.house.name || item.house.house || item.house.number, "-") : String(item.house || "-")
+  };
+};
+
+export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUnlockExport }: KundliBookProps) {
   const bookRef = useRef<any>(null);
   const [currentPage, setCurrentPage] = React.useState(0);
   const [zoom, setZoom] = React.useState(1);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const p = kundliData.panchang || {};
+  const handleExportClick = () => {
+    if (isPaid) {
+      window.print();
+    } else if (onUnlockExport) {
+      onUnlockExport();
+    } else {
+      window.print();
+    }
+  };
   
-  // Robust Data Extractors to handle any VedicAstro API v3 payload structure
+  const p = kundliData.panchang || {};
+
   const extractPlanets = (input: any): any[] => {
     if (!input) return [];
     let data = input.response || input.planets || input.data || input;
-    if (Array.isArray(data)) return data;
-    if (typeof data === 'object' && data !== null) {
+    let list: any[] = [];
+    if (Array.isArray(data)) {
+      list = data;
+    } else if (typeof data === 'object' && data !== null) {
       if (data.response) data = data.response;
-      if (Array.isArray(data)) return data;
-      const values = Object.values(data).filter((item: any) => typeof item === 'object' && item !== null && (item.name || item.planet || item.sign || item.house));
-      if (values.length > 0) return values;
+      if (Array.isArray(data)) {
+        list = data;
+      } else {
+        list = Object.values(data);
+      }
     }
-    return [];
+    return list
+      .filter((item: any) => item && typeof item === 'object' && !Array.isArray(item) && (item.name || item.planet || item.full_name) && (item.house !== undefined || item.local_degree !== undefined || item.normDegree !== undefined || item.zodiac !== undefined || item.sign !== undefined))
+      .map(normalizePlanet);
   };
 
   const extractYogas = (input: any): { name: string; description: string }[] => {
     if (!input) return [];
     let data = input.response || input.yogas || input;
+    if (data?.response) data = data.response;
+    let rawList: any[] = [];
     if (Array.isArray(data)) {
-      return data.map((item: any) => ({
-        name: item.name || item.yoga_name || "Vedic Yoga",
-        description: item.description || item.meaning || item.details || "An auspicious planetary combination."
-      }));
+      rawList = data;
+    } else if (typeof data === 'object' && data !== null) {
+      rawList = Object.values(data).filter((item: any) => typeof item === 'object' && item !== null && (item.yoga || item.name || item.title));
     }
-    if (typeof data === 'object' && data !== null) {
-      if (data.response) data = data.response;
-      if (Array.isArray(data)) {
-        return data.map((item: any) => ({
-          name: item.name || item.yoga_name || "Vedic Yoga",
-          description: item.description || item.meaning || item.details || "An auspicious planetary combination."
-        }));
-      }
-      return Object.entries(data).map(([name, details]: [string, any]) => {
-        if (typeof details === 'object' && details !== null) {
-          return {
-            name: details.name || name,
-            description: details.description || details.meaning || details.details || "An auspicious planetary combination in your chart."
-          };
-        }
-        return { name, description: String(details) };
-      });
-    }
-    return [];
+    return rawList.map((item: any) => ({
+      name: renderSafeString(item?.yoga || item?.name || item?.yoga_name || item?.title, "Vedic Yoga"),
+      description: renderSafeString(item?.meaning || item?.description || item?.details, "An auspicious planetary combination in your chart.")
+    }));
   };
 
   const extractDasha = (input: any): { planet: string; start: string; end: string }[] => {
     if (!input) return [];
     let data = input.response || input.dasha || input.mahadasha || input;
+    if (data?.response) data = data.response;
+    if (data && Array.isArray(data.mahadasha)) {
+      const planets = data.mahadasha;
+      const order = Array.isArray(data.mahadasha_order) ? data.mahadasha_order : [];
+      let prevDate = data.start_year ? String(data.start_year) : (data.dasha_start_date ? String(new Date(data.dasha_start_date).getFullYear()) : "Birth");
+      return planets.map((p: string, idx: number) => {
+        const orderDate = order[idx] ? new Date(order[idx]) : null;
+        const endYear = orderDate && !isNaN(orderDate.getFullYear()) ? String(orderDate.getFullYear()) : (idx === planets.length - 1 ? "Beyond" : "");
+        const dashaObj = {
+          planet: renderSafeString(p, "Planet"),
+          start: prevDate,
+          end: endYear || "Ongoing"
+        };
+        if (endYear && endYear !== "Beyond") prevDate = endYear;
+        return dashaObj;
+      });
+    }
     if (Array.isArray(data)) {
       return data.map((item: any) => ({
-        planet: item.planet || item.planet_name || item.name || "Dasha",
-        start: item.start || item.start_year || item.start_date || "-",
-        end: item.end || item.end_year || item.end_date || "-"
-      }));
-    }
-    if (typeof data === 'object' && data !== null) {
-      if (data.response) data = data.response;
-      if (Array.isArray(data)) {
-        return data.map((item: any) => ({
-          planet: item.planet || item.planet_name || item.name || "Dasha",
-          start: item.start || item.start_year || item.start_date || "-",
-          end: item.end || item.end_year || item.end_date || "-"
-        }));
-      }
-      return Object.entries(data).map(([planet, details]: [string, any]) => ({
-        planet,
-        start: details?.start || details?.start_year || details?.start_date || "-",
-        end: details?.end || details?.end_year || details?.end_date || "-"
+        planet: renderSafeString(item?.planet || item?.planet_name || item?.name, "Dasha"),
+        start: renderSafeString(item?.start || item?.start_year || item?.start_date, "-"),
+        end: renderSafeString(item?.end || item?.end_year || item?.end_date, "-")
       }));
     }
     return [];
   };
 
-  const extractPredictions = (input: any): { planet: string; house: string | number; report: string }[] => {
-    if (!input) return [];
-    let data = input.response || input.planetReport || input.report || input;
-    if (Array.isArray(data)) {
-      return data.map((item: any) => ({
-        planet: item.planet || item.planet_name || "Planet",
-        house: item.house || item.house_number || "Chart",
-        report: item.report || item.description || item.meaning || "Influential placement in your horoscope."
-      }));
-    }
-    if (typeof data === 'object' && data !== null) {
-      if (data.response) data = data.response;
+  const extractPredictions = (input: any, planetsList: any[] = []): { planet: string; house: string | number; report: string }[] => {
+    if (input) {
+      let data = input.response || input.planetReport || input.report || input;
+      if (data?.response) data = data.response;
+      let rawList: any[] = [];
       if (Array.isArray(data)) {
-        return data.map((item: any) => ({
-          planet: item.planet || item.planet_name || "Planet",
-          house: item.house || item.house_number || "Chart",
-          report: item.report || item.description || item.meaning || "Influential placement in your horoscope."
+        rawList = data;
+      } else if (typeof data === 'object' && data !== null) {
+        rawList = Object.values(data).filter((item: any) => typeof item === 'object' && item !== null && (item.planet || item.name));
+      }
+      if (rawList.length > 0) {
+        return rawList.map((item: any) => ({
+          planet: renderSafeString(item?.planet || item?.planet_name || item?.name, "Planet"),
+          house: renderSafeString(item?.house || item?.house_number, "Chart"),
+          report: renderSafeString(item?.report || item?.description || item?.meaning, "Influential placement in your horoscope.")
         }));
       }
-      return Object.values(data).filter((item: any) => typeof item === 'object' && item !== null).map((item: any) => ({
-        planet: item.planet || item.name || "Planet",
-        house: item.house || "Chart",
-        report: item.report || item.description || "Influential placement in your horoscope."
-      }));
     }
+
+    // Default rich interpretations based on actual planet placements
+    const defaultReports: Record<string, string> = {
+      'Sun': 'Grants administrative prowess, willpower, leadership qualities, and dignity in personal enterprise.',
+      'Moon': 'Enhances emotional intelligence, public popularity, mental peace, and intuitive creativity.',
+      'Mars': 'Bestows courage, dynamic initiative, passion for accomplishments, and victory over obstacles.',
+      'Mercury': 'Sharpens communication, commerce skills, analytical reasoning, and strategic adaptability.',
+      'Jupiter': 'Blesses with higher wisdom, fortune, spiritual expansion, and philosophical integrity.',
+      'Venus': 'Attracts refined arts, harmonious relationships, marital contentment, and aesthetic prosperity.',
+      'Saturn': 'Instills discipline, endurance, long-term mastery, and structured career stability.',
+      'Rahu': 'Drives ambition, unconventional vision, breakthroughs, and worldly prominence.',
+      'Ketu': 'Promotes spiritual liberation, deep research capabilities, and transcendental insight.'
+    };
+
+    if (planetsList && planetsList.length > 0) {
+      return planetsList
+        .filter((p: any) => p && p.name && p.name !== 'Ascendant' && p.name !== 'As')
+        .slice(0, 5)
+        .map((p: any) => {
+          const fullName = getPlanetFullName(p.name);
+          const houseText = p.house ? `${p.house}th` : 'Birth';
+          return {
+            planet: fullName,
+            house: houseText,
+            report: `${fullName} placed in the ${houseText} house (${p.zodiac || 'your sign'}): ${defaultReports[fullName] || 'Brings distinct cosmic energy to your destiny.'}`
+          };
+        });
+    }
+
     return [];
   };
 
   const pl = extractPlanets(kundliData.planets);
   const yogasList = extractYogas(kundliData.yogas);
   const dashaList = extractDasha(kundliData.dasha);
-  const predictionsList = extractPredictions(kundliData.planetReport);
+  const predictionsList = extractPredictions(kundliData.planetReport, pl);
 
-  const birthYear = parseInt(kundliData.user.dob?.split(/[-/]/)[2] || kundliData.user.dob?.split(/[-/]/)[0] || "2000");
-  const age = new Date().getFullYear() - birthYear;
+  const parsedBirthDate = parseTypedDate(kundliData?.user?.dob) || (kundliData?.user?.dob ? new Date(kundliData.user.dob) : undefined);
+  const validBirthDate = parsedBirthDate && !isNaN(parsedBirthDate.getTime()) ? parsedBirthDate : undefined;
 
-  const birthDayOfWeek = p.day && p.day !== "-" 
-    ? p.day 
-    : (kundliData.user.dob ? new Date(kundliData.user.dob).toLocaleDateString('en-US', { weekday: 'long' }) : "-");
+  const birthYear = validBirthDate 
+    ? validBirthDate.getFullYear() 
+    : parseInt(kundliData?.user?.dob?.split(/[-/]/)[2] || kundliData?.user?.dob?.split(/[-/]/)[0] || "2000");
+  const age = Math.max(0, new Date().getFullYear() - (isNaN(birthYear) ? 2000 : birthYear));
 
-  const pobParts = kundliData.user.pob ? kundliData.user.pob.split(',').map((s: string) => s.trim()) : [];
-  const city = pobParts[0] || kundliData.user.pob || "-";
+  const birthDayOfWeek = renderSafeString(
+    p.day || (validBirthDate ? validBirthDate.toLocaleDateString('en-US', { weekday: 'long' }) : "-"),
+    "-"
+  );
+
+  const pobParts = kundliData?.user?.pob ? kundliData.user.pob.split(',').map((s: string) => s.trim()) : [];
+  const city = pobParts[0] || kundliData?.user?.pob || "-";
   const state = pobParts[1] || (pobParts.length > 2 ? pobParts[1] : "-");
   const country = pobParts[2] || (pobParts.length === 2 ? pobParts[1] : (pobParts.length === 1 ? "India" : "-"));
 
   const formatPlanetDegree = (planet: any) => {
-    const rawDeg = planet.normDegree ?? planet.norm_degree ?? planet.fullDegree ?? planet.degree ?? planet.deg;
+    if (!planet || typeof planet !== 'object') return "-";
+    const rawDeg = planet.local_degree ?? planet.normDegree ?? planet.norm_degree ?? planet.fullDegree ?? planet.degree ?? planet.deg;
     if (rawDeg !== undefined && rawDeg !== null && !isNaN(Number(rawDeg))) {
       const num = Number(rawDeg);
       const deg = Math.floor(num);
       const min = Math.round((num - deg) * 60);
       return `${deg}° ${min.toString().padStart(2, '0')}'`;
     }
-    if (planet.formattedDegree) return planet.formattedDegree;
+    if (planet.formattedDegree) return renderSafeString(planet.formattedDegree, "-");
     return "-";
   };
 
-  const getPlanetFullName = (name: string) => {
-    const map: Record<string, string> = {
-      'As': 'Ascendant (Lagna)',
-      'Su': 'Sun (Surya)',
-      'Mo': 'Moon (Chandra)',
-      'Ma': 'Mars (Mangal)',
-      'Me': 'Mercury (Budh)',
-      'Ju': 'Jupiter (Guru)',
-      'Ve': 'Venus (Shukra)',
-      'Sa': 'Saturn (Shani)',
-      'Ra': 'Rahu',
-      'Ke': 'Ketu'
-    };
-    return map[name] || name;
-  };
+
 
   const formatChartSvg = (chartInput: any, fallbackType: 'd1' | 'd9' = 'd1') => {
     let svg = '';
@@ -458,13 +521,13 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
         <div className="flex flex-row justify-center gap-6 mt-8 mb-2 px-2">
           <div className="flex-1 border-2 border-[#B98A45]/40 rounded-2xl bg-[#F8F1E4]/90 p-5 flex flex-col items-center shadow-md relative overflow-hidden">
             <p className="font-sans text-[#B98A45] text-[10px] font-bold tracking-[0.2em] uppercase mb-3">Sun Sign</p>
-            <img src={`/zodiac/${(p.sun_sign || 'cancer').toLowerCase()}.png`} alt="Sun Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => e.currentTarget.src = 'https://vibe.filesafe.space/1782888190245745251/attachments/c1378bd9-28a1-4a14-bebf-d092cc87a63a.png'} />
-            <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>{p.sun_sign || "Cancer"}</p>
+            <img src={`/zodiac/${(renderSafeString(p.sun_sign, 'cancer')).toLowerCase()}.png`} alt="Sun Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => e.currentTarget.src = 'https://vibe.filesafe.space/1782888190245745251/attachments/c1378bd9-28a1-4a14-bebf-d092cc87a63a.png'} />
+            <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>{renderSafeString(p.sun_sign, "Cancer")}</p>
           </div>
           <div className="flex-1 border-2 border-[#B98A45]/40 rounded-2xl bg-[#F8F1E4]/90 p-5 flex flex-col items-center shadow-md relative overflow-hidden">
             <p className="font-sans text-[#B98A45] text-[10px] font-bold tracking-[0.2em] uppercase mb-3">Moon Sign</p>
-            <img src={`/zodiac/${(p.moon_sign || 'aquarius').toLowerCase()}.png`} alt="Moon Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => e.currentTarget.src = 'https://vibe.filesafe.space/1782888190245745251/attachments/697e618d-9f03-4478-b51e-c65f755688d2.png'} />
-            <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>{p.moon_sign || "Aquarius"}</p>
+            <img src={`/zodiac/${(renderSafeString(p.moon_sign, 'aquarius')).toLowerCase()}.png`} alt="Moon Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => e.currentTarget.src = 'https://vibe.filesafe.space/1782888190245745251/attachments/697e618d-9f03-4478-b51e-c65f755688d2.png'} />
+            <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>{renderSafeString(p.moon_sign, "Aquarius")}</p>
           </div>
         </div>
       </div>
@@ -513,7 +576,11 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
           <h4 className="font-bold text-[#7A0808] text-base mb-1" style={{ fontFamily: "'Cinzel', serif" }}>Doshas</h4>
           <p className="text-[#5C3A21]/80 text-xs font-sans font-medium">Flaws to remedy</p>
           <p className="font-bold text-4xl text-[#7A0808] mt-2" style={{ fontFamily: "'Cinzel', serif" }}>
-            {[kundliData.doshas?.manglik?.is_present, kundliData.doshas?.kaalsarp?.is_present, kundliData.doshas?.sadesati?.is_present].filter(Boolean).length}
+            {[
+              kundliData.doshas?.manglik?.manglik_by_mars ?? kundliData.doshas?.manglik?.is_present,
+              kundliData.doshas?.kaalsarp?.is_present,
+              kundliData.doshas?.sadesati?.is_present
+            ].filter(Boolean).length}
           </p>
         </div>
         <div className="p-4 border-2 border-[#B98A45]/40 bg-[#F8F1E4]/90 rounded-xl text-center flex flex-col items-center justify-center col-span-2 shadow-sm">
@@ -522,19 +589,25 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
             <div>
               <p className="text-[10px] uppercase tracking-widest text-[#B98A45] font-bold font-sans">Number</p>
               <p className="font-bold text-xl text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>
-                {Array.isArray(kundliData.lucky?.lucky_number) ? kundliData.lucky.lucky_number.join(', ') : (kundliData.lucky?.lucky_number || "3, 9")}
+                {Array.isArray(kundliData.lucky?.lucky_number || kundliData.lucky?.lucky_num || kundliData.planets?.lucky_num) 
+                  ? (kundliData.lucky?.lucky_number || kundliData.lucky?.lucky_num || kundliData.planets?.lucky_num).map((n: any) => renderSafeString(n)).join(', ') 
+                  : renderSafeString(kundliData.lucky?.lucky_number || kundliData.lucky?.lucky_num || kundliData.planets?.lucky_num, "3, 9")}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-[#B98A45] font-bold font-sans">Color</p>
               <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', serif" }}>
-                {kundliData.lucky?.lucky_color || "Yellow, Gold"}
+                {Array.isArray(kundliData.lucky?.lucky_color || kundliData.lucky?.lucky_colors || kundliData.planets?.lucky_colors)
+                  ? (kundliData.lucky?.lucky_color || kundliData.lucky?.lucky_colors || kundliData.planets?.lucky_colors).map((c: any) => renderSafeString(c)).join(', ')
+                  : renderSafeString(kundliData.lucky?.lucky_color || kundliData.lucky?.lucky_colors || kundliData.planets?.lucky_colors, "Yellow, Gold")}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-[#B98A45] font-bold font-sans">Gemstone</p>
-              <p className="font-bold text-xl text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>
-                {kundliData.lucky?.lucky_gemstone || "Yellow Sapphire"}
+              <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', serif" }}>
+                {Array.isArray(kundliData.lucky?.lucky_gemstone || kundliData.lucky?.lucky_gem || kundliData.planets?.lucky_gem)
+                  ? (kundliData.lucky?.lucky_gemstone || kundliData.lucky?.lucky_gem || kundliData.planets?.lucky_gem).map((g: any) => renderSafeString(g)).join(', ')
+                  : renderSafeString(kundliData.lucky?.lucky_gemstone || kundliData.lucky?.lucky_gem || kundliData.planets?.lucky_gem, "Yellow Sapphire")}
               </p>
             </div>
           </div>
@@ -575,11 +648,11 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
             ]).map((planet: any, i: number) => (
               <tr key={i} className={`border-b border-[#B98A45]/20 ${i % 2 === 0 ? 'bg-[#F8F1E4]' : 'bg-[#5C3A21]/5'}`}>
                 <td className="p-3 font-bold text-[#7A0808] text-sm border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>
-                  {getPlanetFullName(planet.name || planet.planet)}
+                  {getPlanetFullName(renderSafeString(planet.name || planet.planet, "Planet"))}
                 </td>
-                <td className="p-3 font-medium text-[#5C3A21] text-sm border-r border-[#B98A45]/30">{planet.zodiac || planet.sign || "-"}</td>
+                <td className="p-3 font-medium text-[#5C3A21] text-sm border-r border-[#B98A45]/30">{renderSafeString(planet.zodiac || planet.sign, "-")}</td>
                 <td className="p-3 text-center font-bold text-[#7A0808] text-sm border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>{formatPlanetDegree(planet)}</td>
-                <td className="p-3 text-center font-bold text-[#7A0808] text-base" style={{ fontFamily: "'Cinzel', serif" }}>{planet.house || '-'}</td>
+                <td className="p-3 text-center font-bold text-[#7A0808] text-base" style={{ fontFamily: "'Cinzel', serif" }}>{renderSafeString(planet.house, "-")}</td>
               </tr>
             ))}
           </tbody>
@@ -595,9 +668,11 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
           { planet: "Jupiter", house: "5th", report: "Jupiter in the 5th house bestows high education, creative intelligence, and spiritual wisdom." }
         ]).slice(0, 3).map((report: any, i: number) => (
           <div key={i} className="p-3.5 border border-[#B98A45]/40 bg-[#F8F1E4] shadow-sm rounded-sm mb-3">
-            <h4 className="font-bold text-lg text-[#7A0808] mb-1" style={{ fontFamily: "'Cinzel', serif" }}>{report.planet} in {report.house} House</h4>
+            <h4 className="font-bold text-lg text-[#7A0808] mb-1" style={{ fontFamily: "'Cinzel', serif" }}>
+              {renderSafeString(report.planet, "Planet")} in {renderSafeString(report.house, "Chart")} House
+            </h4>
             <p className="text-[#5C3A21]/90 font-serif leading-relaxed text-xs sm:text-sm">
-              {report.report || "This placement brings unique cosmic energies to your chart."}
+              {renderSafeString(report.report, "This placement brings unique cosmic energies to your chart.")}
             </p>
           </div>
         ))}
@@ -607,27 +682,24 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
       <SectionHeader title="Dosha Analysis" subtitle="Vedic Flaw Assessments" />
       <div className="flex-1 flex flex-col gap-4 mt-2 px-3 overflow-y-auto custom-scrollbar pb-4">
         {[
-          { title: "Manglik Dosha", data: kundliData.doshas?.manglik },
-          { title: "Kaal Sarp Dosha", data: kundliData.doshas?.kaalsarp },
-          { title: "Sade Sati", data: kundliData.doshas?.sadesati }
-        ].map((dosha, i) => {
-          const isPresent = dosha.data?.is_present ?? dosha.data?.present ?? false;
-          return (
-            <div key={i} className="p-4 border border-[#B98A45]/40 shadow-sm relative bg-[#F8F1E4] rounded-sm">
-              <div className="flex justify-between items-center mb-2 border-b border-[#B98A45]/20 pb-2">
-                <h4 className="font-bold text-xl text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>{dosha.title}</h4>
-                <span className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase border ${isPresent ? 'border-[#7A0808] text-[#7A0808] bg-[#7A0808]/10' : 'border-[#B98A45] text-[#B98A45]'}`}>
-                  {isPresent ? 'Present' : 'Not Present'}
-                </span>
-              </div>
-              <p className="text-[#5C3A21] leading-relaxed font-serif text-sm">
-                {isPresent 
-                  ? 'This dosha is present in your chart. Specific Vedic remedies are highly recommended to mitigate its effects.' 
-                  : 'Auspicious! This dosha is not present in your birth chart.'}
-              </p>
+          { title: "Manglik Dosha", isPresent: Boolean(kundliData.doshas?.manglik?.manglik_by_mars || kundliData.doshas?.manglik?.is_present || kundliData.doshas?.manglik?.present) },
+          { title: "Kaal Sarp Dosha", isPresent: Boolean(kundliData.doshas?.kaalsarp?.is_present || kundliData.doshas?.kaalsarp?.present) },
+          { title: "Sade Sati", isPresent: Boolean(kundliData.doshas?.sadesati?.is_present || kundliData.doshas?.sadesati?.present) }
+        ].map((dosha, i) => (
+          <div key={i} className="p-4 border border-[#B98A45]/40 shadow-sm relative bg-[#F8F1E4] rounded-sm">
+            <div className="flex justify-between items-center mb-2 border-b border-[#B98A45]/20 pb-2">
+              <h4 className="font-bold text-xl text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>{dosha.title}</h4>
+              <span className={`px-3 py-1 text-[10px] font-bold tracking-wider uppercase border ${dosha.isPresent ? 'border-[#7A0808] text-[#7A0808] bg-[#7A0808]/10' : 'border-[#B98A45] text-[#B98A45]'}`}>
+                {dosha.isPresent ? 'Present' : 'Not Present'}
+              </span>
             </div>
-          );
-        })}
+            <p className="text-[#5C3A21] leading-relaxed font-serif text-sm">
+              {dosha.isPresent 
+                ? 'This dosha is present in your chart. Specific Vedic remedies are highly recommended to mitigate its effects.' 
+                : 'Auspicious! This dosha is not present in your birth chart.'}
+            </p>
+          </div>
+        ))}
       </div>
     </Page>,
     <Page number={9} key="p9">
@@ -639,9 +711,11 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
           { name: "Lagna Lord In Kendra", description: "Ascendant lord situated in a cardinal house bringing longevity, vitality, and strong self-direction." }
         ]).slice(0, 4).map((yoga: any, i: number) => (
           <div key={i} className="p-3.5 border border-[#B98A45]/40 bg-[#F8F1E4] shadow-sm rounded-sm mb-3">
-            <h4 className="font-bold text-lg text-[#7A0808] mb-1" style={{ fontFamily: "'Cinzel', serif" }}>{yoga.name}</h4>
+            <h4 className="font-bold text-lg text-[#7A0808] mb-1" style={{ fontFamily: "'Cinzel', serif" }}>
+              {renderSafeString(yoga.name, "Vedic Yoga")}
+            </h4>
             <p className="text-[#5C3A21]/90 font-serif leading-relaxed text-xs sm:text-sm">
-              {yoga.description || "A special planetary combination forming this yoga in your chart."}
+              {renderSafeString(yoga.description, "A special planetary combination forming this yoga in your chart.")}
             </p>
           </div>
         ))}
@@ -651,32 +725,52 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
       <SectionHeader title="Mahadasha" subtitle="Vimshottari Timeline" />
       <div className="flex-1 mt-2 px-4 overflow-y-auto custom-scrollbar pb-4">
         {(dashaList.length > 0 ? dashaList : [
-          { planet: "Sun Dasha", start: `${birthYear}`, end: `${birthYear + 6}` },
-          { planet: "Moon Dasha", start: `${birthYear + 6}`, end: `${birthYear + 16}` },
-          { planet: "Mars Dasha", start: `${birthYear + 16}`, end: `${birthYear + 23}` },
-          { planet: "Rahu Dasha", start: `${birthYear + 23}`, end: `${birthYear + 41}` },
-          { planet: "Jupiter Dasha", start: `${birthYear + 41}`, end: `${birthYear + 57}` },
-          { planet: "Saturn Dasha", start: `${birthYear + 57}`, end: `${birthYear + 76}` },
-          { planet: "Mercury Dasha", start: `${birthYear + 76}`, end: `${birthYear + 93}` }
+          { planet: "Sun", start: `${birthYear}`, end: `${birthYear + 6}` },
+          { planet: "Moon", start: `${birthYear + 6}`, end: `${birthYear + 16}` },
+          { planet: "Mars", start: `${birthYear + 16}`, end: `${birthYear + 23}` },
+          { planet: "Rahu", start: `${birthYear + 23}`, end: `${birthYear + 41}` },
+          { planet: "Jupiter", start: `${birthYear + 41}`, end: `${birthYear + 57}` },
+          { planet: "Saturn", start: `${birthYear + 57}`, end: `${birthYear + 76}` },
+          { planet: "Mercury", start: `${birthYear + 76}`, end: `${birthYear + 93}` }
         ]).slice(0, 7).map((d: any, i: number) => (
           <div key={i} className="flex justify-between items-center p-2.5 border-b border-[#B98A45]/30">
-            <span className="font-bold text-base text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>{d.planet} Dasha</span>
-            <span className="font-serif text-sm font-bold text-[#5C3A21]">{d.start} - {d.end}</span>
+            <span className="font-bold text-base text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>
+              {renderSafeString(d.planet, "Planet")} Dasha
+            </span>
+            <span className="font-serif text-sm font-bold text-[#5C3A21]">
+              {renderSafeString(d.start, "-")} - {renderSafeString(d.end, "-")}
+            </span>
           </div>
         ))}
       </div>
     </Page>,
     <Page number={11} key="p11">
       <SectionHeader title="Conclusion" subtitle="Final Guidance" />
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
-        <div className="p-8 border border-[#B98A45]/40 bg-[#F8F1E4] shadow-sm relative max-w-md mx-auto text-center rounded-sm">
-          <p className="text-[#5C3A21] leading-relaxed italic text-xl font-serif">
+      <div className="flex-1 flex flex-col items-center justify-between px-4 py-2">
+        <div className="p-6 border border-[#B98A45]/40 bg-[#F8F1E4] shadow-sm relative max-w-md mx-auto text-center rounded-sm">
+          <p className="text-[#5C3A21] leading-relaxed italic text-base sm:text-lg font-serif">
             "The stars incline us, they do not bind us. Your birth chart reveals a soul with great potential. By understanding these cosmic patterns, you can navigate life's challenges with wisdom and grace."
           </p>
-          <div className="mt-8 pt-6 border-t border-[#B98A45]/40">
-            <p className="font-bold text-[#7A0808] text-2xl mb-1" style={{ fontFamily: "'Cinzel', serif" }}>Dr. Sandeep Sawhney</p>
-            <p className="text-xs uppercase tracking-widest text-[#B98A45] font-bold">Vedic Astrologer</p>
+          <div className="mt-4 pt-4 border-t border-[#B98A45]/40">
+            <p className="font-bold text-[#7A0808] text-xl mb-1" style={{ fontFamily: "'Cinzel', serif" }}>Dr. Sandeep Sawhney</p>
+            <p className="text-[10px] uppercase tracking-widest text-[#B98A45] font-bold">Vedic Astrologer</p>
           </div>
+        </div>
+
+        {/* High-Resolution PDF Export Call-to-Action */}
+        <div className="w-full max-w-md mx-auto mt-3 p-4 bg-gradient-to-r from-[#7A0808]/10 via-[#F5C27A]/15 to-[#7A0808]/10 border border-[#B98A45]/40 rounded-xl text-center shadow-inner flex flex-col items-center gap-2">
+          <button
+            onClick={handleExportClick}
+            className="w-full py-2.5 px-4 bg-[#7A0808] hover:bg-[#5C0606] text-white rounded-lg font-serif text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <Download className="w-4 h-4 text-[#F5C27A]" />
+            {isPaid ? "Download & Print Full PDF Report" : "Unlock Full Kundli PDF Export (₹999)"}
+          </button>
+          <p className="text-[11px] text-[#5C3A21]/80 font-medium">
+            {isPaid 
+              ? "✓ High-Resolution 16-Page Printable Report Unlocked" 
+              : "Includes printable 16-page PDF report + personal astrologer consultation"}
+          </p>
         </div>
       </div>
     </Page>,
@@ -767,8 +861,9 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose }: KundliBook
         <button onClick={toggleFullscreen} className="p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors hidden md:block" title="Fullscreen">
           {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
         </button>
-        <button onClick={() => window.print()} className="p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors hidden md:block" title="Download PDF">
+        <button onClick={handleExportClick} className="p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors hidden md:flex items-center gap-1.5" title={isPaid ? "Download PDF" : "Unlock Full PDF Export"}>
           <Download className="w-5 h-5" />
+          {!isPaid && <span className="text-[10px] font-bold uppercase tracking-wider text-[#F5C27A]">PDF Export</span>}
         </button>
       </div>
 

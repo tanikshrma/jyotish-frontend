@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PhoneInput } from "@/components/PhoneInput";
+import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
 import { formatDobForApi, formatFullLocationName } from "./CalculatorForm";
 import { DateInputField, TimeInputField } from "./FormDateInput";
@@ -61,6 +63,7 @@ export function KundliCalculator() {
   const locationRef = useRef<HTMLDivElement>(null);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
 
   useEffect(() => {
     if (location.state?.kundliData) {
@@ -119,8 +122,10 @@ export function KundliCalculator() {
   const validateForm = (dataToValidate = formData) => {
     const newErrors: { [key: string]: string } = {};
     if (!dataToValidate.name?.trim()) newErrors.name = "Name is required";
-    if (!dataToValidate.phone?.trim()) newErrors.phone = "Phone is required";
-    if (!dataToValidate.email?.trim()) newErrors.email = "Email is required";
+    const phoneError = validatePhone(dataToValidate.phone ?? "", countryIso);
+    if (phoneError) newErrors.phone = phoneError;
+    const emailError = validateEmail(dataToValidate.email ?? "");
+    if (emailError) newErrors.email = emailError;
     if (!dataToValidate.gender) newErrors.gender = "Gender is required";
     if (!date && !dataToValidate.dob) newErrors.dob = "Date of Birth is required";
     if (!dataToValidate.pob?.trim()) newErrors.pob = "Place of Birth is required";
@@ -129,8 +134,14 @@ export function KundliCalculator() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent | null, dataToSubmit = formData) => {
+  const handleSubmit = async (e: React.FormEvent | null, inputData = formData) => {
     e?.preventDefault?.();
+    
+    const effectiveTob = (inputData.tob && inputData.tob.trim()) || `${timeState.hour || '12'}:${timeState.minute || '00'}` || '12:00';
+    const dataToSubmit = {
+      ...inputData,
+      tob: effectiveTob
+    };
     
     if (!validateForm(dataToSubmit)) {
       return;
@@ -144,7 +155,7 @@ export function KundliCalculator() {
       firstName: dataToSubmit.name.split(' ')[0] || dataToSubmit.name,
       lastName: dataToSubmit.name.split(' ').slice(1).join(' ') || '',
       email: dataToSubmit.email,
-      phone: dataToSubmit.phone,
+      phone: toE164(dataToSubmit.phone, countryIso),
       gender: dataToSubmit.gender,
       dateOfBirth: dataToSubmit.dob,
       timeOfBirth: dataToSubmit.tob,
@@ -162,7 +173,7 @@ export function KundliCalculator() {
         first_name: dataToSubmit.name.split(' ')[0] || dataToSubmit.name,
         last_name: dataToSubmit.name.split(' ').slice(1).join(' ') || '',
         email: dataToSubmit.email,
-        phone: dataToSubmit.phone,
+        phone: toE164(dataToSubmit.phone, countryIso),
         gender: dataToSubmit.gender,
         date_of_birth: dataToSubmit.dob,
       },
@@ -234,33 +245,20 @@ export function KundliCalculator() {
     
     try {
       // 1. Get Coordinates
-      const geoData = await vedicAstroApi.geoSearch(formData.pob);
+      const geoData = await vedicAstroApi.geoSearch(dataToSubmit.pob || formData.pob);
       let lat = 28.6139, lon = 77.2090, tz = 5.5;
 
       if (geoData.response && geoData.response.length > 0) {
+        // /api/geocode returns numeric lat/lon and a numeric UTC offset in `tz`
+        // (`timezone` holds the IANA name and must not be used as the offset).
         const location = geoData.response[0];
-        if (location.lat !== undefined) lat = location.lat;
-        if (location.lon !== undefined) lon = location.lon;
-        if (location.latitude !== undefined) lat = location.latitude;
-        if (location.longitude !== undefined) lon = location.longitude;
-        
-        if (location.coordinates) {
-          if (typeof location.coordinates === 'string') {
-            lat = parseFloat(location.coordinates.split(',')[0]);
-            lon = parseFloat(location.coordinates.split(',')[1]);
-          } else if (Array.isArray(location.coordinates)) {
-            lat = parseFloat(location.coordinates[0]);
-            lon = parseFloat(location.coordinates[1]);
-          } else if (typeof location.coordinates === 'object') {
-            lat = parseFloat(location.coordinates.lat || location.coordinates.latitude || lat);
-            lon = parseFloat(location.coordinates.lon || location.coordinates.longitude || lon);
-          }
-        }
-        tz = location.tz || location.timezone || 5.5;
+        lat = Number(location.lat ?? location.latitude ?? lat);
+        lon = Number(location.lon ?? location.longitude ?? lon);
+        tz = Number(location.tz ?? 5.5);
       }
 
-      const formattedDob = formatDobForApi(formData.dob, date);
-      const params = { dob: formattedDob, tob: formData.tob, lat, lon, tz };
+      const formattedDob = formatDobForApi(dataToSubmit.dob || formData.dob, date);
+      const params = { dob: formattedDob, tob: effectiveTob, lat, lon, tz };
 
       // 2. Fetch all data in parallel
       const [panchang, planets, d1North, d1South, d9North, doshas, yogas, dasha, lucky, planetReport] = await Promise.all([
@@ -310,7 +308,7 @@ export function KundliCalculator() {
       setLoadingProgress(100);
       
       setTimeout(() => {
-        setGenerationStep('teaser');
+        setGenerationStep('book');
       }, 500);
 
     } catch (error: any) {
@@ -323,27 +321,123 @@ export function KundliCalculator() {
     }
   };
 
+  const handleUnlockPayment = async () => {
+    if (isPaid) {
+      window.print();
+      return;
+    }
+
+    setIsUnlocking(true);
+    try {
+      await loadRazorpayScript();
+      const order = await createOrder({
+        service: "complete-horoscope",
+        variant: "default",
+        notes: {
+          type: "Full Kundli PDF Export & Consultation",
+          name: kundliData?.user?.name || formData.name,
+          email: kundliData?.user?.email || formData.email,
+          phone: kundliData?.user?.phone || formData.phone,
+        }
+      });
+
+      if (!window.Razorpay) throw new Error("Razorpay payment gateway unavailable");
+
+      const checkout = new window.Razorpay({
+        key: order.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: "JyotishNow",
+        description: "Full Lifetime Kundli PDF Export & Astrologer Consultation",
+        order_id: order.order_id,
+        prefill: {
+          name: kundliData?.user?.name || formData.name,
+          email: kundliData?.user?.email || formData.email,
+          contact: kundliData?.user?.phone || formData.phone,
+        },
+        theme: { color: "#7A0808" },
+        handler: async (resp: any) => {
+          try {
+            const verificationResult = await verifyPayment({
+              ...resp,
+              customer: {
+                name: kundliData?.user?.name || formData.name || "Client",
+                email: kundliData?.user?.email || formData.email || "",
+                phone: kundliData?.user?.phone || formData.phone || "",
+              },
+              service: "Full Lifetime Kundli PDF Export",
+              amount: "₹999",
+            });
+
+            setIsPaid(true);
+
+            // Record paid export lead in ProspectIQ
+            submitProspectIQLead({
+              firstName: (kundliData?.user?.name || formData.name || "").split(' ')[0] || "Client",
+              lastName: (kundliData?.user?.name || formData.name || "").split(' ').slice(1).join(' ') || '',
+              email: kundliData?.user?.email || formData.email,
+              phone: toE164(kundliData?.user?.phone || formData.phone, countryIso),
+              gender: kundliData?.user?.gender || formData.gender,
+              dateOfBirth: kundliData?.user?.dob || formData.dob,
+              timeOfBirth: kundliData?.user?.tob || formData.tob,
+              placeOfBirth: kundliData?.user?.pob || formData.pob,
+              service: 'kundli',
+              amountPaid: "₹999",
+              tags: ['Paid: Full Kundli PDF Export', 'Kundli Export Customer', 'Paid Customer'],
+            });
+
+            const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
+            toast.success("Full Kundli PDF Export Unlocked!", {
+              description: "Payment verified. Preparing your high-resolution report download.",
+              icon: <Sparkles className="w-5 h-5 text-secondary" />,
+              action: waUrl ? {
+                label: "WhatsApp Receipt",
+                onClick: () => window.open(waUrl, "_blank"),
+              } : undefined,
+            });
+
+            setTimeout(() => {
+              window.print();
+            }, 600);
+          } catch (e: any) {
+            toast.error("Payment verification failed", { description: e.message });
+          } finally {
+            setIsUnlocking(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsUnlocking(false);
+          }
+        }
+      });
+
+      checkout.open();
+    } catch (e: any) {
+      setIsUnlocking(false);
+      toast.error("Unlock Error", { description: e.message });
+    }
+  };
+
   return (
     <>
       {generationStep === 'loading' && createPortal(
-        <div className="fixed inset-0 z-[99999] bg-black/5 backdrop-blur-[18px] flex flex-col items-center justify-center p-4 transition-all duration-500">
-          <div className="text-center max-w-3xl w-full flex flex-col items-center animate-in fade-in zoom-in duration-500">
-            <style>{`
-              @keyframes dots {
-                0% { content: ''; }
-                25% { content: '.'; }
-                50% { content: '..'; }
-                75% { content: '...'; }
-                100% { content: ''; }
-              }
-              .loading-dots::after {
-                content: '';
-                animation: dots 2s infinite;
-              }
-            `}</style>
-            <h2 className="text-3xl md:text-5xl font-serif text-white mb-4 font-medium drop-shadow-2xl" style={{ textShadow: "0 2px 15px rgba(0,0,0,0.5)" }}>
-              Generating your Personalized Kundli<span className="loading-dots inline-block w-8 text-left"></span>
+        <div className="fixed inset-0 z-[99999] bg-black/85 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 transition-all duration-500">
+          <div className="text-center max-w-lg w-full flex flex-col items-center animate-in fade-in zoom-in duration-500 bg-gradient-to-b from-[#7A0808] to-[#450303] border border-[#F5C27A]/40 p-8 sm:p-10 rounded-3xl shadow-2xl">
+            <div className="w-16 h-16 border-4 border-[#F5C27A]/20 border-t-[#F5C27A] rounded-full animate-spin mb-6" />
+            <h2 className="text-2xl sm:text-3xl font-serif text-[#F5C27A] mb-3 font-bold">
+              Generating Your Personalized Kundli
             </h2>
+            <p className="text-white/90 text-sm sm:text-base mb-6 font-light min-h-[24px]">
+              {loadingMessage || "Calculating Planetary Positions & Charts..."}
+            </p>
+            <div className="w-full bg-white/20 h-2.5 rounded-full overflow-hidden mb-2">
+              <div 
+                className="bg-gradient-to-r from-[#F5C27A] to-amber-300 h-full transition-all duration-300 rounded-full"
+                style={{ width: `${Math.max(loadingProgress, 15)}%` }}
+              />
+            </div>
+            <span className="text-xs text-[#F5C27A]/80 font-medium">Please wait while we consult the celestial ephemeris...</span>
           </div>
         </div>,
         document.body
@@ -351,10 +445,17 @@ export function KundliCalculator() {
 
       {(generationStep === 'cover' || generationStep === 'book') && kundliData && createPortal(
         <div 
-          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/5 backdrop-blur-[18px] overflow-hidden animate-in fade-in duration-700 print:static print:overflow-visible print:p-0 print:bg-transparent print:backdrop-blur-none"
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 backdrop-blur-md overflow-hidden animate-in fade-in duration-500 print:static print:overflow-visible print:p-0 print:bg-transparent print:backdrop-blur-none"
         >
-          <div className="relative w-full h-full flex flex-col items-center justify-center animate-in zoom-in-95 duration-700 print:max-w-none print:h-auto print:max-h-none print:shadow-none print:border-none print:rounded-none print:overflow-visible print:bg-transparent print:transform-none print:animate-none">
-            <KundliBook kundliData={kundliData} step={generationStep} onOpenBook={() => setGenerationStep('book')} onClose={() => { setGenerationStep('idle'); setKundliData(null); }} />
+          <div className="relative w-full h-full flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 print:max-w-none print:h-auto print:max-h-none print:shadow-none print:border-none print:rounded-none print:overflow-visible print:bg-transparent print:transform-none print:animate-none">
+            <KundliBook 
+              kundliData={kundliData} 
+              step={generationStep} 
+              onOpenBook={() => setGenerationStep('book')} 
+              onClose={() => { setGenerationStep('idle'); setKundliData(null); }} 
+              isPaid={isPaid}
+              onUnlockExport={handleUnlockPayment}
+            />
           </div>
         </div>,
         document.body
@@ -369,27 +470,34 @@ export function KundliCalculator() {
               <p className="text-foreground/70 text-lg">Enter the details below to generate your premium report.</p>
             </div>
             
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6" onSubmit={handleSubmit} noValidate>
               <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Full Name */}
                 <div className="space-y-2 relative group">
                   <Label htmlFor="name" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Full Name</Label>
                   <Input id="name" placeholder="Enter your full name" className={cn("h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg hover:border-primary/60 placeholder:text-muted-foreground/60", errors.name && "border-destructive")} value={formData.name} onChange={e => {setFormData({...formData, name: e.target.value}); setErrors({...errors, name: ''})}} />
-                  {errors.name && <p className="text-destructive text-xs absolute -bottom-5">{errors.name}</p>}
+                  {errors.name && <p className="text-destructive text-xs font-medium ml-1 mt-1">{errors.name}</p>}
                 </div>
                 
                 {/* Phone Number */}
                 <div className="space-y-2 relative group">
                   <Label htmlFor="phone" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Phone Number</Label>
-                  <Input id="phone" type="tel" placeholder="Enter your phone number" className={cn("h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg hover:border-primary/60 placeholder:text-muted-foreground/60", errors.phone && "border-destructive")} value={formData.phone} onChange={e => {setFormData({...formData, phone: e.target.value}); setErrors({...errors, phone: ''})}} />
-                  {errors.phone && <p className="text-destructive text-xs absolute -bottom-5">{errors.phone}</p>}
+                  <PhoneInput
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(v) => { setFormData({ ...formData, phone: v }); setErrors({ ...errors, phone: '' }); }}
+                    countryIso={countryIso}
+                    onCountryChange={setCountryIso}
+                    error={errors.phone}
+                    className="h-14 px-4 text-base sm:text-lg"
+                  />
                 </div>
 
                 {/* Email */}
                 <div className="space-y-2 relative group">
                   <Label htmlFor="email" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Email Address</Label>
                   <Input id="email" type="email" placeholder="Enter your email" className={cn("h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg hover:border-primary/60 placeholder:text-muted-foreground/60", errors.email && "border-destructive")} value={formData.email} onChange={e => {setFormData({...formData, email: e.target.value}); setErrors({...errors, email: ''})}} />
-                  {errors.email && <p className="text-destructive text-xs absolute -bottom-5">{errors.email}</p>}
+                  {errors.email && <p className="text-destructive text-xs font-medium ml-1 mt-1">{errors.email}</p>}
                 </div>
 
                 {/* Gender */}
@@ -405,7 +513,7 @@ export function KundliCalculator() {
                       <SelectItem value="other" className="text-foreground focus:bg-primary/5 focus:text-primary cursor-pointer">Other</SelectItem>
                     </SelectContent>
                   </Select>
-                  {errors.gender && <p className="text-destructive text-xs absolute -bottom-5">{errors.gender}</p>}
+                  {errors.gender && <p className="text-destructive text-xs font-medium ml-1 mt-1">{errors.gender}</p>}
                 </div>
 
                 {/* Date of Birth */}
@@ -422,7 +530,6 @@ export function KundliCalculator() {
                     onMonthChange={setCalendarMonth}
                     error={errors.dob}
                   />
-                  {errors.dob && <p className="text-destructive text-xs absolute -bottom-5">{errors.dob}</p>}
                 </div>
                 
                 {/* Time of Birth */}
@@ -436,7 +543,7 @@ export function KundliCalculator() {
                       setErrors(prev => ({ ...prev, tob: '' }));
                     }}
                   />
-                  {errors.tob && <p className="text-destructive text-xs absolute -bottom-5">{errors.tob}</p>}
+                  {errors.tob && <p className="text-destructive text-xs font-medium ml-1 mt-1">{errors.tob}</p>}
                 </div>
 
                 {/* Place of Birth */}
@@ -478,10 +585,15 @@ export function KundliCalculator() {
                               setShowLocationDropdown(false);
                             }}
                           >
-                            <p className="font-bold group-hover:text-primary">{loc.place_name || loc.name || loc.address}</p>
+                            <p className="font-bold group-hover:text-primary">
+                              {typeof loc.name === 'object' ? (loc.name?.name || loc.name?.place_name || '') : (loc.place_name || loc.name || loc.address || '')}
+                            </p>
                             {(loc.state || loc.country) && (
                               <p className="text-sm text-foreground/70 group-hover:text-primary/80">
-                                {[loc.state, loc.country].filter(Boolean).join(', ')}
+                                {[
+                                  typeof loc.state === 'object' ? loc.state?.name : loc.state,
+                                  typeof loc.country === 'object' ? loc.country?.name : loc.country
+                                ].filter(Boolean).join(', ')}
                               </p>
                             )}
                           </div>
@@ -489,7 +601,7 @@ export function KundliCalculator() {
                       })}
                     </div>
                   )}
-                  {errors.pob && <p className="text-destructive text-xs absolute -bottom-5">{errors.pob}</p>}
+                  {errors.pob && <p className="text-destructive text-xs font-medium ml-1 mt-1">{errors.pob}</p>}
                 </div>
               </div>
 

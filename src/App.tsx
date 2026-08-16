@@ -49,47 +49,6 @@ const ScrollToTop = () => {
   return null;
 };
 
-const ScrollReveal = () => {
-  const { pathname } = useLocation();
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("opacity-100", "translate-y-0");
-            entry.target.classList.remove("opacity-0", "translate-y-8");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
-    );
-
-    const selector = "section h1, section h2, section h3, section p, section .grid > div, section form, section img, section .bg-card, section .rounded-2xl, section .rounded-3xl";
-    const elements = Array.from(document.querySelectorAll(selector)).filter((el) => {
-      let parent = el.parentElement;
-      while (parent && parent.tagName !== 'SECTION') {
-        if (parent.matches(selector)) {
-          return false;
-        }
-        parent = parent.parentElement;
-      }
-      return true;
-    });
-
-    elements.forEach((el) => {
-      el.classList.add("transition-all", "duration-1000", "ease-out", "opacity-0", "translate-y-8");
-      // Add a slight delay to let the DOM settle
-      setTimeout(() => observer.observe(el), 100);
-    });
-
-    return () => observer.disconnect();
-  }, [pathname]);
-
-  return null;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -98,7 +57,6 @@ const App = () => (
       <WhatsAppButton />
       <BrowserRouter>
         <ScrollToTop />
-        <ScrollReveal />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/about-us" element={<AboutUs />} />

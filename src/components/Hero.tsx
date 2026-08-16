@@ -28,7 +28,7 @@ export function Hero() {
               <Button asChild size="lg" className="bg-white hover:bg-white/90 text-black text-lg px-8 h-14 shadow-[0_8px_20px_-6px_rgba(255,255,255,0.3)] transition-all duration-300 ease-out hover:-translate-y-1">
                 <a href="#calculators">Show My Future <ArrowRight className="ml-2 w-5 h-5" /></a>
               </Button>
-              <BookingModal>
+              <BookingModal defaultService="consultation-call">
                 <Button variant="outline" className="text-lg px-8 h-14 border-2 border-white/20 text-white hover:bg-white hover:text-black bg-black/20 backdrop-blur-sm transition-all duration-300 ease-out hover:-translate-y-1 shadow-sm">
                   Book a Consultation
                 </Button>

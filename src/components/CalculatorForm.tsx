@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { PhoneInput } from "@/components/PhoneInput";
+import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
 import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
@@ -45,15 +47,11 @@ export function formatDobForApi(rawDob: string, dateObj?: Date): string {
 
 export function formatFullLocationName(loc: any): string {
   if (!loc) return '';
-  const cityName = loc.place_name || loc.name || loc.address || '';
-  const parts = [cityName];
-  if (loc.state && !cityName.toLowerCase().includes(loc.state.toLowerCase())) {
-    parts.push(loc.state);
-  }
-  if (loc.country && !cityName.toLowerCase().includes(loc.country.toLowerCase())) {
-    parts.push(loc.country);
-  }
-  return parts.filter(Boolean).join(', ');
+  const cityName = typeof loc.name === 'object' ? (loc.name?.name || loc.name?.place_name || '') : (loc.place_name || loc.name || loc.address || '');
+  const state = typeof loc.state === 'object' ? (loc.state?.name || '') : (loc.state || '');
+  const country = typeof loc.country === 'object' ? (loc.country?.name || '') : (loc.country || '');
+  const parts = [cityName, state, country].filter(Boolean);
+  return parts.join(', ');
 }
 
 interface CalculatorFormProps {
@@ -103,6 +101,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
   
   const locationRef = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
   const reportRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
   const pdfRef2 = useRef<HTMLDivElement>(null);
@@ -264,8 +263,10 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.phone.trim()) newErrors.phone = "Phone is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
+    const phoneError = validatePhone(formData.phone, countryIso);
+    if (phoneError) newErrors.phone = phoneError;
+    const emailError = validateEmail(formData.email);
+    if (emailError) newErrors.email = emailError;
     if (!date) newErrors.dob = "Date of Birth is required";
     
     if (isCoupleForm) {
@@ -291,9 +292,9 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
       let lat = 28.6139, lon = 77.2090, tz = 5.5;
       if (geoData.response && geoData.response.length > 0) {
         const location = geoData.response[0];
-        lat = parseFloat(location.lat || location.latitude || lat);
-        lon = parseFloat(location.lon || location.longitude || lon);
-        tz = parseFloat(location.tz || location.timezone || 5.5);
+        lat = Number(location.lat || location.latitude || lat);
+        lon = Number(location.lon || location.longitude || lon);
+        tz = Number(location.tz || location.timezone || 5.5);
       }
 
       const formattedDob = date ? format(date, 'dd/MM/yyyy') : '';
@@ -306,9 +307,9 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
         let lat2 = 28.6139, lon2 = 77.2090, tz2 = 5.5;
         if (geoData2.response && geoData2.response.length > 0) {
           const location2 = geoData2.response[0];
-          lat2 = parseFloat(location2.lat || location2.latitude || lat2);
-          lon2 = parseFloat(location2.lon || location2.longitude || lon2);
-          tz2 = parseFloat(location2.tz || location2.timezone || 5.5);
+          lat2 = Number(location2.lat || location2.latitude || lat2);
+          lon2 = Number(location2.lon || location2.longitude || lon2);
+          tz2 = Number(location2.tz || location2.timezone || 5.5);
         }
         const formattedDob2 = date2 ? format(date2, 'dd/MM/yyyy') : '';
         const params2 = { dob: formattedDob2, tob: `${timeState2.hour}:${timeState2.minute}`, lat: lat2, lon: lon2, tz: tz2 };
@@ -351,13 +352,18 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
         firstName: formData.name.split(' ')[0] || formData.name,
         lastName: formData.name.split(' ').slice(1).join(' ') || '',
         email: formData.email,
-        phone: formData.phone,
+        phone: toE164(formData.phone, countryIso),
         gender: formData.gender,
         dateOfBirth: formattedDob,
         timeOfBirth: `${timeState.hour}:${timeState.minute}`,
         placeOfBirth: formData.pob,
         service: type,
         tags: [`Calculator: ${title}`, `Service: ${type}`],
+        ...(isCoupleForm ? {
+          partnerDateOfBirth: date2 ? format(date2, 'yyyy-MM-dd') : '',
+          partnerTimeOfBirth: `${timeState2.hour}:${timeState2.minute}`,
+          partnerPlaceOfBirth: formData2.pob,
+        } : {})
       });
 
       // Tracking
@@ -369,7 +375,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
           first_name: formData.name.split(' ')[0] || formData.name,
           last_name: formData.name.split(' ').slice(1).join(' ') || '',
           email: formData.email,
-          phone: formData.phone,
+          phone: toE164(formData.phone, countryIso),
           gender: formData.gender,
           date_of_birth: formattedDob,
         },
@@ -880,7 +886,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
           <div className="space-y-2 relative group md:col-span-2">
             <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-primary transition-colors">Full Name</Label>
             <Input placeholder="Enter full name" className={cn("h-14 px-4 rounded-xl border border-border/60 bg-white text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all text-base sm:text-lg hover:border-primary/60 placeholder:text-muted-foreground/60", errors[nameKey] && "border-destructive")} value={currentData.name} onChange={e => {setCurrData({ name: e.target.value }); setErrors({...errors, [nameKey]: ''})}} />
-            {errors[nameKey] && <p className="text-destructive text-xs absolute -bottom-5">{errors[nameKey]}</p>}
+            {errors[nameKey] && <p className="text-destructive text-xs font-medium ml-1 mt-1">{errors[nameKey]}</p>}
           </div>
 
           <div className="space-y-2 relative group flex flex-col">
@@ -896,7 +902,6 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
               onMonthChange={setCurrMonth}
               error={errors[dobKey]}
             />
-            {errors[dobKey] && <p className="text-destructive text-xs absolute -bottom-5">{errors[dobKey]}</p>}
           </div>
 
           <div className="space-y-2 relative group flex flex-col">
@@ -970,17 +975,23 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
           <p className="text-foreground/70 text-lg">Enter the details below to generate your report.</p>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8" noValidate>
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 pb-6 border-b border-border/50">
             <div className="space-y-2 relative group">
               <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Phone Number</Label>
-              <Input type="tel" placeholder="Enter phone number" className={cn("h-14 px-4 rounded-xl border border-border/50 bg-background/50 text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50", errors.phone && "border-destructive")} value={formData.phone} onChange={e => {setFormData({...formData, phone: e.target.value}); setErrors({...errors, phone: ''})}} />
-              {errors.phone && <p className="text-destructive text-xs absolute -bottom-5">{errors.phone}</p>}
+              <PhoneInput
+                value={formData.phone}
+                onChange={(v) => { setFormData({ ...formData, phone: v }); setErrors({ ...errors, phone: '' }); }}
+                countryIso={countryIso}
+                onCountryChange={setCountryIso}
+                error={errors.phone}
+                className="h-14 px-4 text-lg"
+              />
             </div>
             <div className="space-y-2 relative group">
               <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Email Address</Label>
               <Input type="email" placeholder="Enter email" className={cn("h-14 px-4 rounded-xl border border-border/50 bg-background/50 text-foreground shadow-sm focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary transition-all text-lg hover:border-secondary/50", errors.email && "border-destructive")} value={formData.email} onChange={e => {setFormData({...formData, email: e.target.value}); setErrors({...errors, email: ''})}} />
-              {errors.email && <p className="text-destructive text-xs absolute -bottom-5">{errors.email}</p>}
+              {errors.email && <p className="text-destructive text-xs font-medium ml-1 mt-1">{errors.email}</p>}
             </div>
           </div>
 

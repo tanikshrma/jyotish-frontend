@@ -84,7 +84,7 @@ const VastuConsultancy = () => {
                   transition={{ duration: 0.6, delay: 0.3 }}
                   className="flex flex-col sm:flex-row gap-4 sm:gap-5 mb-8 w-full sm:w-auto"
                 >
-                  <BookingModal defaultService="Vastu Consultancy">
+                  <BookingModal defaultService="vastu-consultancy">
                     <Button size="lg" className="bg-white hover:bg-white/90 text-black text-lg px-8 h-14 shadow-[0_8px_20px_-6px_rgba(255,255,255,0.3)] transition-all duration-300 ease-out hover:-translate-y-1 w-full sm:w-auto">
                       Book Vastu Consultation
                     </Button>
@@ -129,7 +129,7 @@ const VastuConsultancy = () => {
                   </p>
                   
                   <div className="pt-6">
-                    <BookingModal defaultService="Vastu Consultancy">
+                    <BookingModal defaultService="vastu-consultancy">
                       <Button size="lg" className="bg-[#1a1a1a] hover:bg-primary text-white text-lg px-8 h-14 shadow-[0_8px_20px_-6px_rgba(26,26,26,0.4)] transition-all duration-300 ease-out hover:-translate-y-1">
                         Get Your Space Audited
                       </Button>
@@ -181,7 +181,7 @@ const VastuConsultancy = () => {
                     </div>
                     <h3 className="text-xl font-bold mb-4 text-[#1a1a1a]">{service.title}</h3>
                     <p className="text-black/70 leading-relaxed mb-6">{service.desc}</p>
-                    <BookingModal defaultService={service.title}>
+                    <BookingModal defaultService="vastu-consultancy">
                       <button className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all">
                         Know More <ArrowRight className="w-4 h-4" />
                       </button>

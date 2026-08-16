@@ -213,12 +213,12 @@ const GetConsultation = () => {
                 transition={{ duration: 0.6, delay: 0.3 }}
                 className="flex flex-col sm:flex-row gap-4 sm:gap-5 w-full sm:w-auto"
               >
-                <BookingModal>
+                <BookingModal defaultService="consultation-call">
                   <Button size="lg" className="bg-white hover:bg-white/90 text-black text-lg px-8 h-14 shadow-[0_8px_20px_-6px_rgba(255,255,255,0.3)] transition-all duration-300 ease-out hover:-translate-y-1 w-full sm:w-auto">
                     Book Call Now
                   </Button>
                 </BookingModal>
-                <BookingModal>
+                <BookingModal defaultService="face-to-face">
                   <Button size="lg" variant="outline" className="text-lg px-8 h-14 border-2 border-white/20 text-white hover:bg-white hover:text-black bg-black/20 backdrop-blur-sm transition-all duration-300 ease-out hover:-translate-y-1 shadow-sm w-full sm:w-auto">
                     Face-to-Face Consultation
                   </Button>
@@ -365,7 +365,7 @@ const GetConsultation = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between mt-auto pt-6 border-t border-primary/20 gap-4">
                     <div className="text-lg font-bold text-foreground w-full sm:w-auto text-center sm:text-left">Price: {formatINR(getPrice1())}</div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <BookingModal defaultService="consultation-call">
+                      <BookingModal defaultService="consultation-call" consultationVariant={variant1}>
                         <Button className="w-full sm:w-auto h-10 px-8 rounded-md text-sm bg-primary hover:bg-primary/90 text-white font-medium">
                           Pay {formatINR(getPrice1())}
                         </Button>
@@ -435,7 +435,7 @@ const GetConsultation = () => {
                   <div className="flex flex-col sm:flex-row items-center justify-between mt-auto pt-6 border-t border-primary/20 gap-4">
                     <div className="text-lg font-bold text-foreground w-full sm:w-auto text-center sm:text-left">Price: {formatINR(getPrice2())}</div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <BookingModal defaultService="couple-consultation">
+                      <BookingModal defaultService="couple-consultation" consultationVariant={variant2}>
                         <Button className="w-full sm:w-auto h-10 px-8 rounded-md text-sm bg-primary hover:bg-primary/90 text-white font-medium">
                           Pay {formatINR(getPrice2())}
                         </Button>

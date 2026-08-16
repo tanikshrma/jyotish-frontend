@@ -11,6 +11,7 @@ interface FinalCTAProps {
   primaryBtnLink?: string;
   secondaryBtnText?: string;
   secondaryBtnLink?: string;
+  defaultService?: string;
 }
 
 export const FinalCTA = React.forwardRef<HTMLElement, FinalCTAProps>(({
@@ -19,7 +20,8 @@ export const FinalCTA = React.forwardRef<HTMLElement, FinalCTAProps>(({
   primaryBtnText,
   primaryBtnLink = "/get-consultation",
   secondaryBtnText,
-  secondaryBtnLink = "/contact-us"
+  secondaryBtnLink = "/contact-us",
+  defaultService = "consultation-call"
 }: FinalCTAProps, ref) => {
   return (
     <section ref={ref} className="relative overflow-hidden bg-primary text-primary-foreground pt-32 pb-14">
@@ -40,7 +42,7 @@ export const FinalCTA = React.forwardRef<HTMLElement, FinalCTAProps>(({
           
           <div className="pt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
             {primaryBtnLink === "/get-consultation" ? (
-              <BookingModal>
+              <BookingModal defaultService={defaultService}>
                 <Button className="h-14 px-8 text-base sm:text-lg font-semibold rounded-xl bg-white hover:bg-white/90 text-primary shadow-lg transition-all duration-300 hover:scale-105">
                   {primaryBtnText} <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>

@@ -60,17 +60,27 @@ export function parseTypedDate(inputStr: string): Date | undefined {
 }
 
 export function formatTypedDateInput(raw: string): string {
-  const cleaned = raw.replace(/[^\d\/\-]/g, '');
-  const digitsOnly = cleaned.replace(/\D/g, '');
-  
-  if (!cleaned.includes('/') && !cleaned.includes('-') && digitsOnly.length > 2) {
-    let formatted = digitsOnly.substring(0, 2);
-    if (digitsOnly.length > 2) formatted += '/' + digitsOnly.substring(2, 4);
-    if (digitsOnly.length > 4) formatted += '/' + digitsOnly.substring(4, 8);
-    return formatted;
+  if (!raw) return '';
+
+  // Extract only digits up to 8 (DDMMYYYY)
+  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  if (digits.length === 0) return '';
+
+  // Preserve explicit trailing slash when user explicitly types it after 2 or 4 digits
+  if (raw.endsWith('/') && digits.length === 2) {
+    return `${digits}/`;
   }
-  
-  return cleaned;
+  if (raw.endsWith('/') && digits.length === 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/`;
+  }
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
 interface DateInputFieldProps {
@@ -223,7 +233,7 @@ export function DateInputField({
         </PopoverContent>
       </Popover>
       </div>
-      {error && <span className="text-xs text-red-600 font-medium ml-1 block">{error}</span>}
+      {error && <span className="text-xs text-destructive font-medium ml-1 mt-1 block">{error}</span>}
     </div>
   );
 }

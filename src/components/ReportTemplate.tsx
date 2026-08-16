@@ -30,6 +30,7 @@ interface ReportTemplateProps {
   faqs: { q: string; a: string }[];
   calculatorForm?: React.ReactNode;
   children?: React.ReactNode;
+  defaultService?: string;
 }
 
 export function ReportTemplate({
@@ -45,7 +46,8 @@ export function ReportTemplate({
   hideHowItWorks,
   faqs,
   calculatorForm,
-  children
+  children,
+  defaultService
 }: ReportTemplateProps) {
   return (
     <div className="relative min-h-screen bg-background">
@@ -106,7 +108,7 @@ export function ReportTemplate({
                       </Button>
                     ) : (
                       <>
-                        <BookingModal>
+                        <BookingModal defaultService={defaultService || `${title} ${highlightedTitle}`}>
                           <Button size="lg" className="bg-white hover:bg-white/90 text-black text-lg px-8 h-14 shadow-[0_8px_20px_-6px_rgba(255,255,255,0.3)] transition-all duration-300 ease-out hover:-translate-y-1 w-full sm:w-auto">
                             Get Your Report <ArrowRight className="ml-2 w-5 h-5" />
                           </Button>
@@ -171,7 +173,7 @@ export function ReportTemplate({
                       </Button>
                     ) : (
                       <>
-                        <BookingModal>
+                        <BookingModal defaultService={defaultService || `${title} ${highlightedTitle}`}>
                           <Button size="lg" className="bg-white hover:bg-white/90 text-black text-lg px-8 h-14 shadow-[0_8px_20px_-6px_rgba(255,255,255,0.3)] transition-all duration-300 ease-out hover:-translate-y-1 w-full sm:w-auto">
                             Get Your Report <ArrowRight className="ml-2 w-5 h-5" />
                           </Button>

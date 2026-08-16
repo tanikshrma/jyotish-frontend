@@ -14,6 +14,8 @@ const ROUTES: Record<string, string> = {
   "/api/create-order": "/api/create-order.ts",
   "/api/verify-payment": "/api/verify-payment.ts",
   "/api/prospectiq": "/api/prospectiq.ts",
+  "/api/astro": "/api/astro.ts",
+  "/api/geocode": "/api/geocode.ts",
 };
 
 const readBody = (req: Connect.IncomingMessage): Promise<unknown> =>
@@ -65,6 +67,8 @@ export function devApiPlugin(): Plugin {
 
         try {
           const body = req.method === "POST" ? await readBody(req) : {};
+          const url2 = new URL(req.url ?? "", "http://localhost");
+          const query = Object.fromEntries(url2.searchParams.entries());
           const mod = await server.ssrLoadModule(modulePath);
           const handler = mod.default as (
             req: unknown,
@@ -72,7 +76,7 @@ export function devApiPlugin(): Plugin {
           ) => Promise<void>;
 
           await handler(
-            { method: req.method, body, headers: req.headers, query: {} },
+            { method: req.method, body, headers: req.headers, query },
             wrapResponse(res),
           );
         } catch (error) {
