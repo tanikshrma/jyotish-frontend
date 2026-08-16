@@ -510,6 +510,28 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
       </div>
     </Page>,
     <Page number={1} key="p1">
+      <SectionHeader title="Table of Contents" subtitle="Horoscope Index" />
+      <div className="flex-1 px-8 mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar pb-4">
+        {[
+          { page: 2, title: "Birth Details" },
+          { page: 3, title: "Kundli (Lagna Chart)" },
+          { page: 4, title: "Navamsa Chart" },
+          { page: 5, title: "Planetary Positions" },
+          { page: 6, title: "Summary Dashboard" },
+          { page: 7, title: "Predictions" },
+          { page: 8, title: "Dosha Analysis" },
+          { page: 9, title: "Yogas" },
+          { page: 10, title: "Mahadasha" },
+          { page: 11, title: "Conclusion" }
+        ].map((item, i) => (
+          <div key={i} className="flex items-center justify-between border-b border-[#B98A45]/30 pb-1.5">
+            <span className="font-serif text-lg text-[#5C3A21]">{item.title}</span>
+            <span className="font-bold text-base text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>{item.page}</span>
+          </div>
+        ))}
+      </div>
+    </Page>,
+    <Page number={2} key="p2">
       <SectionHeader title={kundliData.user.name ? `${kundliData.user.name}'s Birth Details` : "Birth Details"} subtitle="Vedic Horoscope Profile" />
       <div className="mt-2 flex-1 flex flex-col justify-between overflow-y-auto custom-scrollbar pb-4 px-2">
         <div className="flex flex-row justify-between w-full max-w-[500px] mx-auto gap-6">
@@ -566,7 +588,7 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         </div>
       </div>
     </Page>,
-    <Page number={2} key="p2">
+    <Page number={3} key="p3">
       <SectionHeader title="Kundli (Lagna Chart)" subtitle="D1 Main Birth Chart" />
       <div className="flex-1 flex flex-col items-center justify-center relative mt-1 w-full max-w-[460px] mx-auto pb-4">
         <div className="w-full aspect-square relative z-10 flex flex-col items-center justify-center p-3 border-2 border-[#B98A45]/50 rounded-2xl bg-[#F8F1E4]/90 shadow-lg">
@@ -574,29 +596,52 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         </div>
       </div>
     </Page>,
-    <Page number={3} key="p3">
-      <SectionHeader title="Table of Contents" subtitle="Horoscope Index" />
-      <div className="flex-1 px-8 mt-4 flex flex-col gap-3 overflow-y-auto custom-scrollbar pb-4">
-        {[
-          { page: 1, title: "Birth Details" },
-          { page: 2, title: "Kundli (Lagna Chart)" },
-          { page: 4, title: "Summary Dashboard" },
-          { page: 5, title: "Navamsa Chart" },
-          { page: 6, title: "Planetary Positions" },
-          { page: 7, title: "Predictions" },
-          { page: 8, title: "Dosha Analysis" },
-          { page: 9, title: "Yogas" },
-          { page: 10, title: "Mahadasha" },
-          { page: 11, title: "Conclusion" }
-        ].map((item, i) => (
-          <div key={i} className="flex items-center justify-between border-b border-[#B98A45]/30 pb-1.5">
-            <span className="font-serif text-lg text-[#5C3A21]">{item.title}</span>
-            <span className="font-bold text-base text-[#7A0808]" style={{ fontFamily: "'Cinzel', serif" }}>{item.page}</span>
-          </div>
-        ))}
+    <Page number={4} key="p4">
+      <SectionHeader title="Navamsa Chart" subtitle="D9 Destiny & Marriage Chart" />
+      <div className="flex-1 flex flex-col items-center justify-center relative mt-1 w-full max-w-[460px] mx-auto pb-4">
+        <div className="w-full aspect-square relative z-10 flex flex-col items-center justify-center p-3 border-2 border-[#B98A45]/50 rounded-2xl bg-[#F8F1E4]/90 shadow-lg">
+          <div className="w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-h-full [&>svg]:overflow-visible" dangerouslySetInnerHTML={{ __html: formatChartSvg(kundliData.charts?.d9North, 'd9') }} />
+        </div>
       </div>
     </Page>,
-    <Page number={4} key="p4">
+    <Page number={5} key="p5">
+      <SectionHeader title="Planetary Positions" subtitle="Graha Sthiti & Degrees" />
+      <div className="flex-1 mt-2 px-4 overflow-y-auto custom-scrollbar pb-4">
+        <table className="w-full text-left border-collapse bg-[#F8F1E4] shadow-sm relative z-10 border border-[#B98A45]/40 rounded-lg overflow-hidden">
+          <thead>
+            <tr className="border-b-2 border-[#B98A45]/50 bg-[#7A0808]/10">
+              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>Planet</th>
+              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>Sign</th>
+              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base text-center border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>Degree</th>
+              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base text-center" style={{ fontFamily: "'Cinzel', serif" }}>House</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(pl.length > 0 ? pl.slice(0, 9) : [
+              { name: "Ascendant", sign: "Cancer", house: 1, normDegree: 25.4 },
+              { name: "Sun", sign: "Cancer", house: 4, normDegree: 14.2 },
+              { name: "Moon", sign: "Aquarius", house: 11, normDegree: 8.7 },
+              { name: "Mars", sign: "Aries", house: 10, normDegree: 19.3 },
+              { name: "Mercury", sign: "Gemini", house: 4, normDegree: 3.8 },
+              { name: "Jupiter", sign: "Pisces", house: 5, normDegree: 22.1 },
+              { name: "Venus", sign: "Taurus", house: 3, normDegree: 12.5 },
+              { name: "Saturn", sign: "Aquarius", house: 8, normDegree: 27.9 },
+              { name: "Rahu", sign: "Taurus", house: 2, normDegree: 16.4 }
+            ]).map((planet: any, i: number) => (
+              <tr key={i} className={`border-b border-[#B98A45]/20 ${i % 2 === 0 ? 'bg-[#F8F1E4]' : 'bg-[#5C3A21]/5'}`}>
+                <td className="p-3 font-bold text-[#7A0808] text-sm border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>
+                  {getPlanetFullName(renderSafeString(planet.name || planet.planet, "Planet"))}
+                </td>
+                <td className="p-3 font-medium text-[#5C3A21] text-sm border-r border-[#B98A45]/30">{renderSafeString(planet.zodiac || planet.sign, "-")}</td>
+                <td className="p-3 text-center font-bold text-[#7A0808] text-sm border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>{formatPlanetDegree(planet)}</td>
+                <td className="p-3 text-center font-bold text-[#7A0808] text-base" style={{ fontFamily: "'Cinzel', serif" }}>{renderSafeString(planet.house, "-")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Page>,
+    <Page number={6} key="p6">
       <SectionHeader title="Summary Dashboard" subtitle="Astrological Highlights" />
       <div className="flex-1 grid grid-cols-2 gap-3.5 px-4 mt-2">
         <div className="p-4 border-2 border-[#B98A45]/40 bg-[#F8F1E4]/90 rounded-xl text-center flex flex-col items-center justify-center shadow-sm">
@@ -646,51 +691,6 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
             </div>
           </div>
         </div>
-      </div>
-    </Page>,
-    <Page number={5} key="p5">
-      <SectionHeader title="Navamsa Chart" subtitle="D9 Destiny & Marriage Chart" />
-      <div className="flex-1 flex flex-col items-center justify-center relative mt-1 w-full max-w-[460px] mx-auto pb-4">
-        <div className="w-full aspect-square relative z-10 flex flex-col items-center justify-center p-3 border-2 border-[#B98A45]/50 rounded-2xl bg-[#F8F1E4]/90 shadow-lg">
-          <div className="w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-h-full [&>svg]:overflow-visible" dangerouslySetInnerHTML={{ __html: formatChartSvg(kundliData.charts?.d9North, 'd9') }} />
-        </div>
-      </div>
-    </Page>,
-    <Page number={6} key="p6">
-      <SectionHeader title="Planetary Positions" subtitle="Graha Sthiti & Degrees" />
-      <div className="flex-1 mt-2 px-4 overflow-y-auto custom-scrollbar pb-4">
-        <table className="w-full text-left border-collapse bg-[#F8F1E4] shadow-sm relative z-10 border border-[#B98A45]/40 rounded-lg overflow-hidden">
-          <thead>
-            <tr className="border-b-2 border-[#B98A45]/50 bg-[#7A0808]/10">
-              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>Planet</th>
-              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>Sign</th>
-              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base text-center border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>Degree</th>
-              <th className="p-3 font-bold text-[#7A0808] text-sm sm:text-base text-center" style={{ fontFamily: "'Cinzel', serif" }}>House</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(pl.length > 0 ? pl.slice(0, 9) : [
-              { name: "Ascendant", sign: "Cancer", house: 1, normDegree: 25.4 },
-              { name: "Sun", sign: "Cancer", house: 4, normDegree: 14.2 },
-              { name: "Moon", sign: "Aquarius", house: 11, normDegree: 8.7 },
-              { name: "Mars", sign: "Aries", house: 10, normDegree: 19.3 },
-              { name: "Mercury", sign: "Gemini", house: 4, normDegree: 3.8 },
-              { name: "Jupiter", sign: "Pisces", house: 5, normDegree: 22.1 },
-              { name: "Venus", sign: "Taurus", house: 3, normDegree: 12.5 },
-              { name: "Saturn", sign: "Aquarius", house: 8, normDegree: 27.9 },
-              { name: "Rahu", sign: "Taurus", house: 2, normDegree: 16.4 }
-            ]).map((planet: any, i: number) => (
-              <tr key={i} className={`border-b border-[#B98A45]/20 ${i % 2 === 0 ? 'bg-[#F8F1E4]' : 'bg-[#5C3A21]/5'}`}>
-                <td className="p-3 font-bold text-[#7A0808] text-sm border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>
-                  {getPlanetFullName(renderSafeString(planet.name || planet.planet, "Planet"))}
-                </td>
-                <td className="p-3 font-medium text-[#5C3A21] text-sm border-r border-[#B98A45]/30">{renderSafeString(planet.zodiac || planet.sign, "-")}</td>
-                <td className="p-3 text-center font-bold text-[#7A0808] text-sm border-r border-[#B98A45]/30" style={{ fontFamily: "'Cinzel', serif" }}>{formatPlanetDegree(planet)}</td>
-                <td className="p-3 text-center font-bold text-[#7A0808] text-base" style={{ fontFamily: "'Cinzel', serif" }}>{renderSafeString(planet.house, "-")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </Page>,
     <Page number={7} key="p7">
