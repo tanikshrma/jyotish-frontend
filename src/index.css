@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 0 0% 9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+
+    --primary: 0 88% 25%; /* #7A0808 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 35 86% 72%; /* #F5C27A */
+    --secondary-foreground: 0 0% 9%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 21 95% 53%; /* #f95a15 */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 87% 27%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 258 29% 10%;
+    --foreground: 21 50% 96%;
+
+    --card: 258 29% 15%;
+    --card-foreground: 21 50% 96%;
+
+    --popover: 258 29% 15%;
+    --popover-foreground: 21 50% 96%;
+
+    --primary: 18 95% 53%; /* #f95a14 */
+    --primary-foreground: 258 29% 10%;
+
+    --secondary: 258 29% 27%; /* #3d315a */
+    --secondary-foreground: 21 50% 96%;
+
+    --muted: 258 29% 20%;
+    --muted-foreground: 258 15% 70%;
+
+    --accent: 18 95% 53%; /* #f95a14 */
+    --accent-foreground: 258 29% 10%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 258 29% 25%;
+    --input: 258 29% 25%;
+    --ring: 18 95% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased text-[15px] md:text-base leading-relaxed;
+  }
+  
+  input, textarea, select, button {
+    @apply font-sans;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-primary;
+  }
+
+  h1 { @apply text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight; }
+  h2 { @apply text-3xl md:text-4xl lg:text-5xl font-semibold leading-tight tracking-tight; }
+  h3 { @apply text-2xl md:text-3xl font-semibold leading-snug tracking-tight; }
+  h4 { @apply text-xl md:text-2xl font-semibold leading-snug; }
+  h5 { @apply text-lg md:text-xl font-medium leading-snug; }
+  h6 { @apply text-base md:text-lg font-medium leading-snug; }
+
+  p { @apply leading-relaxed; }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(245, 194, 122, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(122, 8, 8, 0.5);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(122, 8, 8, 0.8);
+  }
+
+  /* Autofill Background Fix */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+    -webkit-text-fill-color: #111827 !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-report, #printable-report * {
+    visibility: visible;
+  }
+  #printable-report {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  /* Target specific modal wrappers to remove constraints */
+  .fixed.inset-0.z-50, .max-h-\[95vh\] {
+    position: static !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    transform: none !important;
+  }
+  .flip-book, .flip-book * {
+    display: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  header, footer {
+    display: none !important;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+}
+
+body.kundli-active header,
+body.kundli-active footer,
+body.kundli-active .whatsapp-button {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease;
+}
