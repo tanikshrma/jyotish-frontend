@@ -19,7 +19,9 @@ import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
-import { deliverKundliPdf, KundliPdfError } from "@/lib/kundliPdf";
+import { deliverKundliPdf, openInNewTab, KundliPdfError, type DeliveredPdf } from "@/lib/kundliPdf";
+import { KundliPdfOptions } from "./KundliPdfOptions";
+import { getPriceInRupees, formatINR, type KundliPdfTier } from "../../shared/pricing";
 import { formatDobForApi, formatFullLocationName } from "./CalculatorForm";
 import { DateInputField, TimeInputField } from "./FormDateInput";
 import { generateNorthIndianChartSvg } from "./KundliBook";
@@ -31,6 +33,12 @@ export function KundliCalculator() {
   const [generationStep, setGenerationStep] = useState<'idle' | 'loading' | 'teaser' | 'cover' | 'book'>('idle');
   const [isPaid, setIsPaid] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  // Which PDF tier is currently being purchased, and the delivered report links.
+  const [buyingVariant, setBuyingVariant] = useState<string | null>(null);
+  const [deliveredPdfs, setDeliveredPdfs] = useState<DeliveredPdf[]>([]);
+  const [showPdfOptions, setShowPdfOptions] = useState(false);
+  // The tier name whose PDF is being generated right now (drives the loader).
+  const [deliveringTier, setDeliveringTier] = useState<string | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [kundliData, setKundliData] = useState<any>(location.state?.kundliData || null);
@@ -340,26 +348,48 @@ export function KundliCalculator() {
     }
   };
 
-  const handleUnlockPayment = async () => {
-    if (isPaid) {
-      window.print();
+  /**
+   * The single "Download PDF" button used across the book + toolbar: if the
+   * customer already bought, re-open their delivered PDF(s); otherwise open the
+   * report-options chooser (the five priced tiers) — never a direct ₹299 charge.
+   */
+  const handlePdfButton = () => {
+    if (isPaid && deliveredPdfs.length) {
+      deliveredPdfs.forEach((p, i) =>
+        setTimeout(() => window.open(p.url, "_blank", "noopener"), i * 300),
+      );
       return;
     }
+    setShowPdfOptions(true);
+  };
 
+  /**
+   * Buy a specific PDF report tier: create the priced order, run Razorpay, then
+   * (on success) generate + download + open + EMAIL exactly the reports that
+   * tier includes. This is the unified path — every purchase delivers a PDF.
+   */
+  const purchaseTier = async (tier: KundliPdfTier) => {
+    if (isUnlocking || buyingVariant) return;
+    const name = kundliData?.user?.name || formData.name;
+    const email = kundliData?.user?.email || formData.email;
+    const phone = kundliData?.user?.phone || formData.phone;
+    if (!email) {
+      toast.error("We need your email", {
+        description: "Add your email address so we can send you the PDF report.",
+      });
+      return;
+    }
+    const priceLabel = formatINR(getPriceInRupees("kundli-pdf", tier.variant) ?? 0);
+
+    setBuyingVariant(tier.variant);
     setIsUnlocking(true);
     try {
       await loadRazorpayScript();
       const order = await createOrder({
         service: "kundli-pdf",
-        variant: "default",
-        notes: {
-          type: "Full Kundli PDF Report Download",
-          name: kundliData?.user?.name || formData.name,
-          email: kundliData?.user?.email || formData.email,
-          phone: kundliData?.user?.phone || formData.phone,
-        }
+        variant: tier.variant,
+        notes: { type: `Kundli PDF: ${tier.name}`, name, email, phone },
       });
-
       if (!window.Razorpay) throw new Error("Razorpay payment gateway unavailable");
 
       const checkout = new window.Razorpay({
@@ -367,104 +397,102 @@ export function KundliCalculator() {
         amount: order.amount,
         currency: order.currency,
         name: "JyotishNow",
-        description: "Full Lifetime Kundli PDF Report Download",
+        description: `${tier.name} — Kundli PDF Report`,
         order_id: order.order_id,
-        prefill: {
-          name: kundliData?.user?.name || formData.name,
-          email: kundliData?.user?.email || formData.email,
-          contact: kundliData?.user?.phone || formData.phone,
-        },
+        prefill: { name, email, contact: phone },
         theme: { color: "#7A0808" },
         handler: async (resp: any) => {
           try {
-            const verificationResult = await verifyPayment({
+            const verification = await verifyPayment({
               ...resp,
-              customer: {
-                name: kundliData?.user?.name || formData.name || "Client",
-                email: kundliData?.user?.email || formData.email || "",
-                phone: kundliData?.user?.phone || formData.phone || "",
-              },
-              service: "Full Lifetime Kundli PDF Export",
-              amount: "₹299",
+              customer: { name: name || "Client", email: email || "", phone: phone || "" },
+              service: `Kundli PDF: ${tier.name}`,
+              amount: priceLabel,
             });
-
             setIsPaid(true);
 
-            // Record paid export lead in ProspectIQ
             submitProspectIQLead({
-              firstName: (kundliData?.user?.name || formData.name || "").split(' ')[0] || "Client",
-              lastName: (kundliData?.user?.name || formData.name || "").split(' ').slice(1).join(' ') || '',
-              email: kundliData?.user?.email || formData.email,
-              phone: toE164(kundliData?.user?.phone || formData.phone, countryIso),
+              firstName: (name || "").split(' ')[0] || "Client",
+              lastName: (name || "").split(' ').slice(1).join(' ') || '',
+              email,
+              phone: toE164(phone, countryIso),
               gender: kundliData?.user?.gender || formData.gender,
               dateOfBirth: kundliData?.user?.dob || formData.dob,
               timeOfBirth: kundliData?.user?.tob || formData.tob,
               placeOfBirth: kundliData?.user?.pob || formData.pob,
               service: 'kundli',
-              amountPaid: "₹299",
-              tags: ['Paid: Full Kundli PDF Export', 'Kundli Export Customer', 'Paid Customer'],
+              amountPaid: priceLabel,
+              tags: ['Paid: Kundli PDF', `Tier: ${tier.name}`, 'Paid Customer'],
             });
 
-            const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
-            toast.success("Full Kundli PDF Export Unlocked!", {
-              description: "Payment verified. Preparing your high-resolution report download.",
+            toast.success(`${tier.name} unlocked!`, {
+              description: "Payment verified. Preparing your report…",
               icon: <Sparkles className="w-5 h-5 text-secondary" />,
-              action: waUrl ? {
-                label: "WhatsApp Receipt",
-                onClick: () => window.open(waUrl, "_blank"),
-              } : undefined,
             });
 
-            // Generate the real VedicAstro PDF, store it permanently, email it
-            // via Prospect IQ, then download + open it for the customer.
+            setDeliveringTier(tier.name);
             try {
               const delivery = await deliverKundliPdf({
-                name: kundliData?.user?.name || formData.name,
-                email: kundliData?.user?.email || formData.email,
+                name,
+                email,
                 dob: kundliData?.birth?.dob,
                 tob: kundliData?.birth?.tob,
                 lat: kundliData?.birth?.lat,
                 lon: kundliData?.birth?.lon,
                 tz: kundliData?.birth?.tz,
                 pob: kundliData?.user?.pob || formData.pob,
-                pdf_type: "large",
+                variant: tier.variant,
                 razorpay_order_id: resp.razorpay_order_id,
                 razorpay_payment_id: resp.razorpay_payment_id,
                 razorpay_signature: resp.razorpay_signature,
               });
-              toast.success("Your Kundli PDF is ready", {
+              const pdfs = delivery.downloadUrls?.length
+                ? delivery.downloadUrls
+                : [{ name: delivery.tierName ?? tier.name, url: delivery.downloadUrl, fileName: delivery.fileName }];
+              setDeliveredPdfs(pdfs);
+              setGenerationStep('book');
+              const n = pdfs.length;
+              const noun = n > 1 ? `${n} PDFs` : "PDF";
+              toast.success(`Your ${tier.name} is ready`, {
                 description: delivery.emailed
-                  ? "Downloaded, opened, and emailed to you. The link never expires."
-                  : "Downloaded and opened. Save it — the link never expires.",
+                  ? `${noun} opened, downloaded, and emailed to you. The links never expire.`
+                  : `${noun} opened and downloaded. Save them — the links never expire.`,
+                duration: 15000,
+                // A browser can still block the auto-opened tab, so give them a
+                // real click that always works.
+                action: {
+                  label: n > 1 ? "Open PDFs" : "Open PDF",
+                  onClick: () => pdfs.forEach((p) => openInNewTab(p.url)),
+                },
               });
             } catch (pdfError) {
-              // Payment already succeeded, so never leave them empty-handed:
-              // fall back to the printable view.
               const detail =
-                pdfError instanceof KundliPdfError
-                  ? pdfError.message
-                  : "Please contact us with your payment ID.";
-              toast.error("PDF service unavailable", {
-                description: `${detail} Opening the printable version instead.`,
+                pdfError instanceof KundliPdfError ? pdfError.message : "Please contact us with your payment ID.";
+              toast.error("Couldn't prepare your PDF", {
+                description: `${detail} Your payment is safe — we've emailed our team and will send it to you shortly.`,
               });
-              setTimeout(() => window.print(), 600);
+            } finally {
+              setDeliveringTier(null);
             }
           } catch (e: any) {
             toast.error("Payment verification failed", { description: e.message });
           } finally {
             setIsUnlocking(false);
+            setBuyingVariant(null);
           }
         },
         modal: {
           ondismiss: () => {
             setIsUnlocking(false);
-          }
-        }
+            setBuyingVariant(null);
+          },
+        },
       });
 
       checkout.open();
     } catch (e: any) {
       setIsUnlocking(false);
+      setBuyingVariant(null);
       toast.error("Unlock Error", { description: e.message });
     }
   };
@@ -504,8 +532,57 @@ export function KundliCalculator() {
               onOpenBook={() => setGenerationStep('book')} 
               onClose={() => { setGenerationStep('idle'); setKundliData(null); }} 
               isPaid={isPaid}
-              onUnlockExport={handleUnlockPayment}
+              onUnlockExport={handlePdfButton}
             />
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* PDF report-options chooser — opened by any "Download PDF" button */}
+      {showPdfOptions && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-start sm:items-center justify-center bg-black/85 backdrop-blur-md overflow-y-auto p-4 animate-in fade-in duration-300">
+          <div className="relative w-full max-w-6xl my-8 rounded-3xl bg-[#FFFDF9] border border-secondary/30 shadow-2xl animate-in zoom-in-95 duration-300">
+            <button
+              onClick={() => setShowPdfOptions(false)}
+              aria-label="Close"
+              className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-primary text-white hover:opacity-90"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="p-6 sm:p-8">
+              <KundliPdfOptions
+                onBuy={(tier) => { setShowPdfOptions(false); purchaseTier(tier); }}
+                busyVariant={buyingVariant}
+                disabled={isUnlocking}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Post-payment loader — shown while the real PDF is being generated */}
+      {deliveringTier && createPortal(
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 animate-in fade-in duration-300">
+          <div className="relative flex w-full max-w-md flex-col items-center gap-5 rounded-3xl bg-[#FFFDF9] border border-secondary/30 px-8 py-10 text-center shadow-2xl">
+            <div className="relative grid h-20 w-20 place-items-center">
+              <span className="absolute inset-0 rounded-full border-4 border-secondary/20" />
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <Sparkles className="absolute h-5 w-5 text-secondary" />
+            </div>
+            <div>
+              <h3 className="font-serif text-xl font-bold text-primary">
+                Preparing your {deliveringTier}
+              </h3>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Casting your chart and typesetting the report. This can take up to
+                a minute for the larger reports — please keep this tab open.
+              </p>
+            </div>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-secondary">
+              ✓ Payment received · Generating PDF…
+            </p>
           </div>
         </div>,
         document.body
@@ -874,107 +951,20 @@ export function KundliCalculator() {
 
             </div>
 
-            {/* Sticky Action Footer */}
-            <div className="p-6 bg-[#FFFDF9] border-t border-secondary/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider block">Full Lifetime Kundli + PDF Report</span>
-                <span className="text-2xl font-serif font-bold text-primary">Special Launch Price: ₹299 <span className="text-sm font-normal text-muted-foreground line-through ml-1.5">₹1,100</span></span>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <Button 
+            {/* Report options — five priced PDF tiers, each delivered + emailed */}
+            <div className="p-6 sm:p-8 bg-[#FFFDF9] border-t border-secondary/30">
+              <KundliPdfOptions
+                onBuy={purchaseTier}
+                busyVariant={buyingVariant}
+                disabled={isUnlocking}
+              />
+              <div className="mt-6 text-center">
+                <Button
                   onClick={() => setGenerationStep('cover')}
                   variant="outline"
-                  className="w-full sm:w-auto border-secondary/40 text-primary hover:bg-secondary/10 rounded-xl h-12 px-6 font-bold"
+                  className="border-secondary/40 text-primary hover:bg-secondary/10 rounded-xl h-11 px-6 font-bold"
                 >
-                  <Eye className="w-4 h-4 mr-2" /> Preview Cover
-                </Button>
-
-                <Button 
-                  onClick={async () => {
-                    setIsUnlocking(true);
-                    try {
-                      await loadRazorpayScript();
-                      const order = await createOrder({
-                        service: "kundli-pdf",
-                        variant: "default",
-                        notes: {
-                          type: "Full Kundli Unlock",
-                          name: kundliData.user.name,
-                          email: kundliData.user.email,
-                          phone: kundliData.user.phone,
-                        }
-                      });
-
-                      if (!window.Razorpay) throw new Error("Razorpay unavailable");
-
-                      const checkout = new window.Razorpay({
-                        key: order.key_id,
-                        amount: order.amount,
-                        currency: order.currency,
-                        name: "JyotishNow Full Kundli Unlock",
-                        description: `Full Lifetime Kundli Report for ${kundliData.user.name}`,
-                        order_id: order.order_id,
-                        prefill: {
-                          name: kundliData.user.name,
-                          email: kundliData.user.email,
-                          contact: kundliData.user.phone,
-                        },
-                        theme: { color: "#7A0808" },
-                        handler: async (resp: any) => {
-                          try {
-                            const verificationResult = await verifyPayment({
-                              ...resp,
-                              customer: {
-                                name: kundliData?.user?.name || "Client",
-                                email: kundliData?.user?.email || "",
-                                phone: kundliData?.user?.phone || "",
-                              },
-                              service: "Full Lifetime Kundli Unlock",
-                              amount: "₹299",
-                            });
-                            setIsPaid(true);
-                            setGenerationStep('book');
-                            const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
-                            toast.success("Full Kundli Report Unlocked!", {
-                              description: "Payment verified. Receipt generated.",
-                              icon: <Sparkles className="w-5 h-5 text-secondary" />,
-                              action: waUrl ? {
-                                label: "WhatsApp Receipt",
-                                onClick: () => window.open(waUrl, "_blank"),
-                              } : undefined,
-                            });
-                          } catch (e: any) {
-                            toast.error("Payment verification failed", { description: e.message });
-                          } finally {
-                            setIsUnlocking(false);
-                          }
-                        },
-                        modal: {
-                          ondismiss: () => {
-                            setIsUnlocking(false);
-                          }
-                        }
-                      });
-
-                      checkout.open();
-                    } catch (e: any) {
-                      setIsUnlocking(false);
-                      toast.error("Unlock Error", { description: e.message });
-                    }
-                  }}
-                  disabled={isUnlocking}
-                  className="w-full sm:w-auto bg-gradient-to-r from-primary to-[#5a0606] hover:opacity-90 text-white rounded-xl h-12 px-8 font-bold shadow-lg flex items-center justify-center gap-2"
-                >
-                  {isUnlocking ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Unlocking...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-secondary fill-secondary" /> Unlock Full Kundli (₹299)
-                    </>
-                  )}
+                  <Eye className="w-4 h-4 mr-2" /> Preview the cover first
                 </Button>
               </div>
             </div>

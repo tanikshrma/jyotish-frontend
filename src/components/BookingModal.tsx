@@ -405,14 +405,9 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
             });
 
             setIsOpen(false);
-            const waUrl = verificationResult.whatsappCustomerUrl || verificationResult.whatsappAdminUrl;
             toast.success("Consultation Booked & Payment Confirmed!", {
-              description: `Payment ID: ${response.razorpay_payment_id}. Receipt generated.`,
+              description: `Payment ID: ${response.razorpay_payment_id}. Receipt emailed to you.`,
               icon: <Sparkles className="w-5 h-5 text-secondary" />,
-              action: waUrl ? {
-                label: "WhatsApp Receipt",
-                onClick: () => window.open(waUrl, "_blank"),
-              } : undefined,
             });
           } catch (err: any) {
             toast.error("Payment Verification Error", {

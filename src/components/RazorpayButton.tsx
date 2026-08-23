@@ -79,13 +79,8 @@ export function RazorpayButton({
               },
               service: description || service,
             });
-            const waUrl = result.whatsappCustomerUrl || result.whatsappAdminUrl;
             toast.success("Payment Successful!", {
-              description: `Payment ID: ${result.payment_id}. Receipt generated.`,
-              action: waUrl ? {
-                label: "WhatsApp Receipt",
-                onClick: () => window.open(waUrl, "_blank"),
-              } : undefined,
+              description: `Payment ID: ${result.payment_id}. Receipt emailed to you.`,
             });
             onSuccess?.({
               order_id: result.order_id,

@@ -73,51 +73,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const amountStr = rawAmount ? (rawAmount.startsWith("₹") ? rawAmount : `₹${rawAmount}`) : "Paid";
 
     const htmlEmailContent = `
-      <div style="font-family: Arial, sans-serif; background-color: #fdfbf7; padding: 20px;">
-        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e6d5b8; border-radius: 16px; overflow: hidden;">
-          <div style="background: linear-gradient(135deg, #7A0808, #5A0606); padding: 25px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-family: serif; font-size: 26px;">JyotishNow</h1>
-            <p style="margin: 5px 0 0; color: #f5c27a; font-size: 13px; font-weight: bold; text-transform: uppercase;">Official Payment Receipt</p>
-          </div>
-          <div style="padding: 25px; color: #333333; line-height: 1.6;">
-            <h2 style="color: #7A0808; font-family: serif; margin-top: 0;">Payment Successful ✅</h2>
-            <p>Thank you for choosing <strong>JyotishNow</strong>. Here is your payment receipt:</p>
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
-              <tr style="border-bottom: 1px solid #eeeeee;">
-                <td style="padding: 10px 0; color: #666666;">Service:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #7A0808;">${serviceName}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #eeeeee;">
-                <td style="padding: 10px 0; color: #666666;">Amount Paid:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #2e7d32; font-size: 16px;">${amountStr}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #eeeeee;">
-                <td style="padding: 10px 0; color: #666666;">Payment ID:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right; font-family: monospace;">${paymentId}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #eeeeee;">
-                <td style="padding: 10px 0; color: #666666;">Order ID:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right; font-family: monospace;">${orderId}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #eeeeee;">
-                <td style="padding: 10px 0; color: #666666;">Customer Name:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right;">${customerName}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #eeeeee;">
-                <td style="padding: 10px 0; color: #666666;">Customer Email:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right;">${customerEmail || 'N/A'}</td>
-              </tr>
-              <tr style="border-bottom: 1px solid #eeeeee;">
-                <td style="padding: 10px 0; color: #666666;">Customer Phone:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right;">${customerPhone || 'N/A'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px 0; color: #666666;">Status:</td>
-                <td style="padding: 10px 0; font-weight: bold; text-align: right; color: #2e7d32;">CONFIRMED & PAID</td>
-              </tr>
-            </table>
-          </div>
-        </div>
+      <div style="margin:0;padding:12px;background:#fdfbf7;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e6d5b8;border-radius:12px;border-collapse:separate;overflow:hidden;">
+          <tr>
+            <td style="background:#7A0808;padding:14px 16px;text-align:center;">
+              <div style="font-family:Georgia,serif;font-size:20px;line-height:24px;color:#ffffff;font-weight:bold;">JyotishNow</div>
+              <div style="font-size:10px;line-height:14px;color:#f5c27a;letter-spacing:.5px;text-transform:uppercase;margin-top:2px;">Official Payment Receipt</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px;">
+              <div style="font-size:15px;line-height:20px;color:#2e7d32;font-weight:bold;margin:0 0 4px;">Payment Successful</div>
+              <div style="font-size:12px;line-height:17px;color:#555555;margin:0 0 12px;">Thank you for choosing JyotishNow. Here is your receipt.</div>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;font-size:12px;line-height:16px;">
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Service</td>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;color:#7A0808;font-weight:bold;">${serviceName}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Amount Paid</td>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;color:#2e7d32;font-weight:bold;font-size:14px;">${amountStr}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Payment ID</td>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-family:monospace;font-size:11px;word-break:break-all;">${paymentId}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Order ID</td>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-family:monospace;font-size:11px;word-break:break-all;">${orderId}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Name</td>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;">${customerName}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Email</td>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;word-break:break-all;">${customerEmail || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Phone</td>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;">${customerPhone || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#777777;white-space:nowrap;">Status</td>
+                  <td style="padding:6px 0;text-align:right;color:#2e7d32;font-weight:bold;">CONFIRMED &amp; PAID</td>
+                </tr>
+              </table>
+
+              <div style="margin-top:14px;padding-top:10px;border-top:1px solid #f0f0f0;font-size:11px;line-height:15px;color:#888888;text-align:center;">
+                Dr. Sandeep Sawhney &middot; JyotishNow<br>
+                myjyotishnow@gmail.com &middot; +91 7015544187
+              </div>
+            </td>
+          </tr>
+        </table>
       </div>
     `;
 

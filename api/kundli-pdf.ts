@@ -1,6 +1,17 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "node:crypto";
-import { readJsonBody, readJsonResponse, requirePost } from "./_razorpay.js";
+import {
+  RAZORPAY_KEY_ID,
+  RAZORPAY_KEY_SECRET as RZP_SECRET,
+  readJsonBody,
+  readJsonResponse,
+  requirePost,
+} from "./_razorpay.js";
+import {
+  getKundliPdfTier,
+  type KundliPdfTier,
+  type KundliPdfType,
+} from "../shared/pricing.js";
 
 /**
  * POST /api/kundli-pdf
@@ -93,13 +104,75 @@ const uploadToProspectIQ = async (
   }
 };
 
-/** Emails the report with the PDF attached, via Prospect IQ Conversations. */
+const esc = (s: string) =>
+  String(s).replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string,
+  );
+
+/** One delivered PDF: its friendly report name + permanent CDN link. */
+type DeliveredPdf = { name: string; url: string };
+
+/** A premium branded HTML email listing every report, each with its own link. */
+const buildEmailHtml = (
+  customerName: string,
+  tierName: string,
+  pdfs: DeliveredPdf[],
+): string => {
+  const rows = pdfs
+    .map(
+      (p) => `
+      <tr>
+        <td style="padding:14px 18px;border:1px solid #efe3cf;border-radius:12px;background:#fffdf9">
+          <table width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td style="font-family:Georgia,serif;font-size:15px;color:#3a2412;font-weight:bold">📜 ${esc(p.name)}</td>
+            <td align="right">
+              <a href="${esc(p.url)}" style="background:#7A0808;color:#fff;text-decoration:none;padding:9px 16px;border-radius:8px;font:bold 13px Arial,sans-serif;display:inline-block">Download</a>
+            </td>
+          </tr></table>
+        </td>
+      </tr>
+      <tr><td style="height:10px"></td></tr>`,
+    )
+    .join("");
+
+  return `
+  <div style="margin:0;padding:0;background:#f3ead9">
+    <div style="max-width:600px;margin:0 auto;padding:28px 16px">
+      <div style="background:#ffffff;border:1px solid #e6d5b8;border-radius:20px;overflow:hidden;box-shadow:0 8px 30px rgba(122,8,8,0.08)">
+        <div style="background:linear-gradient(135deg,#7A0808,#a31414);padding:34px 24px;text-align:center">
+          <div style="font:26px Georgia,serif;color:#fff;letter-spacing:.5px">JyotishNow</div>
+          <div style="margin-top:8px;color:#f5c27a;font:600 11px Arial;letter-spacing:2px;text-transform:uppercase">${esc(tierName)}</div>
+        </div>
+        <div style="padding:28px 26px;color:#4a3b2c;font:15px/1.65 Arial,sans-serif">
+          <p style="margin:0 0 6px">Namaste ${esc(customerName)},</p>
+          <p style="margin:0 0 20px">Your personalised Vedic report is ready and yours to keep forever. ${
+            pdfs.length > 1
+              ? "Both PDFs are attached and linked below:"
+              : "Your PDF is attached and linked below:"
+          }</p>
+          <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+          <p style="margin:22px 0 0;font-size:13px;color:#8a7c68">Tip: the download links never expire — save this email. If a button doesn't work, the PDF is also attached to this message.</p>
+          <div style="margin:26px 0 6px;border-top:1px solid #efe3cf"></div>
+          <p style="margin:14px 0 0">With warm regards,<br><strong style="color:#7A0808">${esc(BRAND.company_name)}</strong><br><span style="font-size:13px;color:#8a7c68">${esc(BRAND.website)} · ${esc(BRAND.phone)}</span></p>
+        </div>
+      </div>
+      <p style="text-align:center;color:#a9997f;font:11px Arial;margin:16px 0 0">© ${esc(BRAND.company_name)} · ${esc(BRAND.address)}</p>
+    </div>
+  </div>`;
+};
+
+/**
+ * Emails all delivered reports (with the PDFs attached) via Prospect IQ
+ * Conversations. Returns false on any failure — email is best-effort, the
+ * customer already has the download links from the API response.
+ */
 const emailReport = async (
   to: string,
   customerName: string,
-  pdfUrl: string,
+  tierName: string,
+  pdfs: DeliveredPdf[],
 ): Promise<boolean> => {
-  if (!PIQ_TOKEN || !PIQ_LOCATION || !to) return false;
+  if (!PIQ_TOKEN || !PIQ_LOCATION || !to || pdfs.length === 0) return false;
   try {
     const headers = { ...piqHeaders(), "Content-Type": "application/json" };
 
@@ -111,7 +184,7 @@ const emailReport = async (
         locationId: PIQ_LOCATION,
         email: to,
         name: customerName,
-        tags: ["Paid: Kundli PDF", "Kundli PDF Delivered"],
+        tags: ["Paid: Kundli PDF", `Kundli: ${tierName}`, "Kundli PDF Delivered"],
       }),
     });
     const contact = await readJsonResponse(upsert);
@@ -121,35 +194,16 @@ const emailReport = async (
       return false;
     }
 
-    const html = `
-      <div style="font-family:Arial,sans-serif;background:#fdfbf7;padding:24px">
-        <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e6d5b8;border-radius:16px;overflow:hidden">
-          <div style="background:#7A0808;padding:24px;text-align:center;color:#fff">
-            <h1 style="margin:0;font-family:serif;font-size:24px">JyotishNow</h1>
-            <p style="margin:6px 0 0;color:#f5c27a;font-size:12px;letter-spacing:1px;text-transform:uppercase">Your Kundli Report</p>
-          </div>
-          <div style="padding:24px;color:#333;line-height:1.6">
-            <p>Namaste ${customerName},</p>
-            <p>Your personalised Kundli report is attached to this email, and is yours to keep.</p>
-            <p style="text-align:center;margin:28px 0">
-              <a href="${pdfUrl}" style="background:#7A0808;color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:bold;display:inline-block">Download your Kundli PDF</a>
-            </p>
-            <p style="font-size:13px;color:#666">If the button does not work, copy this link:<br>${pdfUrl}</p>
-            <p style="margin-top:24px">With warm regards,<br><strong>Dr. Sandeep Sawhney</strong><br>JyotishNow</p>
-          </div>
-        </div>
-      </div>`;
-
     const send = await fetch(`${PIQ_BASE}/conversations/messages`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         type: "Email",
         contactId,
-        subject: "Your JyotishNow Kundli Report",
-        html,
+        subject: `Your JyotishNow ${tierName} 🪔`,
+        html: buildEmailHtml(customerName, tierName, pdfs),
         emailFrom: PIQ_FROM,
-        attachments: [pdfUrl],
+        attachments: pdfs.map((p) => p.url),
       }),
     });
     if (!send.ok) {
@@ -161,6 +215,141 @@ const emailReport = async (
     console.error("[kundli-pdf] email delivery threw", error);
     return false;
   }
+};
+
+const PDF_TYPE_NAME: Record<KundliPdfType, string> = {
+  small: "Essential Kundli",
+  medium: "Detailed Kundli",
+  large: "Premium Kundli",
+  prediction: "Life Predictions",
+};
+
+/**
+ * Reads the Razorpay order's `notes.variant` — the tier the customer ACTUALLY
+ * paid for. Binding generation to this (not a client-supplied field) stops a
+ * ₹99 purchase from requesting the ₹499 bundle. Returns null if the lookup
+ * can't run (e.g. local dev without live keys), in which case the handler
+ * falls back to the client's requested tier.
+ */
+const getOrderVariant = async (orderId: string): Promise<string | null> => {
+  if (!RAZORPAY_KEY_ID || !RZP_SECRET || !orderId) return null;
+  try {
+    const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RZP_SECRET}`).toString("base64");
+    const r = await fetch(`https://api.razorpay.com/v1/orders/${orderId}`, {
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    if (!r.ok) return null;
+    const order = await readJsonResponse(r);
+    const v = order?.notes?.variant;
+    return typeof v === "string" && v ? v : null;
+  } catch (error) {
+    console.error("[kundli-pdf] order lookup failed", error);
+    return null;
+  }
+};
+
+type GenOk = {
+  ok: true;
+  url: string;
+  fileId: string;
+  fileName: string;
+  sizeBytes: number;
+  pdfType: KundliPdfType;
+};
+type GenErr = { ok: false; status: number; error: string; detail?: string; code?: string };
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * VedicAstro's `pdf/horoscope-queue` returns an S3 URL immediately but uploads
+ * the file a few seconds later (a small report is instant; a large one can take
+ * 15-25s). Until then S3 answers 403/404. So poll the URL until it's really
+ * there. The upstream link expires in ~2h, so this window is safe.
+ */
+const fetchWhenReady = async (
+  url: string,
+  maxWaitMs = 90_000,
+): Promise<Response | null> => {
+  const safeUrl = encodeURI(url); // the path can contain spaces ("Sun Aug 23 2026")
+  const start = Date.now();
+  let delay = 1500;
+  let last: Response | null = null;
+  while (Date.now() - start < maxWaitMs) {
+    last = await fetch(safeUrl);
+    if (last.ok) return last;
+    await sleep(delay);
+    delay = Math.min(delay + 1000, 5000);
+  }
+  last = await fetch(safeUrl);
+  return last.ok ? last : null;
+};
+
+/** Generates ONE VedicAstro PDF and re-hosts it permanently on Prospect IQ. */
+const generatePdf = async (
+  pdfType: KundliPdfType,
+  body: Record<string, unknown>,
+): Promise<GenOk | GenErr> => {
+  const params = new URLSearchParams({
+    api_key: API_KEY as string,
+    name: String(body.name),
+    dob: String(body.dob),
+    tob: String(body.tob),
+    lat: String(body.lat),
+    lon: String(body.lon),
+    tz: String(body.tz),
+    pob: String(body.pob ?? ""),
+    lang: String(body.lang ?? "en"),
+    style: String(body.style ?? "north"),
+    color: String(body.color ?? "140"),
+    pdf_type: pdfType,
+    ...BRAND,
+  });
+
+  const queued = await fetch(`${BASE_URL}/pdf/horoscope-queue?${params}`);
+  const data = await readJsonResponse(queued);
+  const status = Number(data.status ?? queued.status);
+
+  if (status === 402) {
+    console.error("[kundli-pdf] VedicAstro out of credits");
+    return {
+      ok: false,
+      status: 502,
+      error: "Astrology service unavailable",
+      detail: String(data.response ?? "subscription exhausted"),
+      code: "UPSTREAM_CREDITS",
+    };
+  }
+  if (status >= 400 || typeof data.response !== "string") {
+    console.error("[kundli-pdf] generation failed", pdfType, status, data.response);
+    return {
+      ok: false,
+      status: 502,
+      error: "Could not generate the report",
+      detail: String(data.response ?? status),
+    };
+  }
+  if (typeof data.remaining_calls === "number") {
+    console.log(`[kundli-pdf] ${data.remaining_calls} upstream calls remaining`);
+  }
+
+  // The queue endpoint is async — poll the S3 URL until the file is uploaded.
+  const file = await fetchWhenReady(data.response as string);
+  if (!file) {
+    return { ok: false, status: 502, error: "Report generated but could not be retrieved" };
+  }
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const fileName = `JyotishNow_${PDF_TYPE_NAME[pdfType].replace(/\s+/g, "_")}_${safeName(String(body.name))}.pdf`;
+
+  const stored = await uploadToProspectIQ(bytes, fileName);
+  if (!stored) {
+    return {
+      ok: false,
+      status: 502,
+      error: "Report generated but could not be stored",
+      code: "STORAGE_FAILED",
+    };
+  }
+  return { ok: true, url: stored.url, fileId: stored.fileId, fileName, sizeBytes: bytes.length, pdfType };
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -184,82 +373,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
   }
 
-  const pdfType = String(body.pdf_type ?? "large");
-  if (!PDF_TYPES.includes(pdfType as (typeof PDF_TYPES)[number])) {
-    return res.status(400).json({ error: `pdf_type must be one of: ${PDF_TYPES.join(", ")}` });
+  // Resolve WHICH reports to generate. Prefer the paid tier from the Razorpay
+  // order notes (authoritative); fall back to the client's requested tier /
+  // pdf_type only when the order lookup can't run.
+  const paidVariant = await getOrderVariant(String(body.razorpay_order_id ?? ""));
+  let tier: KundliPdfTier | null = paidVariant ? getKundliPdfTier(paidVariant) : null;
+  if (!tier) {
+    const requested = String(body.variant ?? "");
+    tier = getKundliPdfTier(requested);
   }
 
-  const params = new URLSearchParams({
-    api_key: API_KEY,
-    name: String(body.name),
-    dob: String(body.dob),
-    tob: String(body.tob),
-    lat: String(body.lat),
-    lon: String(body.lon),
-    tz: String(body.tz),
-    pob: String(body.pob ?? ""),
-    lang: String(body.lang ?? "en"),
-    style: String(body.style ?? "north"),
-    color: String(body.color ?? "140"),
-    pdf_type: pdfType,
-    ...BRAND,
-  });
+  let pdfTypes: KundliPdfType[];
+  let tierName: string;
+  if (tier) {
+    pdfTypes = tier.pdfTypes;
+    tierName = tier.name;
+  } else {
+    // Legacy single-type path.
+    const pdfType = String(body.pdf_type ?? "large");
+    if (!PDF_TYPES.includes(pdfType as (typeof PDF_TYPES)[number])) {
+      return res.status(400).json({ error: `pdf_type must be one of: ${PDF_TYPES.join(", ")}` });
+    }
+    pdfTypes = [pdfType as KundliPdfType];
+    tierName = PDF_TYPE_NAME[pdfType as KundliPdfType] ?? "Kundli Report";
+  }
 
   try {
-    const queued = await fetch(`${BASE_URL}/pdf/horoscope-queue?${params}`);
-    const data = await readJsonResponse(queued);
-    const status = Number(data.status ?? queued.status);
-
-    if (status === 402) {
-      console.error("[kundli-pdf] VedicAstro out of credits");
-      return res.status(502).json({
-        error: "Astrology service unavailable",
-        detail: String(data.response ?? "subscription exhausted"),
-        code: "UPSTREAM_CREDITS",
+    // Generate every report in the tier IN PARALLEL — a large report can take
+    // ~40s, so a two-PDF bundle done sequentially would blow the function
+    // timeout; parallel keeps total time ≈ the slowest single report.
+    const settled = await Promise.all(pdfTypes.map((pt) => generatePdf(pt, body)));
+    const results = settled.filter((r): r is GenOk => r.ok);
+    if (results.length === 0) {
+      const firstErr = settled.find((r) => !r.ok) as GenErr | undefined;
+      return res.status(firstErr?.status ?? 502).json({
+        error: firstErr?.error ?? "Could not generate the report",
+        detail: firstErr?.detail,
+        code: firstErr?.code,
       });
     }
-    if (status >= 400 || typeof data.response !== "string") {
-      console.error("[kundli-pdf] generation failed", status, data.response);
-      return res.status(502).json({
-        error: "Could not generate the report",
-        detail: String(data.response ?? status),
-      });
-    }
-    if (typeof data.remaining_calls === "number") {
-      console.log(`[kundli-pdf] ${data.remaining_calls} upstream calls remaining`);
-    }
+    settled
+      .filter((r) => !r.ok)
+      .forEach((r) => console.error("[kundli-pdf] a bundle report failed", (r as GenErr).error));
 
-    // Fetch before the upstream link expires.
-    const file = await fetch(data.response as string);
-    if (!file.ok) {
-      return res.status(502).json({ error: "Report generated but could not be retrieved" });
-    }
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const fileName = `JyotishNow_Kundli_${safeName(String(body.name))}.pdf`;
-
-    // Re-host permanently on Prospect IQ's CDN.
-    const stored = await uploadToProspectIQ(bytes, fileName);
-    if (!stored) {
-      return res.status(502).json({
-        error: "Report generated but could not be stored",
-        code: "STORAGE_FAILED",
-      });
-    }
+    const pdfs: DeliveredPdf[] = results.map((r) => ({
+      name: PDF_TYPE_NAME[r.pdfType],
+      url: r.url,
+    }));
 
     const emailed = await emailReport(
       String(body.email ?? ""),
       String(body.name),
-      stored.url,
+      tierName,
+      pdfs,
     );
 
     return res.status(200).json({
       ok: true,
-      downloadUrl: stored.url,
-      fileId: stored.fileId,
-      fileName,
+      tier: tier?.variant ?? paidVariant ?? null,
+      tierName,
+      // Back-compat single fields (first report) + the full list.
+      downloadUrl: results[0].url,
+      fileId: results[0].fileId,
+      fileName: results[0].fileName,
+      downloadUrls: results.map((r) => ({
+        name: PDF_TYPE_NAME[r.pdfType],
+        url: r.url,
+        fileName: r.fileName,
+      })),
       emailed,
-      sizeBytes: bytes.length,
-      pdfType,
+      sizeBytes: results.reduce((s, r) => s + r.sizeBytes, 0),
+      pdfTypes,
     });
   } catch (error) {
     console.error("[kundli-pdf] request failed", error);

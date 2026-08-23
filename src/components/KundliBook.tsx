@@ -211,9 +211,9 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
   const containerRef = useRef<HTMLDivElement>(null);
   
   const handleExportClick = () => {
-    if (isPaid) {
-      window.print();
-    } else if (onUnlockExport) {
+    // Always defer to the parent: it opens the report-options chooser (five
+    // priced tiers) when unpaid, or re-opens the delivered PDF(s) when paid.
+    if (onUnlockExport) {
       onUnlockExport();
     } else {
       window.print();
@@ -806,12 +806,12 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
             className="w-full py-2.5 px-4 bg-[#7A0808] hover:bg-[#5C0606] text-white rounded-lg font-serif text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
           >
             <Download className="w-4 h-4 text-[#F5C27A]" />
-            {isPaid ? "Download & Print Full PDF Report" : "Unlock Full Kundli PDF Export (₹299)"}
+            {isPaid ? "Download Your PDF Report" : "Download Your Kundli PDF"}
           </button>
           <p className="text-[11px] text-[#5C3A21]/80 font-medium">
-            {isPaid 
-              ? "✓ High-Resolution 16-Page Printable Report Unlocked" 
-              : "Special Launch Offer: ₹299 (Original ₹1,100 — 73% OFF)"}
+            {isPaid
+              ? "✓ Your report is unlocked — tap to open it again"
+              : "Choose from 5 report options · starting at ₹99"}
           </p>
         </div>
       </div>
@@ -898,9 +898,9 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         <button onClick={toggleFullscreen} className="p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors hidden md:block" title="Fullscreen">
           {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
         </button>
-        <button onClick={handleExportClick} className="p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors hidden md:flex items-center gap-1.5" title={isPaid ? "Download PDF" : "Unlock Full PDF Export"}>
+        <button onClick={handleExportClick} className="p-2 hover:bg-[#B98A45]/30 rounded-full transition-colors hidden md:flex items-center gap-1.5" title={isPaid ? "Open your PDF" : "Download PDF — choose a report"}>
           <Download className="w-5 h-5" />
-          {!isPaid && <span className="text-[10px] font-bold uppercase tracking-wider text-[#F5C27A]">PDF (₹299)</span>}
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#F5C27A]">{isPaid ? "Open PDF" : "Download PDF"}</span>
         </button>
       </div>
 

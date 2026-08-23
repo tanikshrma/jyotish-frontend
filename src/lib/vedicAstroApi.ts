@@ -94,8 +94,27 @@ export const vedicAstroApi = {
   getPlanetDetails: (params: AstroParams) =>
     callProxy('planet-details', chartParams(params)),
 
-  getPlanetReport: (params: AstroParams) =>
-    callProxy('planet-report', chartParams(params)).catch(() => null),
+  /**
+   * Per-planet analysis. Upstream requires a `planet` argument and answers
+   * 400 without one, so this fetches all nine grahas and flattens the
+   * results into the list the booklet's predictions section expects.
+   * Each unique chart is cached for 24h by /api/astro, so repeat views of
+   * the same kundli cost nothing extra.
+   */
+  getPlanetReport: async (params: AstroParams) => {
+    const planets = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'];
+    const results = await Promise.all(
+      planets.map((planet) =>
+        callProxy('planet-report', { ...chartParams(params), planet }).catch(() => null),
+      ),
+    );
+    const merged = results.flatMap((r) => {
+      const body = r?.response;
+      if (Array.isArray(body)) return body;
+      return body ? [body] : [];
+    });
+    return merged.length ? { status: 200, response: merged } : null;
+  },
 
   getPanchang: (params: AstroParams) =>
     callProxy('panchang', {

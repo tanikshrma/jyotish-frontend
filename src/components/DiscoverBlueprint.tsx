@@ -74,7 +74,7 @@ export function DiscoverBlueprint() {
                 <iframe
                   width="100%"
                   height="100%"
-                  src="https://www.youtube.com/embed/nJ4JNLE5sS0?rel=0"
+                  src="https://www.youtube-nocookie.com/embed/nJ4JNLE5sS0?rel=0"
                   title="Discover Your Life's Blueprint"
                   loading="lazy"
                   frameBorder="0"

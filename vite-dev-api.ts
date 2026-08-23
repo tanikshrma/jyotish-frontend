@@ -52,6 +52,16 @@ const wrapResponse = (res: ServerResponse) => {
     setHeader(key: string, value: string) {
       res.setHeader(key, value);
     },
+    /**
+     * Non-JSON responses (chart-image returns an SVG string) go through
+     * send(). Without it the handler throws and the dev server answers 502,
+     * while production (Vercel / Express) works — a dev-only discrepancy.
+     */
+    send(body: string | Buffer) {
+      res.statusCode = shim.statusCode;
+      res.end(body);
+      return shim;
+    },
   };
   return shim;
 };

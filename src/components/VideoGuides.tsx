@@ -1,10 +1,10 @@
 import React from "react";
 
 const videos = [
-  "UTqw0c4pnho",
-  "S-_ZzZIGv_Q",
-  "7zP6F1HBtmw",
-  "ChVGeTRnqSs"
+  "Aq9yEH78kZU",
+  "ChVGeTRnqSs",
+  "82o66Mk_8UQ",
+  "d-FvbWM8kNU",
 ];
 
 export const VideoGuides = () => {
@@ -28,9 +28,14 @@ export const VideoGuides = () => {
             >
               <iframe
                 className="absolute top-0 left-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${videoId}?rel=0`}
+                src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`}
                 title={`YouTube video player ${index + 1}`}
                 loading="lazy"
+                // The page sets a global no-referrer policy, which stops YouTube
+                // verifying the embedding origin and yields "Error 153". Sending
+                // the origin only (no path) restores playback without leaking
+                // the full URL.
+                referrerPolicy="strict-origin-when-cross-origin"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
               ></iframe>
