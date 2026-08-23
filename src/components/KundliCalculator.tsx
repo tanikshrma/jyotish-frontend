@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
+import { deliverKundliPdf, KundliPdfError } from "@/lib/kundliPdf";
 import { formatDobForApi, formatFullLocationName } from "./CalculatorForm";
 import { DateInputField, TimeInputField } from "./FormDateInput";
 import { generateNorthIndianChartSvg } from "./KundliBook";
@@ -138,12 +139,14 @@ export function KundliCalculator() {
     e?.preventDefault?.();
     
     const effectiveTob = (inputData.tob && inputData.tob.trim()) || `${timeState.hour || '12'}:${timeState.minute || '00'}` || '12:00';
-    const dataToSubmit = {
+    // Widened so the geocoder can enrich it with resolved city/state/country
+    // after the location lookup below.
+    const dataToSubmit: Record<string, any> = {
       ...inputData,
       tob: effectiveTob
     };
     
-    if (!validateForm(dataToSubmit)) {
+    if (!validateForm(dataToSubmit as typeof formData)) {
       return;
     }
 
@@ -303,6 +306,9 @@ export function KundliCalculator() {
 
       setKundliData({
         user: dataToSubmit,
+        // Exact resolved birth params, reused by the paid PDF export so the
+        // report is generated from the same coordinates as the on-screen chart.
+        birth: params,
         panchang: panchang?.response || panchang,
         planets: Array.isArray(planets?.response) ? planets.response : (Array.isArray(planets) ? planets : (planets?.response ? Object.values(planets.response) : [])),
         charts: {
@@ -409,9 +415,40 @@ export function KundliCalculator() {
               } : undefined,
             });
 
-            setTimeout(() => {
-              window.print();
-            }, 600);
+            // Generate the real VedicAstro PDF, store it permanently, email it
+            // via Prospect IQ, then download + open it for the customer.
+            try {
+              const delivery = await deliverKundliPdf({
+                name: kundliData?.user?.name || formData.name,
+                email: kundliData?.user?.email || formData.email,
+                dob: kundliData?.birth?.dob,
+                tob: kundliData?.birth?.tob,
+                lat: kundliData?.birth?.lat,
+                lon: kundliData?.birth?.lon,
+                tz: kundliData?.birth?.tz,
+                pob: kundliData?.user?.pob || formData.pob,
+                pdf_type: "large",
+                razorpay_order_id: resp.razorpay_order_id,
+                razorpay_payment_id: resp.razorpay_payment_id,
+                razorpay_signature: resp.razorpay_signature,
+              });
+              toast.success("Your Kundli PDF is ready", {
+                description: delivery.emailed
+                  ? "Downloaded, opened, and emailed to you. The link never expires."
+                  : "Downloaded and opened. Save it — the link never expires.",
+              });
+            } catch (pdfError) {
+              // Payment already succeeded, so never leave them empty-handed:
+              // fall back to the printable view.
+              const detail =
+                pdfError instanceof KundliPdfError
+                  ? pdfError.message
+                  : "Please contact us with your payment ID.";
+              toast.error("PDF service unavailable", {
+                description: `${detail} Opening the printable version instead.`,
+              });
+              setTimeout(() => window.print(), 600);
+            }
           } catch (e: any) {
             toast.error("Payment verification failed", { description: e.message });
           } finally {

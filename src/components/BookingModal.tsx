@@ -87,7 +87,7 @@ interface BookingModalProps {
 
 import { fetchProspectIQCalendarSlots, bookProspectIQAppointment, submitProspectIQLead, getCalendarIdForService } from "@/lib/prospectiq";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
-import { getPriceInRupees, formatINR, type ServiceId } from "../../shared/pricing";
+import { getPriceInRupees, formatINR, SERVICES, type ServiceId } from "../../shared/pricing";
 
 const LOCATION_ID = "FTD8wmuYqCT7XoIpXJQG";
 const SERVICE_CUSTOM_FIELD_ID = "GQbW8PBfcMus3Opakqn0";

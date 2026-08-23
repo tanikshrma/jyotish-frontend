@@ -16,6 +16,7 @@ const ROUTES: Record<string, string> = {
   "/api/prospectiq": "/api/prospectiq.ts",
   "/api/astro": "/api/astro.ts",
   "/api/geocode": "/api/geocode.ts",
+  "/api/kundli-pdf": "/api/kundli-pdf.ts",
 };
 
 const readBody = (req: Connect.IncomingMessage): Promise<unknown> =>

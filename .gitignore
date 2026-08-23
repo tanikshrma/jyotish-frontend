@@ -32,3 +32,8 @@ src/tailwind.config.vibe.json
 *.sln
 *.sw?
 .vercel
+
+# Build artifacts / published bundles
+*.tsbuildinfo
+public/*.zip
+storage/

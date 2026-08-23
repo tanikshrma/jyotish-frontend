@@ -178,6 +178,7 @@ export const vedicAstroApi = {
         full_name: [r.name, r.region, r.country].filter(Boolean).join(', '),
         country: r.country,
         state: r.region,
+        region: r.region,
         coordinates: [r.lat, r.lon] as [number, number],
         lat: r.lat,
         lon: r.lon,

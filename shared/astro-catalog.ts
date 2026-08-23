@@ -98,7 +98,7 @@ export const ASTRO_ENDPOINTS: Record<string, AstroEndpoint> = {
 
   // ---------------------------------------------------------------- PAID ---
   // Rendered, downloadable reports. These are the expensive deliverables.
-  "pdf-horoscope": { path: "pdf/horoscope-queue", tier: "paid", params: [...CHART_PARAMS, "name", "pob", "style", "color", "pdf_type", "company_name", "address", "website", "email", "phone"], description: "Full kundli PDF export" },
+  "pdf-horoscope": { path: "pdf/horoscope-queue", tier: "paid", params: [...CHART_PARAMS, "name", "pob", "style", "color", "pdf_type", "company_name", "address", "website", "email", "phone"], description: "Full kundli PDF export (pdf_type: small|medium|large|prediction)" },
   "pdf-matching": { path: "pdf/matching-queue", tier: "paid", params: ["boy_dob", "boy_tob", "boy_tz", "boy_lat", "boy_lon", "boy_pob", "boy_name", "girl_dob", "girl_tob", "girl_tz", "girl_lat", "girl_lon", "girl_pob", "girl_name", "lang", "style", "color"], description: "Matchmaking PDF export" },
   "ai-12-month": { path: "horoscope/ai-12-month-prediction", tier: "paid", params: CHART_PARAMS, description: "AI 12-month prediction" },
 };
