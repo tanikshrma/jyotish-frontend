@@ -12,6 +12,7 @@ import {
   type KundliPdfTier,
   type KundliPdfType,
 } from "../shared/pricing.js";
+import { createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
 
 /**
  * POST /api/kundli-pdf
@@ -110,7 +111,6 @@ const esc = (s: string) =>
   );
 
 /** One delivered PDF: its friendly report name + permanent CDN link. */
-type DeliveredPdf = { name: string; url: string };
 
 /** A premium branded HTML email listing every report, each with its own link. */
 const buildEmailHtml = (
@@ -352,6 +352,26 @@ const generatePdf = async (
   return { ok: true, url: stored.url, fileId: stored.fileId, fileName, sizeBytes: bytes.length, pdfType };
 };
 
+/** Wire format shared by the POST and the status endpoint. */
+export const jobResponse = (job: {
+  id: string; status: string; tier?: string; tierName?: string;
+  pdfs: { name: string; url: string; fileName?: string }[];
+  emailed: boolean; error?: string; code?: string;
+}) => ({
+  ok: job.status !== "failed",
+  jobId: job.id,
+  status: job.status,
+  tier: job.tier ?? null,
+  tierName: job.tierName ?? null,
+  downloadUrls: job.pdfs,
+  // Back-compat single fields for the first report.
+  downloadUrl: job.pdfs[0]?.url ?? null,
+  fileName: job.pdfs[0]?.fileName ?? null,
+  emailed: job.emailed,
+  error: job.error,
+  code: job.code,
+});
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!requirePost(req, res)) return;
 
@@ -398,55 +418,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tierName = PDF_TYPE_NAME[pdfType as KundliPdfType] ?? "Kundli Report";
   }
 
-  try {
-    // Generate every report in the tier IN PARALLEL — a large report can take
-    // ~40s, so a two-PDF bundle done sequentially would blow the function
-    // timeout; parallel keeps total time ≈ the slowest single report.
-    const settled = await Promise.all(pdfTypes.map((pt) => generatePdf(pt, body)));
-    const results = settled.filter((r): r is GenOk => r.ok);
-    if (results.length === 0) {
-      const firstErr = settled.find((r) => !r.ok) as GenErr | undefined;
-      return res.status(firstErr?.status ?? 502).json({
-        error: firstErr?.error ?? "Could not generate the report",
-        detail: firstErr?.detail,
-        code: firstErr?.code,
-      });
-    }
-    settled
-      .filter((r) => !r.ok)
-      .forEach((r) => console.error("[kundli-pdf] a bundle report failed", (r as GenErr).error));
+  const paymentId = String(body.razorpay_payment_id ?? "");
+  const orderId = String(body.razorpay_order_id ?? "");
 
-    const pdfs: DeliveredPdf[] = results.map((r) => ({
-      name: PDF_TYPE_NAME[r.pdfType],
-      url: r.url,
-    }));
+  // Delivery is idempotent per payment: a refresh, a retry, or a second tab
+  // gets the same job rather than regenerating and burning another credit.
+  const existing = await readJob(paymentId);
+  if (existing && !isStale(existing)) {
+    return res.status(existing.status === "pending" ? 202 : 200).json(jobResponse(existing));
+  }
 
-    const emailed = await emailReport(
-      String(body.email ?? ""),
-      String(body.name),
-      tierName,
-      pdfs,
-    );
+  const job = await createJob(paymentId, orderId, tier?.variant ?? paidVariant ?? undefined, tierName);
 
-    return res.status(200).json({
-      ok: true,
-      tier: tier?.variant ?? paidVariant ?? null,
-      tierName,
-      // Back-compat single fields (first report) + the full list.
-      downloadUrl: results[0].url,
-      fileId: results[0].fileId,
-      fileName: results[0].fileName,
-      downloadUrls: results.map((r) => ({
+  // Respond NOW. A Complete Bundle takes 60-120s to render, download, re-host
+  // and email; Cloudflare kills anything past 100s, which previously lost the
+  // order after the customer had already paid. The browser polls
+  // /api/kundli-pdf-status instead, and the email goes out regardless.
+  res.status(202).json(jobResponse(job));
+
+  // --- background work, deliberately not awaited ---------------------------
+  void (async () => {
+    try {
+      // Reports render in parallel so total time ≈ the slowest single report.
+      const settled = await Promise.all(pdfTypes.map((pt) => generatePdf(pt, body)));
+      const results = settled.filter((r): r is GenOk => r.ok);
+
+      settled
+        .filter((r) => !r.ok)
+        .forEach((r) => console.error("[kundli-pdf] a bundle report failed", (r as GenErr).error));
+
+      if (results.length === 0) {
+        const firstErr = settled.find((r) => !r.ok) as GenErr | undefined;
+        await updateJob(paymentId, {
+          status: "failed",
+          error: firstErr?.detail ?? firstErr?.error ?? "Could not generate the report",
+          code: firstErr?.code,
+        });
+        return;
+      }
+
+      const pdfs: DeliveredPdf[] = results.map((r) => ({
         name: PDF_TYPE_NAME[r.pdfType],
         url: r.url,
         fileName: r.fileName,
-      })),
-      emailed,
-      sizeBytes: results.reduce((s, r) => s + r.sizeBytes, 0),
-      pdfTypes,
-    });
-  } catch (error) {
-    console.error("[kundli-pdf] request failed", error);
-    return res.status(502).json({ error: "Report generation failed" });
-  }
+      }));
+
+      const emailed = await emailReport(
+        String(body.email ?? ""),
+        String(body.name),
+        tierName,
+        pdfs,
+      );
+
+      await updateJob(paymentId, { status: "ready", pdfs, emailed });
+      console.log(`[kundli-pdf] job ready for ${paymentId} (${pdfs.length} pdf(s), emailed=${emailed})`);
+    } catch (error) {
+      console.error("[kundli-pdf] background generation failed", error);
+      await updateJob(paymentId, {
+        status: "failed",
+        error: "Report generation failed",
+      }).catch(() => {});
+    }
+  })();
 }

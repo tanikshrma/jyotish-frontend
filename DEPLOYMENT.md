@@ -204,6 +204,37 @@ Branding on the report's last page comes from `PDF_COMPANY_NAME`, `PDF_ADDRESS`,
 `PDF_WEBSITE`, `PDF_EMAIL`, `PDF_PHONE`. The sending address is
 `PROSPECTIQ_EMAIL_FROM`.
 
+## 7c. Why PDF delivery is asynchronous (important)
+
+A Complete Bundle renders two reports (~28 MB) and takes 60-120 seconds end to
+end. **Cloudflare terminates any request at 100 seconds**, so a synchronous
+design returned a 520 to the customer *after* Razorpay had already captured
+the money — the order was silently lost.
+
+`POST /api/kundli-pdf` therefore:
+
+1. verifies the Razorpay signature,
+2. creates a job under `STORAGE_DIR/jobs` (default `./storage/jobs`),
+3. returns **202 immediately** with a `jobId`,
+4. renders, re-hosts and emails in the background.
+
+The browser polls `GET /api/kundli-pdf-status?jobId=…` until the job is
+`ready` or `failed`, so no single request is ever long-lived.
+
+Operational notes:
+
+- **`STORAGE_DIR` must be writable and persistent.** Jobs survive a PM2 restart
+  because they live on disk. A stale `pending` job is auto-failed after 10
+  minutes so the browser stops polling.
+- **Delivery is idempotent per Razorpay payment id.** A refresh, retry, or
+  second tab returns the existing job instead of regenerating — which also
+  stops a duplicate burning another VedicAstro PDF credit.
+- **The email is sent from the background job**, so the customer receives the
+  report even if they close the tab.
+- This pattern needs a long-lived Node process. It works on the self-hosted
+  server; it would **not** work on Vercel serverless, where the function is
+  frozen once the response is sent.
+
 ## 8. Security notes
 
 - `.env` is included in this package **and contains live CRM credentials.**

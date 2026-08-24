@@ -33,22 +33,6 @@ export type KundliPdfRequest = {
 
 export type DeliveredPdf = { name: string; url: string; fileName: string };
 
-export type KundliPdfResult = {
-  ok: true;
-  tier?: string | null;
-  tierName?: string;
-  /** Permanent Prospect IQ CDN URL of the first report — public, non-expiring. */
-  downloadUrl: string;
-  fileId: string;
-  fileName: string;
-  /** Every report produced (a bundle tier returns more than one). */
-  downloadUrls?: DeliveredPdf[];
-  /** True when the report(s) were emailed to the customer. */
-  emailed: boolean;
-  sizeBytes: number;
-  pdfTypes?: string[];
-};
-
 export class KundliPdfError extends Error {
   readonly code?: string;
   constructor(message: string, code?: string) {
@@ -93,8 +77,42 @@ export const saveToDisk = async (url: string, fileName: string): Promise<void> =
   }
 };
 
+export type KundliPdfResult = {
+  ok: boolean;
+  jobId: string;
+  status: "pending" | "ready" | "failed";
+  tier: string | null;
+  tierName: string | null;
+  /** Every report produced (a bundle tier returns more than one). */
+  downloadUrls: DeliveredPdf[];
+  /** Permanent Prospect IQ CDN URL of the first report — public, non-expiring. */
+  downloadUrl: string | null;
+  fileName: string | null;
+  /** True when the report(s) were emailed to the customer. */
+  emailed: boolean;
+  error?: string;
+  code?: string;
+};
+
+/** How long to keep polling before giving up (the email still arrives). */
+const POLL_TIMEOUT_MS = 5 * 60 * 1000;
+const POLL_INTERVAL_MS = 3000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Starts generation and waits for it to finish.
+ *
+ * The server answers 202 immediately with a job id and renders in the
+ * background: a Complete Bundle takes 60-120s, and Cloudflare terminates any
+ * request past 100s, which previously lost the order after the customer had
+ * already paid. Polling keeps every request short.
+ *
+ * `onProgress` is called while waiting so the UI can reassure the customer.
+ */
 export const deliverKundliPdf = async (
   input: KundliPdfRequest,
+  onProgress?: (elapsedMs: number) => void,
 ): Promise<KundliPdfResult> => {
   const response = await fetch("/api/kundli-pdf", {
     method: "POST",
@@ -102,7 +120,7 @@ export const deliverKundliPdf = async (
     body: JSON.stringify(input),
   });
 
-  if (!response.ok) {
+  if (!response.ok && response.status !== 202) {
     let message = "Could not generate your PDF";
     let code: string | undefined;
     try {
@@ -115,26 +133,46 @@ export const deliverKundliPdf = async (
     throw new KundliPdfError(message, code);
   }
 
-  const result = (await response.json()) as KundliPdfResult;
+  let result = (await response.json()) as KundliPdfResult;
 
-  // Every report the tier produced (a bundle returns more than one).
-  const pdfs: DeliveredPdf[] =
-    result.downloadUrls && result.downloadUrls.length
-      ? result.downloadUrls
-      : [{ name: result.tierName ?? "Kundli", url: result.downloadUrl, fileName: result.fileName }];
+  // Poll until the background job finishes.
+  const startedAt = Date.now();
+  while (result.status === "pending") {
+    if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+      throw new KundliPdfError(
+        "Your report is taking longer than usual. We'll email it to you as soon as it's ready.",
+        "TIMEOUT",
+      );
+    }
+    await sleep(POLL_INTERVAL_MS);
+    onProgress?.(Date.now() - startedAt);
+    try {
+      const poll = await fetch(`/api/kundli-pdf-status?jobId=${encodeURIComponent(result.jobId)}`);
+      result = (await poll.json()) as KundliPdfResult;
+    } catch {
+      // A dropped poll is not fatal; try again on the next tick.
+    }
+  }
+
+  if (result.status === "failed") {
+    throw new KundliPdfError(result.error ?? "Could not generate your PDF", result.code);
+  }
+
+  const pdfs = result.downloadUrls?.length
+    ? result.downloadUrls
+    : result.downloadUrl
+      ? [{ name: result.tierName ?? "Kundli", url: result.downloadUrl, fileName: result.fileName ?? "kundli.pdf" }]
+      : [];
 
   // Open every report in a new tab, then save a copy.
   //
   // Two browser rules shape this:
   //  * window.open() outside a user gesture is popup-blocked, and this runs
-  //    after an async payment + fetch. A programmatic anchor click with
-  //    target="_blank" is honoured far more often, so that is used instead.
+  //    after an async payment. A programmatic anchor click with
+  //    target="_blank" is honoured far more often.
   //  * The `download` attribute is IGNORED for cross-origin URLs, and the PDFs
-  //    are served from the Prospect IQ CDN. Saving therefore goes through a
-  //    same-origin blob URL, which the browser will always download.
-  //
-  // If a tab is still blocked, the caller keeps the URLs (and the emailed
-  // copy) so the customer can open them with a real click.
+  //    are served from the Prospect IQ CDN, so saving goes through a
+  //    same-origin blob URL.
   pdfs.forEach((pdf) => {
     openInNewTab(pdf.url);
     void saveToDisk(pdf.url, pdf.fileName);

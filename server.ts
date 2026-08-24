@@ -24,6 +24,7 @@ import prospectiq from "./api/prospectiq.js";
 import astro from "./api/astro.js";
 import geocode from "./api/geocode.js";
 import kundliPdf from "./api/kundli-pdf.js";
+import kundliPdfStatus from "./api/kundli-pdf-status.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(__dirname, "dist");
@@ -63,6 +64,7 @@ app.all("/api/prospectiq", adapt(prospectiq as VercelLikeHandler));
 app.all("/api/astro", adapt(astro as VercelLikeHandler));
 app.all("/api/geocode", adapt(geocode as VercelLikeHandler));
 app.all("/api/kundli-pdf", adapt(kundliPdf as VercelLikeHandler));
+app.all("/api/kundli-pdf-status", adapt(kundliPdfStatus as VercelLikeHandler));
 
 
 /** Health check for uptime monitors and load balancers. */

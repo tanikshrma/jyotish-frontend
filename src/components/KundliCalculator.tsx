@@ -39,6 +39,7 @@ export function KundliCalculator() {
   const [showPdfOptions, setShowPdfOptions] = useState(false);
   // The tier name whose PDF is being generated right now (drives the loader).
   const [deliveringTier, setDeliveringTier] = useState<string | null>(null);
+  const [deliveryElapsed, setDeliveryElapsed] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [kundliData, setKundliData] = useState<any>(location.state?.kundliData || null);
@@ -432,6 +433,7 @@ export function KundliCalculator() {
 
             setDeliveringTier(tier.name);
             try {
+              setDeliveryElapsed(0);
               const delivery = await deliverKundliPdf({
                 name,
                 email,
@@ -445,7 +447,7 @@ export function KundliCalculator() {
                 razorpay_order_id: resp.razorpay_order_id,
                 razorpay_payment_id: resp.razorpay_payment_id,
                 razorpay_signature: resp.razorpay_signature,
-              });
+              }, (ms) => setDeliveryElapsed(Math.round(ms / 1000)));
               const pdfs = delivery.downloadUrls?.length
                 ? delivery.downloadUrls
                 : [{ name: delivery.tierName ?? tier.name, url: delivery.downloadUrl, fileName: delivery.fileName }];
@@ -473,6 +475,7 @@ export function KundliCalculator() {
               });
             } finally {
               setDeliveringTier(null);
+              setDeliveryElapsed(0);
             }
           } catch (e: any) {
             toast.error("Payment verification failed", { description: e.message });
@@ -576,8 +579,12 @@ export function KundliCalculator() {
                 Preparing your {deliveringTier}
               </h3>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Casting your chart and typesetting the report. This can take up to
-                a minute for the larger reports — please keep this tab open.
+                Casting your chart and typesetting the report. Larger bundles can
+                take a couple of minutes — please keep this tab open.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {deliveryElapsed > 0 ? `Working… ${deliveryElapsed}s elapsed. ` : ""}
+                Your payment is confirmed, and we email the report either way.
               </p>
             </div>
             <p className="text-[11px] font-medium uppercase tracking-wider text-secondary">
