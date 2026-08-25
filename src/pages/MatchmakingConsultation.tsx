@@ -8,7 +8,7 @@ const MatchmakingConsultation = () => {
       title="Matchmaking Consultation"
       highlightedTitle="Report"
       description="Ensure a harmonious and prosperous marital life with our expert Kundli Milan and compatibility analysis based on traditional Ashtakoot Milan."
-      heroImage="https://vibe.filesafe.space/1782888190245745251/assets/0c329c4a-21f4-447a-96b6-655c9071bbe8.jpg"
+      heroImage="/images/matchmaking-hero.webp"
       heroBgImage="https://vibe.filesafe.space/1782888190245745251/attachments/47f81405-bf4d-4943-8023-91bad5d11cf3.png"
       whatIsIt={{
         title: "What is",
@@ -19,7 +19,7 @@ const MatchmakingConsultation = () => {
           { title: "Dosha Analysis", desc: "Detailed check for Manglik, Bhakoot, and Nadi Doshas.", icon: Shield },
           { title: "Emotional Harmony", desc: "Assessing mental compatibility and mutual understanding.", icon: Heart }
         ],
-        image: "https://vibe.filesafe.space/1782888190245745251/assets/0fcd47e6-6cca-4a66-8d91-29962613ba32.jpg"
+        image: "/images/matchmaking-ashtakoot.webp"
       }}
       benefits={[
         { title: "Relationship Harmony", desc: "Deep insights into mutual compatibility and temperament.", icon: Heart },
