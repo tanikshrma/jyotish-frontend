@@ -43,7 +43,7 @@ const PIQ_FROM = process.env.PROSPECTIQ_EMAIL_FROM || "myjyotishnow@gmail.com";
 // "predictions", which the API rejects with 400 "Invalid PDF Size".
 const PDF_TYPES = ["small", "medium", "large", "prediction"] as const;
 
-const BRAND = {
+export const BRAND = {
   company_name: process.env.PDF_COMPANY_NAME || "JyotishNow",
   address: process.env.PDF_ADDRESS || "Dr. Sandeep Sawhney, Ambala, Haryana, India",
   website: process.env.PDF_WEBSITE || "www.jyotishnow.com",
@@ -70,11 +70,11 @@ const paymentIsValid = (body: Record<string, unknown>): boolean => {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 };
 
-const safeName = (name: string) =>
+export const safeName = (name: string) =>
   (name || "Kundli").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 60);
 
 /** Uploads the PDF to Prospect IQ and returns its permanent CDN URL. */
-const uploadToProspectIQ = async (
+export const uploadToProspectIQ = async (
   bytes: Buffer,
   fileName: string,
 ): Promise<{ url: string; fileId: string } | null> => {
@@ -166,7 +166,7 @@ const buildEmailHtml = (
  * Conversations. Returns false on any failure — email is best-effort, the
  * customer already has the download links from the API response.
  */
-const emailReport = async (
+export const emailReport = async (
   to: string,
   customerName: string,
   tierName: string,
@@ -266,7 +266,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * 15-25s). Until then S3 answers 403/404. So poll the URL until it's really
  * there. The upstream link expires in ~2h, so this window is safe.
  */
-const fetchWhenReady = async (
+export const fetchWhenReady = async (
   url: string,
   maxWaitMs = 90_000,
 ): Promise<Response | null> => {

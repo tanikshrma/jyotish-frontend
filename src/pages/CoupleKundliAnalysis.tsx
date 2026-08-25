@@ -19,7 +19,7 @@ const CoupleKundliAnalysis = () => {
           { title: "Conflict Resolution", desc: "Astrological reasons for disagreements.", icon: Shield },
           { title: "Future Together", desc: "Predictions for joint wealth and family.", icon: Target }
         ],
-        image: "https://vibe.filesafe.space/1782888190245745251/attachments/09570eb6-ddf9-458a-8481-aef851b11652.png"
+        image: "https://vibe.filesafe.space/1782888190245745251/assets/0fcd47e6-6cca-4a66-8d91-29962613ba32.jpg"
       }}
       benefits={[
         { title: "Better Understanding", desc: "Know your partner's core nature.", icon: Users },

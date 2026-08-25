@@ -8,7 +8,7 @@ export function DiscoverBlueprint() {
       {/* Decorative background elements */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-secondary/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('https://vibe.filesafe.space/meta/1782888190245745251/mandala-bg.png')] bg-repeat opacity-[0.03] pointer-events-none"></div>
+      <div className="absolute inset-0 bg-repeat opacity-[0.03] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">

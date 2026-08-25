@@ -16,6 +16,10 @@ import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
 import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
+import { toast } from "sonner";
+import { createOrder, loadRazorpayScript } from "@/lib/razorpay";
+import { deliverMatchmakingPdf, openInNewTab, KundliPdfError } from "@/lib/kundliPdf";
+import { formatINR, getPriceInRupees } from "../../shared/pricing";
 import { KaalSarpPDF } from "./KaalSarpPDF";
 import { MatchmakingPDF } from "./MatchmakingPDF";
 import { DateInputField, TimeInputField } from "./FormDateInput";
@@ -105,6 +109,96 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
   const pdfRef2 = useRef<HTMLDivElement>(null);
+
+  /**
+   * Buys and delivers the official Ashtakoot PDF from VedicAstro.
+   * Priced server-side; the report is generated in the background, emailed,
+   * then opened and downloaded here.
+   */
+  const handleBuyOfficialReport = async () => {
+    if (!birthParams) return;
+    if (!formData.email?.trim()) {
+      toast.error("Email required", { description: "Add your email so we can send the report." });
+      return;
+    }
+    setIsBuyingReport(true);
+    setReportElapsed(0);
+    try {
+      await loadRazorpayScript();
+      const order = await createOrder({
+        service: "matchmaking-pdf",
+        variant: "default",
+        notes: { type: "Kundli Matching PDF", boy: formData.name, girl: formData2.name, email: formData.email },
+      });
+      if (!window.Razorpay) throw new Error("Razorpay is unavailable");
+
+      const checkout = new window.Razorpay({
+        key: order.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: "JyotishNow",
+        description: "Official Kundli Matching PDF Report",
+        order_id: order.order_id,
+        prefill: { name: formData.name, email: formData.email, contact: formData.phone },
+        theme: { color: "#7A0808" },
+        handler: async (resp: any) => {
+          try {
+            const delivery = await deliverMatchmakingPdf({
+              email: formData.email,
+              boy_name: formData.name,
+              boy_dob: birthParams.p1.dob,
+              boy_tob: birthParams.p1.tob,
+              boy_lat: birthParams.p1.lat,
+              boy_lon: birthParams.p1.lon,
+              boy_tz: birthParams.p1.tz,
+              boy_pob: formData.pob,
+              girl_name: formData2.name,
+              girl_dob: birthParams.p2.dob,
+              girl_tob: birthParams.p2.tob,
+              girl_lat: birthParams.p2.lat,
+              girl_lon: birthParams.p2.lon,
+              girl_tz: birthParams.p2.tz,
+              girl_pob: formData2.pob,
+              razorpay_order_id: resp.razorpay_order_id,
+              razorpay_payment_id: resp.razorpay_payment_id,
+              razorpay_signature: resp.razorpay_signature,
+            }, (ms) => setReportElapsed(Math.round(ms / 1000)));
+
+            toast.success("Your matching report is ready", {
+              description: delivery.emailed
+                ? "Opened, downloaded, and emailed to you. The link never expires."
+                : "Opened and downloaded. Save it — the link never expires.",
+              duration: 15000,
+              action: {
+                label: "Open PDF",
+                onClick: () => delivery.downloadUrls.forEach((d) => openInNewTab(d.url)),
+              },
+            });
+          } catch (err) {
+            // Payment already succeeded — never leave them empty-handed.
+            const detail = err instanceof KundliPdfError ? err.message : "Please contact us with your payment ID.";
+            toast.error("Couldn't prepare your report", {
+              description: `${detail} Your payment is safe and we'll email the report shortly.`,
+            });
+          } finally {
+            setIsBuyingReport(false);
+            setReportElapsed(0);
+          }
+        },
+        modal: { ondismiss: () => { setIsBuyingReport(false); toast.info("Payment cancelled"); } },
+      });
+      checkout.on("payment.failed", (r: any) => {
+        setIsBuyingReport(false);
+        toast.error("Payment Failed", { description: r?.error?.description ?? "Please try another method." });
+      });
+      checkout.open();
+    } catch (err) {
+      setIsBuyingReport(false);
+      toast.error("Could not start payment", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    }
+  };
 
   const handleDownloadPDF = async () => {
     if ((type === 'kaalsarp' || type === 'matchmaking') && (pdfRef.current || pdfRef2.current)) {
@@ -279,6 +373,11 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
   };
 
   const [apiResult, setApiResult] = useState<any>(null);
+  // Resolved birth params for both charts, kept so the paid PDF is generated
+  // from exactly the coordinates the on-screen match was computed with.
+  const [birthParams, setBirthParams] = useState<{ p1: any; p2: any } | null>(null);
+  const [isBuyingReport, setIsBuyingReport] = useState(false);
+  const [reportElapsed, setReportElapsed] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,6 +413,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
         const formattedDob2 = date2 ? format(date2, 'dd/MM/yyyy') : '';
         const params2 = { dob: formattedDob2, tob: `${timeState2.hour}:${timeState2.minute}`, lat: lat2, lon: lon2, tz: tz2 };
 
+        setBirthParams({ p1: params1, p2: params2 });
         resultData = await vedicAstroApi.getMatchmaking(params1, params2);
       } else {
         if (type === 'kaalsarp') {
@@ -820,6 +920,25 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
               <Download className="w-5 h-5" />
               Download PDF
             </Button>
+            {isCoupleForm && birthParams && (
+              <Button
+                onClick={handleBuyOfficialReport}
+                disabled={isBuyingReport}
+                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white rounded-xl h-14 px-8 text-lg font-bold shadow-lg transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2"
+              >
+                {isBuyingReport ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {reportElapsed > 0 ? `Preparing… ${reportElapsed}s` : "Processing…"}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Official PDF Report — {formatINR(getPriceInRupees("matchmaking-pdf") ?? 0)}
+                  </>
+                )}
+              </Button>
+            )}
             <Button 
               onClick={() => {setIsSuccess(false); setApiResult(null);}} 
               className="w-full sm:w-auto bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 text-white rounded-xl h-14 px-8 text-lg font-bold shadow-lg transition-all duration-300 hover:-translate-y-1"

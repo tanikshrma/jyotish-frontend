@@ -577,12 +577,12 @@ export function KundliBook({ kundliData, step, onOpenBook, onClose, isPaid, onUn
         <div className="flex flex-row justify-center gap-6 mt-8 mb-2 px-2">
           <div className="flex-1 border-2 border-[#B98A45]/40 rounded-2xl bg-[#F8F1E4]/90 p-5 flex flex-col items-center shadow-md relative overflow-hidden">
             <p className="font-sans text-[#B98A45] text-[10px] font-bold tracking-[0.2em] uppercase mb-3">Sun Sign</p>
-            <img src={`/zodiac/${(renderSafeString(p.sun_sign, 'cancer')).toLowerCase()}.png`} alt="Sun Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => e.currentTarget.src = 'https://vibe.filesafe.space/1782888190245745251/attachments/c1378bd9-28a1-4a14-bebf-d092cc87a63a.png'} />
+            <img src={`/zodiac/${(renderSafeString(p.sun_sign, 'cancer')).toLowerCase()}.png`} alt="Sun Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>{renderSafeString(p.sun_sign, "Cancer")}</p>
           </div>
           <div className="flex-1 border-2 border-[#B98A45]/40 rounded-2xl bg-[#F8F1E4]/90 p-5 flex flex-col items-center shadow-md relative overflow-hidden">
             <p className="font-sans text-[#B98A45] text-[10px] font-bold tracking-[0.2em] uppercase mb-3">Moon Sign</p>
-            <img src={`/zodiac/${(renderSafeString(p.moon_sign, 'aquarius')).toLowerCase()}.png`} alt="Moon Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => e.currentTarget.src = 'https://vibe.filesafe.space/1782888190245745251/attachments/697e618d-9f03-4478-b51e-c65f755688d2.png'} />
+            <img src={`/zodiac/${(renderSafeString(p.moon_sign, 'aquarius')).toLowerCase()}.png`} alt="Moon Sign" className="w-[56px] h-[56px] object-contain mb-3 opacity-90 drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <p className="font-bold text-xl text-[#7A0808] capitalize" style={{ fontFamily: "'Cinzel', 'Cormorant Garamond', serif" }}>{renderSafeString(p.moon_sign, "Aquarius")}</p>
           </div>
         </div>

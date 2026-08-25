@@ -7,7 +7,6 @@ export function Footer() {
       <div 
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
-          backgroundImage: 'url("https://vibe.filesafe.space/meta/1782888190245745251/mandala-pattern.png")',
           backgroundSize: '350px',
           backgroundRepeat: 'repeat'
         }}

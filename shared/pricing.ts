@@ -20,7 +20,8 @@ export type ServiceId =
   | "annual-horoscope"
   | "lalkitab-consultation"
   | "complete-horoscope"
-  | "kundli-pdf";
+  | "kundli-pdf"
+  | "matchmaking-pdf";
 
 export type Service = {
   label: string;
@@ -29,6 +30,11 @@ export type Service = {
 };
 
 export const SERVICES: Record<ServiceId, Service> = {
+  "matchmaking-pdf": {
+    label: "Official Kundli Matching PDF Report",
+    // Single Ashtakoot report (~23 pages) from VedicAstro's matching-queue.
+    variants: { default: 299 },
+  },
   "kundli-pdf": {
     label: "Full Kundli PDF Report Download",
     variants: {

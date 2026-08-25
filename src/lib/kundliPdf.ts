@@ -113,8 +113,37 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const deliverKundliPdf = async (
   input: KundliPdfRequest,
   onProgress?: (elapsedMs: number) => void,
+): Promise<KundliPdfResult> => deliverPdf("/api/kundli-pdf", input, onProgress);
+
+/**
+ * Paid Ashtakoot matchmaking report. Both charts are required; the server
+ * renders it through VedicAstro's matching-queue and emails it, exactly like
+ * the kundli export.
+ */
+export type MatchmakingPdfRequest = {
+  email?: string;
+  lang?: string;
+  boy_name: string; boy_dob: string; boy_tob: string;
+  boy_lat: number | string; boy_lon: number | string; boy_tz: number | string; boy_pob?: string;
+  girl_name: string; girl_dob: string; girl_tob: string;
+  girl_lat: number | string; girl_lon: number | string; girl_tz: number | string; girl_pob?: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+export const deliverMatchmakingPdf = async (
+  input: MatchmakingPdfRequest,
+  onProgress?: (elapsedMs: number) => void,
+): Promise<KundliPdfResult> => deliverPdf("/api/matchmaking-pdf", input, onProgress);
+
+/** Shared start-then-poll delivery used by both paid report types. */
+const deliverPdf = async (
+  endpoint: string,
+  input: KundliPdfRequest | MatchmakingPdfRequest,
+  onProgress?: (elapsedMs: number) => void,
 ): Promise<KundliPdfResult> => {
-  const response = await fetch("/api/kundli-pdf", {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),

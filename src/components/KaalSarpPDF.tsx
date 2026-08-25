@@ -41,7 +41,7 @@ export const KaalSarpPDF = React.forwardRef<HTMLDivElement, KaalSarpPDFProps>(({
         <div className="relative z-10 flex justify-between items-center mb-10 border-b-2 border-primary/20 pb-6">
           <div className="flex items-center">
             <img 
-              src="https://vibe.filesafe.space/1782888190245745251/attachments/2cff7b68-c742-4cf8-9a74-5c87998941a6.png" 
+              src="https://vibe.filesafe.space/1782888190245745251/attachments/eeb5c854-e071-4e16-b563-90e6375205fb.png" 
               alt="Jyotish Now" 
               className="h-16 w-auto object-contain"
               crossOrigin="anonymous"
@@ -93,7 +93,7 @@ export const KaalSarpPDF = React.forwardRef<HTMLDivElement, KaalSarpPDFProps>(({
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-16 py-20">
           <div className="w-80 h-40 relative mb-4">
             <img 
-              src="https://vibe.filesafe.space/1782888190245745251/attachments/2cff7b68-c742-4cf8-9a74-5c87998941a6.png" 
+              src="https://vibe.filesafe.space/1782888190245745251/attachments/eeb5c854-e071-4e16-b563-90e6375205fb.png" 
               alt="Jyotish Now" 
               className="w-full h-full object-contain"
               crossOrigin="anonymous"
@@ -280,7 +280,7 @@ export const KaalSarpPDF = React.forwardRef<HTMLDivElement, KaalSarpPDFProps>(({
             <div className="pt-16 text-center space-y-8">
               <div className="w-40 h-20 mx-auto opacity-30 grayscale contrast-125">
                 <img 
-                  src="https://vibe.filesafe.space/1782888190245745251/attachments/2cff7b68-c742-4cf8-9a74-5c87998941a6.png" 
+                  src="https://vibe.filesafe.space/1782888190245745251/attachments/eeb5c854-e071-4e16-b563-90e6375205fb.png" 
                   alt="Jyotish Now Logo Small" 
                   className="w-full h-full object-contain"
                   crossOrigin="anonymous"

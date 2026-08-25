@@ -46,7 +46,7 @@ export const MatchmakingPDF = React.forwardRef<HTMLDivElement, MatchmakingPDFPro
         <div className="relative z-10 flex justify-between items-center mb-10 border-b-2 border-primary/20 pb-6">
           <div className="flex items-center">
             <img 
-              src="https://vibe.filesafe.space/1782888190245745251/attachments/e390c9b8-6350-4f0b-8ce7-7f5789ad7b41.png" 
+              src="https://vibe.filesafe.space/1782888190245745251/attachments/eeb5c854-e071-4e16-b563-90e6375205fb.png" 
               alt="Jyotish Now" 
               className="h-16 w-auto object-contain"
               crossOrigin="anonymous"
@@ -98,7 +98,7 @@ export const MatchmakingPDF = React.forwardRef<HTMLDivElement, MatchmakingPDFPro
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-16 py-20">
           <div className="w-80 h-40 relative mb-4">
             <img 
-              src="https://vibe.filesafe.space/1782888190245745251/attachments/e390c9b8-6350-4f0b-8ce7-7f5789ad7b41.png" 
+              src="https://vibe.filesafe.space/1782888190245745251/attachments/eeb5c854-e071-4e16-b563-90e6375205fb.png" 
               alt="Jyotish Now" 
               className="w-full h-full object-contain"
               crossOrigin="anonymous"
