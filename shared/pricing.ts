@@ -93,9 +93,11 @@ export const SERVICES: Record<ServiceId, Service> = {
   "vastu-consultancy": {
     label: "Vastu Consultancy",
     variants: {
-      "Residential": 11000,
-      "Commercial": 21000,
-      default: 11000,
+      // Sahil Sir CM, 26 Aug 2026: online discussion Rs49,999;
+      // on-site visit Rs99,999 + travelling expenses (billed separately).
+      online: 49999,
+      "site-visit": 99999,
+      default: 49999,
     },
   },
   "annual-horoscope": {

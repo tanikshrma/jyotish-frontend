@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, Home, Building2, Factory, MonitorSmartphone, ArrowRight, Star, SunMedium } from "lucide-react";
 import { FinalCTA } from "@/components/FinalCTA";
 import { BookingModal } from "@/components/BookingModal";
+import { RazorpayButton } from "@/components/RazorpayButton";
+import { formatINR, getPriceInRupees } from "../../shared/pricing";
 import { SEO } from "@/components/SEO";
 import { motion } from "framer-motion";
 
@@ -188,6 +190,82 @@ const VastuConsultancy = () => {
                     </BookingModal>
                   </div>
                 ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Vastu Consultation Charges */}
+          <section className="py-24 bg-secondary/5">
+            <div className="container mx-auto px-4 max-w-5xl">
+              <div className="text-center mb-14">
+                <h2 className="text-4xl md:text-5xl font-bold font-serif mb-4 text-[#1a1a1a]">
+                  Consultation <span className="text-primary">Charges</span>
+                </h2>
+                <p className="text-black/70 max-w-2xl mx-auto text-lg">
+                  Choose the consultation that suits your needs. Every session is one-on-one with our expert Vastu consultant.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Online Discussion */}
+                <div className="bg-white border border-border/40 rounded-2xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.05)] flex flex-col">
+                  <div className="w-14 h-14 rounded-full bg-primary/5 flex items-center justify-center mb-5 text-primary">
+                    <MonitorSmartphone className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-2xl font-bold font-serif mb-2 text-[#1a1a1a]">Online Discussion</h3>
+                  <p className="text-black/70 mb-6 flex-grow">
+                    Detailed Vastu analysis and remedies over a virtual consultation, based on your floor plan and directions.
+                  </p>
+                  <div className="text-3xl font-bold text-primary mb-6">
+                    {formatINR(getPriceInRupees("vastu-consultancy", "online") ?? 0)}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <RazorpayButton
+                      service="vastu-consultancy"
+                      variant="online"
+                      description="Vastu Consultancy — Online Discussion"
+                      className="w-full sm:flex-1 h-12 px-6 rounded-xl text-base"
+                    />
+                    <BookingModal defaultService="vastu-consultancy">
+                      <Button variant="outline" className="w-full sm:w-auto h-12 px-6 rounded-xl">
+                        Book a Slot
+                      </Button>
+                    </BookingModal>
+                  </div>
+                </div>
+
+                {/* On-Site Visit */}
+                <div className="bg-white border-2 border-primary/30 rounded-2xl p-8 shadow-[0_12px_40px_-12px_rgba(122,8,8,0.18)] flex flex-col relative">
+                  <span className="absolute top-5 right-5 bg-secondary text-primary text-xs font-bold px-3 py-1 rounded-full">
+                    Most Detailed
+                  </span>
+                  <div className="w-14 h-14 rounded-full bg-primary/5 flex items-center justify-center mb-5 text-primary">
+                    <Home className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-2xl font-bold font-serif mb-2 text-[#1a1a1a]">On-Site Visit</h3>
+                  <p className="text-black/70 mb-6 flex-grow">
+                    A personal visit to your property for a complete on-ground Vastu assessment and tailored remedies.
+                  </p>
+                  <div className="mb-6">
+                    <div className="text-3xl font-bold text-primary">
+                      {formatINR(getPriceInRupees("vastu-consultancy", "site-visit") ?? 0)}
+                    </div>
+                    <p className="text-sm text-black/60 mt-1">+ travelling expenses (billed as per location)</p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <RazorpayButton
+                      service="vastu-consultancy"
+                      variant="site-visit"
+                      description="Vastu Consultancy — On-Site Visit"
+                      className="w-full sm:flex-1 h-12 px-6 rounded-xl text-base"
+                    />
+                    <BookingModal defaultService="vastu-consultancy">
+                      <Button variant="outline" className="w-full sm:w-auto h-12 px-6 rounded-xl">
+                        Book a Slot
+                      </Button>
+                    </BookingModal>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
