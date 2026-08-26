@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "node:crypto";
 import { readJsonBody, readJsonResponse, requirePost } from "./_razorpay.js";
 import { createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
+import { recordPaymentInCrm } from "./_crm.js";
+import { getPriceInRupees } from "../shared/pricing.js";
 import {
   BRAND,
   emailReport,
@@ -85,6 +87,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const job = await createJob(paymentId, orderId, "matchmaking-pdf", REPORT_NAME);
+
+  void recordPaymentInCrm({
+    email: String(body.email ?? ""),
+    phone: String(body.phone ?? ""),
+    name: `${body.boy_name ?? ""} & ${body.girl_name ?? ""}`.trim(),
+    service: "matchmaking-pdf",
+    serviceLabel: REPORT_NAME,
+    amountRupees: getPriceInRupees("matchmaking-pdf") ?? 0,
+    paymentId,
+    orderId,
+  });
   res.status(202).json(jobResponse(job));
 
   // --- background work, deliberately not awaited ---------------------------

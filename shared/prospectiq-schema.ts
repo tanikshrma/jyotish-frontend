@@ -186,3 +186,46 @@ export const toIsoDate = (value?: string): string | null => {
     ? null
     : parsed.toISOString().slice(0, 10);
 };
+
+/**
+ * Opportunity pipelines used to reflect a completed website payment inside
+ * Prospect IQ. Every paid checkout creates a "won" opportunity carrying the
+ * amount as monetaryValue, so the sale shows on the CRM board, counts toward
+ * pipeline revenue, and can trigger "stage changed" automations. (GHL's
+ * Payments/orders ledger is not used — its create API requires internal
+ * checkout fields like fingerprint/trackingId that only its own hosted
+ * checkout supplies.)
+ *
+ * IDs read live from GET /opportunities/pipelines for location
+ * FTD8wmuYqCT7XoIpXJQG.
+ */
+export const PIQ_PIPELINES = {
+  reports: {
+    pipelineId: "v4FiNQfeM4jSR8SsUf3s", // "Reports & Gemstones"
+    paidStageId: "9faa3822-6304-4fa0-b3be-1febe0abdc9f", // "Paid"
+  },
+  consultations: {
+    pipelineId: "VYLsVuKWWaGS7ZZAUQ1w", // "Consultation Bookings"
+    paidStageId: "f84f43e0-ff72-4f32-a8e6-1da85a765c36", // "Payment Received"
+  },
+} as const;
+
+/** Deliverable products (PDF reports + the gemstone analysis) land in the
+ *  Reports pipeline. Everything else — the audio/video calls, the in-person
+ *  sessions, muhurats and consultancies — is a booking and lands in the
+ *  Consultation Bookings pipeline. Note: annual-horoscope, lalkitab and
+ *  complete-horoscope are *calls*, not written reports, despite their names. */
+const REPORT_SERVICES = new Set([
+  "kundli-pdf",
+  "matchmaking-pdf",
+  "gemstone-analysis",
+]);
+
+export const pipelineForService = (service?: string) => {
+  const key = (service ?? "").toLowerCase().trim();
+  // The dedicated PDF endpoints pass the real service key (matched by the set);
+  // the generic checkout passes a display label like "Gemstone Analysis", so we
+  // also sniff the text for report/pdf/gemstone wording.
+  const isReport = REPORT_SERVICES.has(key) || /pdf|\breport\b|gemstone/.test(key);
+  return isReport ? PIQ_PIPELINES.reports : PIQ_PIPELINES.consultations;
+};

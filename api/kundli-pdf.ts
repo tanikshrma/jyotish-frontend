@@ -13,6 +13,8 @@ import {
   type KundliPdfType,
 } from "../shared/pricing.js";
 import { createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
+import { recordPaymentInCrm } from "./_crm.js";
+import { getPriceInRupees } from "../shared/pricing.js";
 
 /**
  * POST /api/kundli-pdf
@@ -429,6 +431,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const job = await createJob(paymentId, orderId, tier?.variant ?? paidVariant ?? undefined, tierName);
+
+  // Reflect the sale in Prospect IQ regardless of how generation goes — the
+  // customer has already paid.
+  const paidRupees = getPriceInRupees("kundli-pdf", tier?.variant ?? paidVariant ?? "default") ?? 0;
+  void recordPaymentInCrm({
+    email: String(body.email ?? ""),
+    phone: String(body.phone ?? ""),
+    name: String(body.name ?? ""),
+    service: "kundli-pdf",
+    serviceLabel: tierName,
+    amountRupees: paidRupees,
+    paymentId,
+    orderId,
+  });
 
   // Respond NOW. A Complete Bundle takes 60-120s to render, download, re-host
   // and email; Cloudflare kills anything past 100s, which previously lost the

@@ -7,6 +7,7 @@ import {
   requirePost,
   readJsonResponse,
 } from "./_razorpay.js";
+import { recordPaymentInCrm } from "./_crm.js";
 
 /**
  * POST /api/verify-payment
@@ -241,6 +242,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const targetCustPhone = cleanCustomerPhone.length === 10 ? `91${cleanCustomerPhone}` : cleanCustomerPhone;
     const custWaText = encodeURIComponent(`*JyotishNow Payment Receipt* 📜\n--------------------------------\n*Service:* ${serviceName}\n*Amount Paid:* ${amountStr}\n*Payment ID:* ${paymentId}\n*Customer Name:* ${customerName}\n*Status:* CONFIRMED ✅\n\nThank you for choosing JyotishNow (Dr. Sandeep Sawhney)! For support, contact us at myjyotishnow@gmail.com or +91-7015544187.`);
     const whatsappCustomerUrl = targetCustPhone ? `https://wa.me/${targetCustPhone}?text=${custWaText}` : whatsappAdminUrl;
+
+    // Reflect the sale in Prospect IQ (won opportunity with the amount). Not
+    // awaited-critical: the payment already succeeded, so a CRM hiccup must not
+    // break the response.
+    const amountRupees = Number(rawAmount.replace(/[^0-9.]/g, "")) || 0;
+    void recordPaymentInCrm({
+      email: customerEmail,
+      phone: customerPhone,
+      name: customerName,
+      service: String(body.service || ""),
+      serviceLabel: serviceName,
+      amountRupees,
+      paymentId,
+      orderId,
+    });
 
     return res.status(200).json({
       verified: true,
