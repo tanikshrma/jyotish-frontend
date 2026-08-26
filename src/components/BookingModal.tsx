@@ -8,7 +8,6 @@ import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { Calendar, Clock, User, Phone, Mail, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { postTrackingEvent } from "@/lib/tracking";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 export const BOOKING_SERVICES = [
@@ -308,41 +307,6 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
         service,
         tags: ["Book Consultation Form", `Service: ${service}`],
       });
-
-      // Tracking
-      const trackingPayload = {
-        type: "external_form_submission",
-        timestamp: Date.now(),
-        formId: "Booking Form",
-        formData: {
-          first_name: firstName,
-          last_name: lastName,
-          email: email,
-          phone: toE164(phone, countryIso),
-        },
-        formLabels: {
-          first_name: "First Name",
-          last_name: "Last Name",
-          email: "Email",
-          phone: "Phone",
-        },
-        url: window.location.href,
-        title: document.title,
-        path: window.location.pathname,
-        userAgent: navigator.userAgent,
-        trackingId: "tk_1f4f60a82c8f4c5588febd8434e0192a",
-        locationId: LOCATION_ID,
-        sessionId: crypto.randomUUID(),
-        properties: {
-          deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-        },
-      };
-
-      const customFields = {
-        'GQbW8PBfcMus3Opakqn0': { value: service, label: 'Service' }
-      };
-
-      postTrackingEvent(trackingPayload, { customFields });
 
       // 2. Trigger Razorpay Payment Checkout
       await loadRazorpayScript();

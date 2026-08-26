@@ -10,7 +10,6 @@ import { Card, CardContent } from "./ui/card";
 import { Loader2, Download, Printer, CalendarIcon, Clock, MapPin, X, ArrowRight, Lock, Sparkles, CheckCircle2, ShieldCheck, FileText, Star, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
-import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
@@ -175,48 +174,6 @@ export function KundliCalculator() {
       service: 'kundli',
       tags: ['Free Kundli Lead', 'Kundli Calculator'],
     });
-
-    // 1. Post lead to CRM immediately so no lead is EVER lost
-    const trackingPayload = {
-      type: "external_form_submission",
-      timestamp: Date.now(),
-      formId: "Kundli Calculator",
-      formData: {
-        first_name: dataToSubmit.name.split(' ')[0] || dataToSubmit.name,
-        last_name: dataToSubmit.name.split(' ').slice(1).join(' ') || '',
-        email: dataToSubmit.email,
-        phone: toE164(dataToSubmit.phone, countryIso),
-        gender: dataToSubmit.gender,
-        date_of_birth: dataToSubmit.dob,
-      },
-      formLabels: {
-        first_name: "First Name",
-        last_name: "Last Name",
-        email: "Email",
-        phone: "Phone",
-        gender: "Gender",
-        date_of_birth: "Date of Birth",
-      },
-      url: window.location.href,
-      title: document.title,
-      path: window.location.pathname,
-      userAgent: navigator.userAgent,
-      trackingId: "tk_1f4f60a82c8f4c5588febd8434e0192a",
-      locationId: "FTD8wmuYqCT7XoIpXJQG",
-      sessionId: crypto.randomUUID(),
-      properties: {
-        deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-      },
-    };
-
-    const customFields = {
-      't3toxS3cJRwOlgJLnGIv': { value: dataToSubmit.tob, label: 'Time of Birth' },
-      'pqLHdWbD2bpUsdE103I0': { value: dataToSubmit.pob, label: 'Place of Birth' },
-      'GQbW8PBfcMus3Opakqn0': { value: 'kundli', label: 'Service' }
-    };
-
-    postTrackingEvent(trackingPayload, { customFields });
-    console.log("✅ Kundli Lead captured & submitted to CRM:", trackingPayload);
 
     if (location.pathname !== '/free-kundli') {
       navigate('/free-kundli', { state: { formData: dataToSubmit, autoSubmit: true } });

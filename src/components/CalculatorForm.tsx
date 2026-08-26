@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
-import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
 import { toast } from "sonner";
 import { createOrder, loadRazorpayScript } from "@/lib/razorpay";
@@ -465,54 +464,6 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
           partnerPlaceOfBirth: formData2.pob,
         } : {})
       });
-
-      // Tracking
-      const trackingPayload = {
-        type: "external_form_submission",
-        timestamp: Date.now(),
-        formId: `Calculator Form - ${title}`,
-        formData: {
-          first_name: formData.name.split(' ')[0] || formData.name,
-          last_name: formData.name.split(' ').slice(1).join(' ') || '',
-          email: formData.email,
-          phone: toE164(formData.phone, countryIso),
-          gender: formData.gender,
-          date_of_birth: formattedDob,
-        },
-        formLabels: {
-          first_name: "First Name",
-          last_name: "Last Name",
-          email: "Email",
-          phone: "Phone",
-          gender: "Gender",
-          date_of_birth: "Date of Birth",
-        },
-        url: window.location.href,
-        title: document.title,
-        path: window.location.pathname,
-        userAgent: navigator.userAgent,
-        trackingId: "tk_1f4f60a82c8f4c5588febd8434e0192a",
-        locationId: "FTD8wmuYqCT7XoIpXJQG",
-        sessionId: crypto.randomUUID(),
-        properties: {
-          deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-        },
-      };
-
-      const customFields: Record<string, { value: any; label: string }> = {
-        't3toxS3cJRwOlgJLnGIv': { value: `${timeState.hour}:${timeState.minute}`, label: 'Time of Birth' },
-        'pqLHdWbD2bpUsdE103I0': { value: formData.pob, label: 'Place of Birth' },
-        'GQbW8PBfcMus3Opakqn0': { value: type, label: 'Service' }
-      };
-
-      if (isCoupleForm) {
-        customFields['ItkyfMoMWfIlQBWzQHhG'] = { value: formData2.name, label: 'Partner Name' };
-        customFields['Kt2ijktqfAl5fdEtKDyx'] = { value: date2 ? format(date2, 'dd/MM/yyyy') : '', label: 'Partner Date of Birth' };
-        customFields['a6G2XT6EQ3xjkVeZFr6U'] = { value: `${timeState2.hour}:${timeState2.minute}`, label: 'Partner Time of Birth' };
-        customFields['lljnY6jJyjO1dGqSyczG'] = { value: formData2.pob, label: 'Partner Place of Birth' };
-      }
-
-      postTrackingEvent(trackingPayload, { customFields });
 
       setIsSuccess(true);
     } catch (error) {

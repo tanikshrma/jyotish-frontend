@@ -9,7 +9,6 @@ import { SEO } from "@/components/SEO";
 import { motion } from "framer-motion";
 
 import { useState } from "react";
-import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
@@ -69,42 +68,6 @@ export default function ContactUs() {
       message: `${formData.subject}: ${formData.message}`,
       tags: ["Contact Us Form", "Website Inquiry"],
     });
-
-    const trackingPayload = {
-      type: "external_form_submission",
-      timestamp: Date.now(),
-      formId: "Contact Us Form",
-      formData: {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email: formData.email,
-        phone: toE164(formData.phone, countryIso),
-        calendar_notes: formData.message,
-      },
-      formLabels: {
-        first_name: "First Name",
-        last_name: "Last Name",
-        email: "Email",
-        phone: "Phone",
-        calendar_notes: "Message",
-      },
-      url: window.location.href,
-      title: document.title,
-      path: window.location.pathname,
-      userAgent: navigator.userAgent,
-      trackingId: "tk_1f4f60a82c8f4c5588febd8434e0192a",
-      locationId: "FTD8wmuYqCT7XoIpXJQG",
-      sessionId: crypto.randomUUID(),
-      properties: {
-        deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-      },
-    };
-
-    const customFields = {
-      'oj1MVZqF50Tzne15OYvu': { value: formData.subject, label: 'Subject' }
-    };
-
-    postTrackingEvent(trackingPayload, { customFields });
 
     setTimeout(() => {
       setIsSubmitting(false);

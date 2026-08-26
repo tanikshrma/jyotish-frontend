@@ -13,7 +13,6 @@ import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
-import { postTrackingEvent } from "@/lib/tracking";
 import { submitProspectIQLead } from "@/lib/prospectiq";
 import { DateInputField, TimeInputField } from "./FormDateInput";
 
@@ -216,45 +215,6 @@ export const BabyNameGenerator = () => {
         service: 'Baby Name Generator',
         tags: ['Baby Name Generator', 'Service: babyname'],
       });
-
-      // Tracking
-      const trackingPayload = {
-        type: "external_form_submission",
-        timestamp: Date.now(),
-        formId: "Baby Name Generator Form",
-        formData: {
-          first_name: formData.name.split(' ')[0] || formData.name,
-          last_name: formData.name.split(' ').slice(1).join(' ') || '',
-          email: formData.email,
-          phone: toE164(formData.phone, countryIso),
-          date_of_birth: formattedDob,
-        },
-        formLabels: {
-          first_name: "First Name",
-          last_name: "Last Name",
-          email: "Email",
-          phone: "Phone",
-          date_of_birth: "Date of Birth",
-        },
-        url: window.location.href,
-        title: document.title,
-        path: window.location.pathname,
-        userAgent: navigator.userAgent,
-        trackingId: "tk_1f4f60a82c8f4c5588febd8434e0192a",
-        locationId: "FTD8wmuYqCT7XoIpXJQG",
-        sessionId: crypto.randomUUID(),
-        properties: {
-          deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-        },
-      };
-
-      const customFields = {
-        't3toxS3cJRwOlgJLnGIv': { value: finalTob, label: 'Time of Birth' },
-        'pqLHdWbD2bpUsdE103I0': { value: formData.pob, label: 'Place of Birth' },
-        'GQbW8PBfcMus3Opakqn0': { value: 'babyname', label: 'Service' }
-      };
-
-      postTrackingEvent(trackingPayload, { customFields });
 
       setReport(newReport);
       
