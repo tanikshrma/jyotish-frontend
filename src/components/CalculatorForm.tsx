@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
+import { syllablesForNakshatra } from "@/lib/nakshatra";
 import { submitProspectIQLead } from "@/lib/prospectiq";
 import { toast } from "sonner";
 import { createOrder, loadRazorpayScript } from "@/lib/razorpay";
@@ -418,7 +419,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
         if (type === 'kaalsarp') {
            resultData = await vedicAstroApi.getKaalSarp(params1);
         } else if (type === 'sadesati') {
-           resultData = await vedicAstroApi.getDoshas(params1);
+           resultData = await vedicAstroApi.getSadeSati(params1);
         } else if (type === 'babyname') {
            resultData = await vedicAstroApi.getPanchang(params1);
         } else if (type === 'lalkitab' || type === 'career') {
@@ -761,19 +762,56 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
             )}
 
             {!isCoupleForm && type === 'sadesati' && apiResult && (
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-lg border border-border/50">
-                  <h5 className="font-bold text-foreground mb-2">Sade Sati Status</h5>
-                  <p className="text-foreground/80">{apiResult.sadesati?.is_sadesati ? 'You are currently under Sade Sati.' : 'You are NOT under Sade Sati currently.'}</p>
+              <div className="space-y-5">
+                <div className="bg-white p-5 rounded-xl border border-border/50">
+                  <h5 className="font-bold text-lg text-primary mb-2 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Current Sade Sati Status
+                  </h5>
+                  <p className="font-semibold text-foreground text-lg">
+                    {apiResult.current?.shani_period_type
+                      ? <span className="text-destructive">Currently under Sade Sati{typeof apiResult.current.shani_period_type === 'string' ? ` — ${apiResult.current.shani_period_type} phase` : ''}.</span>
+                      : <span className="text-green-600">You are not currently under Sade Sati.</span>}
+                  </p>
+                  {apiResult.current?.bot_response && (
+                    <p className="text-sm text-foreground/70 mt-3 leading-relaxed">{apiResult.current.bot_response}</p>
+                  )}
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-border/50">
-                  <h5 className="font-bold text-foreground mb-2">Manglik Status</h5>
-                  <p className="text-foreground/80">{apiResult.manglik?.is_present ? 'Manglik Dosha is present.' : 'Manglik Dosha is NOT present.'}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg border border-border/50">
-                  <h5 className="font-bold text-foreground mb-2">Kaal Sarp Status</h5>
-                  <p className="text-foreground/80">{apiResult.kaalsarp?.is_present ? 'Kaal Sarp Dosha is present.' : 'Kaal Sarp Dosha is NOT present.'}</p>
-                </div>
+
+                {apiResult.current?.description && (
+                  <p className="text-sm text-foreground/70 bg-white p-4 rounded-xl border border-border/50 leading-relaxed">
+                    {apiResult.current.description}
+                  </p>
+                )}
+
+                {Array.isArray(apiResult.table) && apiResult.table.filter((r: any) => /sade sati/i.test(r.type || '')).length > 0 && (
+                  <div className="bg-white rounded-xl border border-border/50 overflow-hidden">
+                    <h5 className="font-bold text-primary p-4 pb-3 flex items-center gap-2">
+                      <Star className="w-5 h-5 text-secondary" />
+                      Sade Sati Timeline
+                    </h5>
+                    <div className="overflow-x-auto max-h-[340px] overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-secondary/10 text-foreground/60 text-[11px] uppercase tracking-wider sticky top-0">
+                          <tr>
+                            <th className="text-left p-3 font-bold whitespace-nowrap">Period</th>
+                            <th className="text-left p-3 font-bold">Sign</th>
+                            <th className="text-left p-3 font-bold">Phase</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {apiResult.table.filter((r: any) => /sade sati/i.test(r.type || '')).map((r: any, i: number) => (
+                            <tr key={i} className="border-t border-border/30">
+                              <td className="p-3 whitespace-nowrap text-foreground/80">{r.start_date} – {r.end_date}</td>
+                              <td className="p-3 text-foreground/80">{r.zodiac}</td>
+                              <td className="p-3 text-foreground/70">{[r.direction, r.dhaiya].filter(Boolean).join(' · ')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -831,27 +869,66 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
               </div>
             )}
 
-            {!isCoupleForm && type === 'babyname' && apiResult?.response && (
-              <div className="space-y-4 bg-white p-4 rounded-lg border border-border/50">
-                <h5 className="font-bold text-foreground mb-2">Nakshatra Details</h5>
-                <p className="text-foreground/80"><strong>Nakshatra:</strong> {apiResult.response.nakshatra}</p>
-                <p className="text-foreground/80"><strong>Moon Sign (Rasi):</strong> {apiResult.response.moon_sign}</p>
-                <p className="text-foreground/80 mt-2 text-sm italic">Based on these details, you can choose a baby name with the recommended starting letters for this Nakshatra and Pada.</p>
-              </div>
-            )}
-
-            {!isCoupleForm && (type === 'lalkitab' || type === 'career') && apiResult && (
-              <div className="space-y-4">
-                <p className="text-foreground/80">Your planetary positions have been calculated. Our expert astrologers will prepare your detailed personalized report and contact you shortly.</p>
-                {apiResult.response && Array.isArray(apiResult.response) && (
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                    {apiResult.response.slice(0, 4).map((p: any, i: number) => (
-                      <div key={i} className="bg-white p-2 rounded border border-border/50">
-                        <span className="font-bold">{p.name}:</span> {p.sign}
+            {!isCoupleForm && type === 'babyname' && apiResult?.response && (() => {
+              const nak = apiResult.response.nakshatra || {};
+              const rasi = apiResult.response.rasi || {};
+              const syl = syllablesForNakshatra(nak.name, nak.pada);
+              return (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      ['Nakshatra', nak.name],
+                      ['Pada', nak.pada],
+                      ['Nakshatra Lord', nak.lord],
+                      ['Moon Sign (Rasi)', rasi.name],
+                    ].map(([label, value]) => (
+                      <div key={label as string} className="bg-white p-4 rounded-xl border border-border/50 text-center">
+                        <p className="text-[11px] font-bold text-foreground/50 uppercase tracking-wider mb-1">{label}</p>
+                        <p className="text-lg font-bold text-primary">{value ?? '—'}</p>
                       </div>
                     ))}
                   </div>
-                )}
+                  {nak.meaning && (
+                    <p className="text-sm text-foreground/70 italic bg-white p-4 rounded-xl border border-border/50">
+                      <strong className="not-italic text-foreground">{nak.name}:</strong> {nak.meaning}
+                    </p>
+                  )}
+                  {syl && (
+                    <div className="bg-secondary/10 border border-secondary/30 p-5 rounded-xl">
+                      <p className="text-sm font-bold text-primary uppercase tracking-wider mb-2">Recommended Starting Sounds</p>
+                      <p className="text-3xl font-bold text-foreground mb-2">
+                        {syl.primary}
+                        <span className="text-base font-medium text-foreground/50"> (for Pada {nak.pada})</span>
+                      </p>
+                      <p className="text-sm text-foreground/70">
+                        All syllables for {nak.name}: <strong>{syl.all.join(' · ')}</strong>. Choose a baby name beginning with one of these sounds for a name aligned with the birth star.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {!isCoupleForm && (type === 'lalkitab' || type === 'career') && apiResult?.response && Array.isArray(apiResult.response) && (
+              <div className="space-y-4">
+                <h5 className="font-bold text-lg text-primary border-b border-border/50 pb-2">
+                  {type === 'lalkitab' ? 'Lal Kitab Planetary Placements' : 'Career Planetary Analysis'}
+                </h5>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {apiResult.response.map((p: any, i: number) => (
+                    <div key={i} className="bg-white p-4 rounded-xl border border-border/50 shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-foreground">{p.planet_considered}</span>
+                        <span className="text-xs font-semibold text-primary bg-primary/5 px-2 py-1 rounded-full">
+                          {p.planet_zodiac}{p.planet_location ? ` · House ${p.planet_location}` : ''}
+                        </span>
+                      </div>
+                      {p.general_prediction && (
+                        <p className="text-xs text-foreground/70 leading-relaxed line-clamp-5">{p.general_prediction}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

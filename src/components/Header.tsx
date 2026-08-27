@@ -111,7 +111,7 @@ export const Header = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLEle
                 <Link to="/lal-kitab-report" className="px-4 py-3 text-sm font-medium text-black/80 hover:text-secondary hover:bg-secondary/10 transition-colors border-b border-border/50 last:border-0 relative overflow-hidden group/item">
                   <span className="relative z-10 flex items-center gap-2 transform transition-transform duration-300 group-hover/item:translate-x-1">Lal Kitab Report</span>
                 </Link>
-                <Link to="/kal-sarp-manglik-dosha-report" className="px-4 py-3 text-sm font-medium text-black/80 hover:text-secondary hover:bg-secondary/10 transition-colors border-b border-border/50 last:border-0 relative overflow-hidden group/item">
+                <Link to="/sade-sati-report" className="px-4 py-3 text-sm font-medium text-black/80 hover:text-secondary hover:bg-secondary/10 transition-colors border-b border-border/50 last:border-0 relative overflow-hidden group/item">
                   <span className="relative z-10 flex items-center gap-2 transform transition-transform duration-300 group-hover/item:translate-x-1">Sade Sati Report</span>
                 </Link>
                 <Link to="/kundli-matching" className="px-4 py-3 text-sm font-medium text-black/80 hover:text-secondary hover:bg-secondary/10 transition-colors border-b border-border/50 last:border-0 relative overflow-hidden group/item">
@@ -228,7 +228,7 @@ export const Header = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLEle
                 <div className="flex flex-col gap-4 pl-4 border-l-2 border-secondary/20">
                   <Link to="/free-kundli" className="text-base text-foreground/80 hover:text-secondary transition-colors" onClick={() => setIsOpen(false)}>Kundli Report</Link>
                   <Link to="/lal-kitab-report" className="text-base text-foreground/80 hover:text-secondary transition-colors" onClick={() => setIsOpen(false)}>Lal Kitab Report</Link>
-                  <Link to="/kal-sarp-manglik-dosha-report" className="text-base text-foreground/80 hover:text-secondary transition-colors" onClick={() => setIsOpen(false)}>Sade Sati Report</Link>
+                  <Link to="/sade-sati-report" className="text-base text-foreground/80 hover:text-secondary transition-colors" onClick={() => setIsOpen(false)}>Sade Sati Report</Link>
                   <Link to="/kundli-matching" className="text-base text-foreground/80 hover:text-secondary transition-colors" onClick={() => setIsOpen(false)}>Match Making Report</Link>
                   <Link to="/couple-kundli-analysis" className="text-base text-foreground/80 hover:text-secondary transition-colors" onClick={() => setIsOpen(false)}>Love Report</Link>
                   <Link to="/baby-name-report" className="text-base text-foreground/80 hover:text-secondary transition-colors" onClick={() => setIsOpen(false)}>Baby Name Report</Link>

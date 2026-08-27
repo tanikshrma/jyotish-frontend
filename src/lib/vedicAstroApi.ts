@@ -158,6 +158,19 @@ export const vedicAstroApi = {
   getKaalSarp: (params: AstroParams) =>
     callProxy('kaalsarp-dosh', chartParams(params)),
 
+  /** Sade Sati: current status + the lifetime phase timeline. */
+  getSadeSati: async (params: AstroParams) => {
+    const p = chartParams(params);
+    const [current, table] = await Promise.all([
+      callProxy('current-sade-sati', p).catch(() => null),
+      callProxy('sade-sati-table', p).catch(() => null),
+    ]);
+    return {
+      current: current?.response ?? null,
+      table: Array.isArray(table?.response) ? table.response : [],
+    };
+  },
+
   getYogas: (params: AstroParams) =>
     callProxy('yoga-list', chartParams(params)).catch(() => null),
 

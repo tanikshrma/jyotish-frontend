@@ -16,6 +16,7 @@ import YearlyHoroscope from "./pages/YearlyHoroscope";
 import WeeklyHoroscope from "./pages/WeeklyHoroscope";
 import DailyHoroscope from "./pages/DailyHoroscope";
 import KalSarpDoshaReport from "./pages/KalSarpDoshaReport";
+import SadeSatiReport from "./pages/SadeSatiReport";
 import CompleteHoroscopeAnalysis from "./pages/CompleteHoroscopeAnalysis";
 import MatchmakingConsultation from "./pages/MatchmakingConsultation";
 import CoupleKundliAnalysis from "./pages/CoupleKundliAnalysis";
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/weekly-horoscope" element={<WeeklyHoroscope />} />
           <Route path="/daily-horoscope" element={<DailyHoroscope />} />
           <Route path="/kal-sarp-manglik-dosha-report" element={<KalSarpDoshaReport />} />
+          <Route path="/sade-sati-report" element={<SadeSatiReport />} />
           <Route path="/complete-horoscope-analysis" element={<CompleteHoroscopeAnalysis />} />
           <Route path="/matchmaking-consultation" element={<MatchmakingConsultation />} />
           <Route path="/couple-kundli-analysis" element={<CoupleKundliAnalysis />} />
