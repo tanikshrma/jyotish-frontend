@@ -226,7 +226,7 @@ const VastuConsultancy = () => {
                       description="Vastu Consultancy — Online Discussion"
                       className="w-full sm:flex-1 h-12 px-6 rounded-xl text-base"
                     />
-                    <BookingModal defaultService="vastu-consultancy">
+                    <BookingModal defaultService="vastu-consultancy" consultationVariant="online">
                       <Button variant="outline" className="w-full sm:w-auto h-12 px-6 rounded-xl">
                         Book a Slot
                       </Button>
@@ -259,7 +259,7 @@ const VastuConsultancy = () => {
                       description="Vastu Consultancy — On-Site Visit"
                       className="w-full sm:flex-1 h-12 px-6 rounded-xl text-base"
                     />
-                    <BookingModal defaultService="vastu-consultancy">
+                    <BookingModal defaultService="vastu-consultancy" consultationVariant="site-visit">
                       <Button variant="outline" className="w-full sm:w-auto h-12 px-6 rounded-xl">
                         Book a Slot
                       </Button>

@@ -162,13 +162,23 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
   const [phone, setPhone] = useState("");
   const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
   const [service, setService] = useState(() => normalizeServiceKey(defaultService));
+  // For Vastu: which of the two priced modes the user has chosen.
+  const [vastuMode, setVastuMode] = useState<string>(
+    consultationVariant === "site-visit" ? "site-visit" : "online",
+  );
 
   // Sync service whenever modal opens with defaultService prop
   useEffect(() => {
     if (isOpen) {
       setService(normalizeServiceKey(defaultService));
+      setVastuMode(consultationVariant === "site-visit" ? "site-visit" : "online");
     }
-  }, [isOpen, defaultService]);
+  }, [isOpen, defaultService, consultationVariant]);
+
+  // The variant actually charged: for Vastu it's the in-modal choice; for every
+  // other service it's whatever the caller passed (e.g. consultation duration).
+  const effectiveVariant =
+    service === "vastu-consultancy" ? vastuMode : consultationVariant;
 
   // Calendar State
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -274,6 +284,13 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
     setStep(2);
   };
 
+// Vastu is sold as two priced modes; when that service is chosen the user
+// picks the mode inside the booking modal and we charge that variant's price.
+const VASTU_MODES = [
+  { value: "online", label: "Online Discussion", note: "Virtual consultation" },
+  { value: "site-visit", label: "On-Site Visit", note: "+ travelling expenses" },
+] as const;
+
 function mapServiceToPricing(serviceName: string, customVariant?: string): { serviceId: ServiceId; variant: string } {
   const serviceKey = normalizeServiceKey(serviceName) as ServiceId;
   const entry = SERVICES[serviceKey];
@@ -310,7 +327,7 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
 
       // 2. Trigger Razorpay Payment Checkout
       await loadRazorpayScript();
-      const pricing = mapServiceToPricing(service, consultationVariant);
+      const pricing = mapServiceToPricing(service, effectiveVariant);
       const order = await createOrder({
         service: pricing.serviceId,
         variant: pricing.variant,
@@ -508,6 +525,38 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Vastu: pick Online vs On-Site — each charges its own price. */}
+              {service === "vastu-consultancy" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground/80 ml-1">Consultation Type</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {VASTU_MODES.map((m) => {
+                      const price = getPriceInRupees("vastu-consultancy", m.value) ?? 0;
+                      const active = vastuMode === m.value;
+                      return (
+                        <button
+                          type="button"
+                          key={m.value}
+                          onClick={() => setVastuMode(m.value)}
+                          className={cn(
+                            "text-left rounded-xl border p-3 transition-all",
+                            active
+                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              : "border-secondary/30 bg-white hover:border-primary/40",
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-sm text-foreground">{m.label}</span>
+                            <span className="font-bold text-primary text-sm whitespace-nowrap">{formatINR(price)}</span>
+                          </div>
+                          <span className="text-[11px] text-foreground/60">{m.note}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-5">
@@ -738,7 +787,7 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
                   ) : (
                     <span className="flex items-center justify-center gap-2 relative z-10">
                       {(() => {
-                        const pricing = mapServiceToPricing(service);
+                        const pricing = mapServiceToPricing(service, effectiveVariant);
                         const price = getPriceInRupees(pricing.serviceId, pricing.variant);
                         return price ? `Confirm & Pay ${formatINR(price)}` : "Confirm & Pay Fee";
                       })()}
