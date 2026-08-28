@@ -17,6 +17,7 @@ import WeeklyHoroscope from "./pages/WeeklyHoroscope";
 import DailyHoroscope from "./pages/DailyHoroscope";
 import KalSarpDoshaReport from "./pages/KalSarpDoshaReport";
 import SadeSatiReport from "./pages/SadeSatiReport";
+import LandingRoute from "./pages/landing/LandingRoute";
 import CompleteHoroscopeAnalysis from "./pages/CompleteHoroscopeAnalysis";
 import MatchmakingConsultation from "./pages/MatchmakingConsultation";
 import CoupleKundliAnalysis from "./pages/CoupleKundliAnalysis";
@@ -79,6 +80,8 @@ const App = () => (
           <Route path="/zodiac/:sign" element={<ZodiacSign />} />
           <Route path="/free-kundli" element={<FreeKundliCalculator />} />
           <Route path="/horoscope" element={<CompleteHoroscopeAnalysis />} />
+          {/* Standalone ad landing pages (career/vastu/marriage) for subdomains. */}
+          <Route path="/lp/:topic" element={<LandingRoute />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
