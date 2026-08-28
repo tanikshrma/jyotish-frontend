@@ -64,6 +64,12 @@ const wrapResponse = (res: ServerResponse) => {
       res.end(body);
       return shim;
     },
+    /** Bodyless responses (e.g. a 204 CORS preflight) call end() directly. */
+    end(body?: string | Buffer) {
+      res.statusCode = shim.statusCode;
+      res.end(body ?? undefined);
+      return shim;
+    },
   };
   return shim;
 };

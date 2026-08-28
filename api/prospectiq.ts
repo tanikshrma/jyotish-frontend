@@ -10,6 +10,16 @@ const BASE_URL = "https://services.leadconnectorhq.com";
 const DEFAULT_LOCATION_ID = "FTD8wmuYqCT7XoIpXJQG";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS: the ad landing pages live on separate subdomains and post leads here
+  // cross-origin. This endpoint exposes no secrets (the private token stays
+  // server-side) and already accepts leads from any client, so `*` is safe.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST" && req.method !== "GET") {
     res.setHeader("Allow", ["GET", "POST"]);
     return res.status(405).json({ error: "Method not allowed" });
