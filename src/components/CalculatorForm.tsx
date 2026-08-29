@@ -4,6 +4,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Card, CardContent } from "./ui/card";
+import { Dialog, DialogContent } from "./ui/dialog";
 import { Loader2, CalendarIcon, Clock, MapPin, ArrowRight, AlertCircle, Target, Shield, Download, CheckCircle, Star, Heart, Sparkles } from "lucide-react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -275,36 +276,47 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
     setLoadingMessage("Generating your PDF report...");
     
     try {
-      const element = reportRef.current;
-      
-      // Temporary style changes for better PDF capture
-      const originalStyle = element.style.maxHeight;
-      const originalOverflow = element.style.overflowY;
-      
-      element.style.maxHeight = 'none';
-      element.style.overflowY = 'visible';
-      
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        windowWidth: 1200 // Ensure consistent width for capture
-      });
-      
-      // Restore styles
-      element.style.maxHeight = originalStyle;
-      element.style.overflowY = originalOverflow;
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width / 2, canvas.height / 2] // Scale back down to 1x for PDF units
-      });
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
-      pdf.save(`JyotishNow_${type}_Report_${formData.name.replace(/\s+/g, '_')}.pdf`);
+      // Capture a clean, fixed-width clone off-screen — the live result lives
+      // inside a centered modal (CSS transforms), which html2canvas mis-renders.
+      const clone = reportRef.current.cloneNode(true) as HTMLElement;
+      clone.style.maxHeight = "none";
+      clone.style.overflow = "visible";
+      clone.style.width = "820px";
+      clone.style.borderRadius = "0";
+      clone.style.boxShadow = "none";
+      clone.style.border = "none";
+      const holder = document.createElement("div");
+      holder.style.cssText = "position:fixed;left:-10000px;top:0;width:820px;background:#ffffff;padding:32px;";
+      holder.appendChild(clone);
+      document.body.appendChild(holder);
+
+      let canvas: HTMLCanvasElement;
+      try {
+        canvas = await html2canvas(holder, { scale: 3, useCORS: true, logging: false, backgroundColor: "#ffffff" });
+      } finally {
+        document.body.removeChild(holder);
+      }
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const imgW = pageW - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const usableH = pageH - margin * 2;
+
+      let heightLeft = imgH;
+      let position = margin;
+      pdf.addImage(imgData, "PNG", margin, position, imgW, imgH, undefined, "FAST");
+      heightLeft -= usableH;
+      while (heightLeft > 0) {
+        position = margin - (imgH - heightLeft);
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", margin, position, imgW, imgH, undefined, "FAST");
+        heightLeft -= usableH;
+      }
+      pdf.save(`JyotishNow_${type}_Report_${formData.name.replace(/\s+/g, "_")}.pdf`);
     } catch (error) {
       console.error('PDF Generation Error:', error);
     } finally {
@@ -476,9 +488,11 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
 
   if (isSuccess) {
     return (
-      <Card className="bg-white border border-border/40 rounded-2xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
+      <Dialog open onOpenChange={(o) => { if (!o) { setIsSuccess(false); setApiResult(null); } }}>
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[92vh] overflow-y-auto custom-scrollbar p-0 gap-0 border-0 bg-transparent shadow-none">
+        <Card className="bg-white border border-border/40 rounded-2xl shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-secondary"></div>
-        <CardContent className="p-8 text-center space-y-6">
+        <CardContent className="p-6 sm:p-8 text-center space-y-6">
           <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-12 h-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -488,7 +502,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
           
           <div 
             ref={reportRef}
-            className="text-left bg-white p-6 md:p-8 rounded-xl border border-border/50 max-h-[400px] overflow-y-auto custom-scrollbar shadow-inner"
+            className="text-left bg-white p-6 md:p-8 rounded-xl border border-border/50 shadow-inner"
           >
             <div className="flex items-center justify-between border-b border-primary/10 pb-4 mb-6">
               <div className="flex items-center gap-3">
@@ -991,7 +1005,9 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
             }}
           />
         )}
-      </Card>
+        </Card>
+        </DialogContent>
+      </Dialog>
     );
   }
 

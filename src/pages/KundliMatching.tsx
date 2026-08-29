@@ -25,7 +25,7 @@ export default function KundliMatching() {
           { title: "Manglik Dosha Check", desc: "Identification of Manglik Dosha and its remedies.", icon: ShieldCheck },
           { title: "Longevity & Health", desc: "Assessment of health and longevity of both partners.", icon: Activity },
         ],
-        image: "https://vibe.filesafe.space/1782888190245745251/assets/0fcd47e6-6cca-4a66-8d91-29962613ba32.jpg"
+        image: "/images/couple-kundli.webp"
       }}
       benefits={[
         { icon: Heart, title: "Relationship Harmony", desc: "Understand mutual compatibility and emotional connection." },
