@@ -109,13 +109,6 @@ const BabyNameReport = () => {
                     </li>
                   ))}
                 </ul>
-                <div className="pt-6">
-                  <BookingModal defaultService="baby-muhurat">
-                    <Button size="lg" className="bg-[#1a1a1a] hover:bg-primary text-white text-lg px-8 h-14 shadow-[0_8px_20px_-6px_rgba(26,26,26,0.4)] transition-all duration-300 ease-out hover:-translate-y-1">
-                      Order Now
-                    </Button>
-                  </BookingModal>
-                </div>
               </div>
             </div>
           </div>
