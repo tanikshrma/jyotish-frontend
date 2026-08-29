@@ -34,7 +34,7 @@ export type LandingConfig = {
 };
 
 export const LOGO = "https://vibe.filesafe.space/1782888190245745251/attachments/eeb5c854-e071-4e16-b563-90e6375205fb.png";
-export const DOCTOR_PHOTO = "https://vibe.filesafe.space/1782888190245745251/attachments/b7bc601f-ee5d-473f-873d-5d3ad9cf3af7.png";
+export const DOCTOR_PHOTO = "https://vibe.filesafe.space/1782888190245745251/attachments/bb04e9ad-4df5-45a2-b9e1-777b70d984e1.jpg";
 
 export const CONTACT = {
   phone: "+91 70155 44187",

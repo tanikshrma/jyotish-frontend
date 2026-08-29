@@ -66,6 +66,7 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
   const c = config;
   const Badge = c.badgeIcon;
   const [form, setForm] = useState({ name: "", phone: "", email: "", concern: "" });
+  const [errors, setErrors] = useState<{ name?: string; phone?: string; email?: string; concern?: string }>({});
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -74,16 +75,31 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
 
   const scrollToForm = () => document.getElementById("lead-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
+  const validate = () => {
+    const e: typeof errors = {};
+    const name = form.name.trim();
+    const phone = form.phone.replace(/\D/g, "");
+    const email = form.email.trim();
+    if (!name) e.name = "Please enter your name.";
+    else if (name.length < 2) e.name = "That name looks too short.";
+    else if (!/[a-zA-Zऀ-ॿ]/.test(name)) e.name = "Please enter a valid name.";
+    if (!phone) e.phone = "Phone number is required.";
+    else if (!/^[6-9]\d{9}$/.test(phone)) e.phone = "Enter a valid 10-digit Indian mobile number.";
+    if (!email) e.email = "Email is required.";
+    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) e.email = "Enter a valid email address.";
+    if (!form.concern) e.concern = "Please select an option.";
+    return e;
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr("");
-    const phone = form.phone.replace(/\D/g, "");
-    if (!form.name.trim()) return setErr("Please enter your name.");
-    if (phone.length < 10) return setErr("Please enter a valid 10-digit phone number.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) return setErr("Please enter a valid email address.");
-    if (!form.concern) return setErr("Please select what you need help with.");
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length) return;
 
-    const parts = form.name.trim().split(" ");
+    const phone = form.phone.replace(/\D/g, "");
+    const parts = form.name.trim().split(/\s+/);
     setLoading(true);
     try {
       const res = await fetch("/api/prospectiq", {
@@ -125,7 +141,15 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
 
   const waHref = `https://wa.me/${CONTACT.phoneDigits}?text=${encodeURIComponent(`Hi, I'd like a free ${c.theme} consultation.`)}`;
 
-  const field = "w-full h-12 rounded-xl border border-border bg-white px-4 text-[15px] text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15";
+  const set = (patch: Partial<typeof form>, clear?: keyof typeof errors) => {
+    setForm((f) => ({ ...f, ...patch }));
+    if (clear) setErrors((e) => ({ ...e, [clear]: undefined }));
+  };
+  const fieldCls = (hasErr?: string) =>
+    `w-full h-12 rounded-xl border bg-white px-4 text-[15px] text-foreground outline-none transition focus:ring-2 ${
+      hasErr ? "border-red-400 focus:border-red-500 focus:ring-red-500/15" : "border-border focus:border-primary focus:ring-primary/15"
+    }`;
+  const errText = (m?: string) => (m ? <p className="mt-1 text-[12px] text-red-600">{m}</p> : null);
 
   return (
     <div className="font-sans text-foreground bg-[#FFF9F0] min-h-screen">
@@ -136,11 +160,11 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
         <span className="opacity-90"> · 25+ Years · 1,00,000+ Consultations</span>
       </div>
 
-      {/* header */}
-      <header className="sticky top-0 z-40 bg-[#FFF9F0]/90 backdrop-blur-md border-b border-[#eadfce]">
+      {/* header — dark so the gold logo reads clearly */}
+      <header className="sticky top-0 z-40 bg-primary/95 backdrop-blur-md border-b border-secondary/20 shadow-sm">
         <div className="mx-auto w-[92%] max-w-6xl flex items-center justify-between py-2.5">
-          <img src={LOGO} alt="JyotishNow — Dr. Sandeep Sawhney" className="h-11 lg:h-14 w-auto object-contain" />
-          <a href={`tel:${CONTACT.phoneDigits}`} className="hidden sm:inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-white text-sm font-semibold hover:bg-[#5A0606] transition">
+          <img src={LOGO} alt="JyotishNow — Dr. Sandeep Sawhney" className="h-12 lg:h-16 w-auto object-contain drop-shadow" />
+          <a href={`tel:${CONTACT.phoneDigits}`} className="hidden sm:inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-[#5A0606] text-sm font-bold hover:brightness-105 transition shadow">
             <Phone className="w-4 h-4" /> {CONTACT.phone}
           </a>
         </div>
@@ -196,29 +220,36 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
             <form onSubmit={submit} className="space-y-3" noValidate>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Full Name</label>
-                <input className={field} placeholder="Your name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <input className={fieldCls(errors.name)} placeholder="Your name" autoComplete="name" aria-invalid={!!errors.name}
+                  value={form.name} onChange={(e) => set({ name: e.target.value }, "name")} />
+                {errText(errors.name)}
               </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Phone / WhatsApp</label>
                 <div className="flex gap-2">
-                  <span className="grid place-items-center w-16 flex-none rounded-xl border border-border bg-[#FFF9F0] font-semibold">+91</span>
-                  <input className={field} type="tel" inputMode="numeric" placeholder="10-digit number" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <span className={`grid place-items-center w-16 flex-none rounded-xl border font-semibold bg-[#FFF9F0] ${errors.phone ? "border-red-400" : "border-border"}`}>+91</span>
+                  <input className={fieldCls(errors.phone)} type="tel" inputMode="numeric" maxLength={10} placeholder="10-digit number" autoComplete="tel" aria-invalid={!!errors.phone}
+                    value={form.phone} onChange={(e) => set({ phone: e.target.value.replace(/\D/g, "").slice(0, 10) }, "phone")} />
                 </div>
+                {errText(errors.phone)}
               </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Email Address</label>
-                <input className={field} type="email" placeholder="you@example.com" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <input className={fieldCls(errors.email)} type="email" placeholder="you@example.com" autoComplete="email" aria-invalid={!!errors.email}
+                  value={form.email} onChange={(e) => set({ email: e.target.value }, "email")} />
+                {errText(errors.email)}
               </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">{c.concernLabel}</label>
-                <select className={`${field} appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 fill=%22none%22 stroke=%22%237A0808%22 stroke-width=%222%22><path d=%22m4 6 4 4 4-4%22/></svg>')] bg-no-repeat bg-[right_1rem_center]`}
-                  value={form.concern} onChange={(e) => setForm({ ...form, concern: e.target.value })}>
+                <select className={`${fieldCls(errors.concern)} appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 fill=%22none%22 stroke=%22%237A0808%22 stroke-width=%222%22><path d=%22m4 6 4 4 4-4%22/></svg>')] bg-no-repeat bg-[right_1rem_center] ${form.concern ? "" : "text-muted-foreground"}`}
+                  value={form.concern} onChange={(e) => set({ concern: e.target.value }, "concern")}>
                   <option value="" disabled>Select one…</option>
-                  {c.concerns.map((x) => <option key={x} value={x}>{x}</option>)}
+                  {c.concerns.map((x) => <option key={x} value={x} className="text-foreground">{x}</option>)}
                 </select>
+                {errText(errors.concern)}
               </div>
               <Button type="submit" disabled={loading}
-                className="w-full h-13 py-3.5 rounded-xl text-base font-bold bg-gradient-to-b from-primary to-[#5A0606] hover:brightness-110 shadow-lg">
+                className="w-full h-auto py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-b from-primary to-[#5A0606] hover:from-[#5A0606] hover:to-[#3d0404] shadow-lg">
                 {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Sending…</> : <>{c.cta} <Sparkles className="w-4 h-4" /></>}
               </Button>
               <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground pt-1">
@@ -310,8 +341,8 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
       <section className="py-16 bg-primary text-white">
         <div className="mx-auto w-[92%] max-w-6xl grid md:grid-cols-[auto_1fr] gap-8 items-center">
           <Reveal className="mx-auto">
-            <div className="h-36 w-36 rounded-full overflow-hidden border-4 border-secondary shadow-xl bg-[#5A0606]">
-              <img src={DOCTOR_PHOTO} alt="Dr. Sandeep Sawhney" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget.style.display = "none"); }} />
+            <div className="h-40 w-40 rounded-full overflow-hidden border-4 border-secondary shadow-2xl bg-white">
+              <img src={DOCTOR_PHOTO} alt="Dr. Sandeep Sawhney" className="h-full w-full object-cover object-top" />
             </div>
           </Reveal>
           <Reveal delay={0.1}>
@@ -352,7 +383,7 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
           <Reveal>
             <h2 className="font-serif text-3xl md:text-4xl text-white">Your Answers Are Just One Call Away</h2>
             <p className="text-white/85 mt-3 mb-6 max-w-xl mx-auto">Don't stay stuck in doubt. Book your free consultation with Dr. Sandeep Sawhney today.</p>
-            <Button onClick={scrollToForm} className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-secondary text-[#5A0606] hover:brightness-105 shadow-lg">
+            <Button onClick={scrollToForm} className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-secondary text-[#5A0606] hover:bg-secondary hover:brightness-105 shadow-lg">
               {c.cta} <ArrowRight className="w-4 h-4" />
             </Button>
           </Reveal>
