@@ -290,6 +290,27 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
       holder.appendChild(clone);
       document.body.appendChild(holder);
 
+      // The result view is styled for the screen: predictions are truncated with
+      // line-clamp, the Sade Sati timeline sits in a scroll box, and cards clip
+      // with fixed heights. A static capture bakes that clipping into the PDF,
+      // so expand everything that is actually hiding content before capturing.
+      const expandForPrint = (root: HTMLElement) => {
+        const els: HTMLElement[] = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
+        for (const el of els) {
+          for (const cls of Array.from(el.classList)) {
+            if (cls.startsWith("line-clamp")) el.classList.remove(cls);
+          }
+          const cs = window.getComputedStyle(el);
+          el.style.setProperty("-webkit-line-clamp", "unset");
+          if (cs.display === "-webkit-box") el.style.display = "block";
+          if (cs.maxHeight !== "none") el.style.maxHeight = "none";
+          if (cs.overflowY === "auto" || cs.overflowY === "scroll") el.style.overflowY = "visible";
+          else if (cs.overflowY === "hidden" && el.scrollHeight > el.clientHeight + 2) el.style.overflowY = "visible";
+          if (cs.overflowX === "auto" || cs.overflowX === "scroll") el.style.overflowX = "visible";
+        }
+      };
+      expandForPrint(clone);
+
       let canvas: HTMLCanvasElement;
       try {
         canvas = await html2canvas(holder, { scale: 3, useCORS: true, logging: false, backgroundColor: "#ffffff" });
