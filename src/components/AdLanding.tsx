@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Phone, MessageCircle, Check, Star, Sparkles, ShieldCheck, ArrowRight,
-  Loader2, PartyPopper, Award, Globe, Users2, Clock3,
+  Phone, MessageCircle, Check, Star, ShieldCheck, ArrowRight,
+  Award, Globe, Users2, Clock3, CalendarDays, CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { PIQ_FIELDS } from "../../shared/prospectiq-schema";
+import { BookingModal } from "@/components/BookingModal";
+import { formatINR, getPriceInRupees } from "../../shared/pricing";
 import { LOGO, DOCTOR_PHOTO, CONTACT, type LandingConfig } from "@/pages/landing/landingConfig";
 
 /* Fade-up as the element scrolls into view */
@@ -43,119 +43,31 @@ const STATS = [
 ];
 
 const STEPS = [
-  { n: "1", t: "Share Your Details", d: "Fill the short form with your name, number and concern — it takes 30 seconds." },
-  { n: "2", t: "Talk to an Expert", d: "Our team calls you to understand your situation and Dr. Sandeep studies your chart." },
-  { n: "3", t: "Get Clear Guidance", d: "Receive honest insights and practical remedies you can start applying right away." },
+  { n: "1", t: "Pick Your Slot", d: "Choose a date and time that suits you from the live appointment calendar." },
+  { n: "2", t: "Confirm & Pay", d: "Share your details and pay securely — your appointment is confirmed instantly." },
+  { n: "3", t: "Get Clear Guidance", d: "Talk to Dr. Sandeep and receive honest insights and practical remedies." },
 ];
-
-function leadSourceFromUrl(): string {
-  const qs = new URLSearchParams(window.location.search);
-  const s = (qs.get("utm_source") || "").toLowerCase();
-  if (qs.get("gclid") || s.includes("google")) return "Google Ad";
-  if (qs.get("fbclid") || s.includes("fb") || s.includes("meta") || s.includes("insta")) return "Meta Ad";
-  return "Meta Ad";
-}
-function utmTags(): string[] {
-  const qs = new URLSearchParams(window.location.search);
-  return ["utm_source", "utm_medium", "utm_campaign"]
-    .map((k) => { const v = qs.get(k); return v ? `${k.replace("utm_", "")}:${v}` : null; })
-    .filter(Boolean) as string[];
-}
 
 export default function AdLanding({ config }: { config: LandingConfig }) {
   const c = config;
   const Badge = c.badgeIcon;
-  const [form, setForm] = useState({ name: "", phone: "", email: "", concern: "" });
-  const [errors, setErrors] = useState<{ name?: string; phone?: string; email?: string; concern?: string }>({});
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
 
   useEffect(() => { document.title = `${c.theme} · JyotishNow`; }, [c.theme]);
 
-  const scrollToForm = () => document.getElementById("lead-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const priceOf = (variant?: string) =>
+    getPriceInRupees(c.pricing.serviceId, variant ?? "default") ?? 0;
+  const prices = c.pricing.options.map((o) => priceOf(o.variant));
+  const fromPrice = Math.min(...prices);
+  const multi = c.pricing.options.length > 1;
 
-  const validate = () => {
-    const e: typeof errors = {};
-    const name = form.name.trim();
-    const phone = form.phone.replace(/\D/g, "");
-    const email = form.email.trim();
-    if (!name) e.name = "Please enter your name.";
-    else if (name.length < 2) e.name = "That name looks too short.";
-    else if (!/[a-zA-Zऀ-ॿ]/.test(name)) e.name = "Please enter a valid name.";
-    if (!phone) e.phone = "Phone number is required.";
-    else if (!/^[6-9]\d{9}$/.test(phone)) e.phone = "Enter a valid 10-digit Indian mobile number.";
-    if (!email) e.email = "Email is required.";
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) e.email = "Enter a valid email address.";
-    if (!form.concern) e.concern = "Please select an option.";
-    return e;
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr("");
-    const found = validate();
-    setErrors(found);
-    if (Object.keys(found).length) return;
-
-    const phone = form.phone.replace(/\D/g, "");
-    const parts = form.name.trim().split(/\s+/);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/prospectiq", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "upsert-contact",
-          firstName: parts[0],
-          lastName: parts.slice(1).join(" "),
-          name: form.name.trim(),
-          email: form.email.trim(),
-          phone: "+91" + phone,
-          source: `${c.theme} Landing Page`,
-          tags: [`${c.theme} Ad Lead`, "Landing Page", "Website Lead", ...utmTags()],
-          customFields: [
-            { id: PIQ_FIELDS.serviceInterest, value: c.serviceInterest },
-            { id: PIQ_FIELDS.primaryConcern, value: c.primaryConcern },
-            { id: PIQ_FIELDS.leadSource, value: leadSourceFromUrl() },
-            { id: PIQ_FIELDS.guidanceWanted, value: form.concern },
-          ],
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && (data.success || data.contact)) {
-        setForm({ name: "", phone: "", email: "", concern: "" });
-        setDone(true);
-        // fire ad-pixel conversion events if present
-        (window as any).gtag?.("event", "generate_lead", { value: c.theme });
-        (window as any).fbq?.("track", "Lead");
-      } else {
-        throw new Error("bad response");
-      }
-    } catch {
-      setErr("Something went wrong. Please call us or tap WhatsApp — we don't want to miss you.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const waHref = `https://wa.me/${CONTACT.phoneDigits}?text=${encodeURIComponent(`Hi, I'd like a free ${c.theme} consultation.`)}`;
-
-  const set = (patch: Partial<typeof form>, clear?: keyof typeof errors) => {
-    setForm((f) => ({ ...f, ...patch }));
-    if (clear) setErrors((e) => ({ ...e, [clear]: undefined }));
-  };
-  const fieldCls = (hasErr?: string) =>
-    `w-full h-12 rounded-xl border bg-white px-4 text-[15px] text-foreground outline-none transition focus:ring-2 ${
-      hasErr ? "border-red-400 focus:border-red-500 focus:ring-red-500/15" : "border-border focus:border-primary focus:ring-primary/15"
-    }`;
-  const errText = (m?: string) => (m ? <p className="mt-1 text-[12px] text-red-600">{m}</p> : null);
+  const waHref = `https://wa.me/${CONTACT.phoneDigits}?text=${encodeURIComponent(`Hi, I'd like to book a ${c.theme} consultation.`)}`;
+  const scrollToCharges = () => document.getElementById("charges")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
     <div className="font-sans text-foreground bg-[#FFF9F0] min-h-screen">
       {/* announcement */}
       <div className="bg-[#5A0606] text-white text-center text-[13px] py-2 px-4">
-        <span className="opacity-90">Free Consultation Today · </span>
+        <span className="opacity-90">Book a consultation with </span>
         <b className="text-secondary">Dr. Sandeep Sawhney</b>
         <span className="opacity-90"> · 25+ Years · 1,00,000+ Consultations</span>
       </div>
@@ -209,53 +121,39 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
             </div>
           </div>
 
-          {/* LEAD FORM */}
+          {/* BOOKING CARD */}
           <motion.div
-            id="lead-form"
             initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .6, delay: .1 }}
             className="bg-white text-foreground rounded-3xl p-6 shadow-[0_30px_60px_-25px_rgba(122,8,8,.55)] border border-white/60">
             <h2 className="font-serif text-2xl text-primary leading-tight">{c.formTitle}</h2>
-            <p className="text-sm text-muted-foreground mt-1 mb-4">{c.formSub}</p>
-            {err && <div className="mb-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{err}</div>}
-            <form onSubmit={submit} className="space-y-3" noValidate>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Full Name</label>
-                <input className={fieldCls(errors.name)} placeholder="Your name" autoComplete="name" aria-invalid={!!errors.name}
-                  value={form.name} onChange={(e) => set({ name: e.target.value }, "name")} />
-                {errText(errors.name)}
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Phone / WhatsApp</label>
-                <div className="flex gap-2">
-                  <span className={`grid place-items-center w-16 flex-none rounded-xl border font-semibold bg-[#FFF9F0] ${errors.phone ? "border-red-400" : "border-border"}`}>+91</span>
-                  <input className={fieldCls(errors.phone)} type="tel" inputMode="numeric" maxLength={10} placeholder="10-digit number" autoComplete="tel" aria-invalid={!!errors.phone}
-                    value={form.phone} onChange={(e) => set({ phone: e.target.value.replace(/\D/g, "").slice(0, 10) }, "phone")} />
-                </div>
-                {errText(errors.phone)}
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">Email Address</label>
-                <input className={fieldCls(errors.email)} type="email" placeholder="you@example.com" autoComplete="email" aria-invalid={!!errors.email}
-                  value={form.email} onChange={(e) => set({ email: e.target.value }, "email")} />
-                {errText(errors.email)}
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-1.5">{c.concernLabel}</label>
-                <select className={`${fieldCls(errors.concern)} appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 fill=%22none%22 stroke=%22%237A0808%22 stroke-width=%222%22><path d=%22m4 6 4 4 4-4%22/></svg>')] bg-no-repeat bg-[right_1rem_center] ${form.concern ? "" : "text-muted-foreground"}`}
-                  value={form.concern} onChange={(e) => set({ concern: e.target.value }, "concern")}>
-                  <option value="" disabled>Select one…</option>
-                  {c.concerns.map((x) => <option key={x} value={x} className="text-foreground">{x}</option>)}
-                </select>
-                {errText(errors.concern)}
-              </div>
-              <Button type="submit" disabled={loading}
-                className="w-full h-auto py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-b from-primary to-[#5A0606] hover:from-[#5A0606] hover:to-[#3d0404] shadow-lg">
-                {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Sending…</> : <>{c.cta} <Sparkles className="w-4 h-4" /></>}
-              </Button>
-              <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground pt-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-primary" /> 100% private. We never share your details.
+            <p className="text-sm text-muted-foreground mt-1 mb-5">{c.formSub}</p>
+
+            <div className="rounded-2xl border border-secondary/40 bg-secondary/10 px-5 py-4 mb-5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Consultation Charges</p>
+              <p className="font-serif text-3xl font-extrabold text-primary leading-tight mt-0.5">
+                {multi && <span className="text-base font-sans font-semibold text-muted-foreground mr-1">from</span>}
+                {formatINR(fromPrice)}
               </p>
-            </form>
+              {multi && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {c.pricing.options.map((o, i) => (
+                    <span key={o.label}>{i > 0 && " · "}{o.label}: <b className="text-foreground">{formatINR(priceOf(o.variant))}</b></span>
+                  ))}
+                </p>
+              )}
+            </div>
+
+            <BookingModal defaultService={c.pricing.serviceId}>
+              <Button className="w-full h-auto py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-b from-primary to-[#5A0606] hover:from-[#5A0606] hover:to-[#3d0404] shadow-lg">
+                {c.cta} <CalendarDays className="w-4 h-4" />
+              </Button>
+            </BookingModal>
+
+            <ul className="mt-4 space-y-2 text-[13px] text-muted-foreground">
+              <li className="flex items-center gap-2"><CalendarDays className="w-4 h-4 text-primary" /> Pick your slot from the live calendar</li>
+              <li className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-primary" /> Secure payment · instant confirmation</li>
+              <li className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> 100% private. We never share your details.</li>
+            </ul>
           </motion.div>
         </div>
       </section>
@@ -294,8 +192,42 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
         </div>
       </section>
 
+      {/* CONSULTATION CHARGES */}
+      <section id="charges" className="py-16 bg-secondary/10">
+        <div className="mx-auto w-[92%] max-w-5xl">
+          <Reveal className="text-center max-w-2xl mx-auto mb-10">
+            <p className="text-xs font-bold uppercase tracking-[.14em]" style={{ color: c.accent }}>Transparent Pricing</p>
+            <h2 className="font-serif text-3xl md:text-4xl mt-2">Consultation Charges</h2>
+            <p className="text-muted-foreground mt-3">Choose your slot from the live calendar and confirm your appointment — every session is one-on-one with our expert.</p>
+          </Reveal>
+
+          <div className={`grid gap-6 ${multi ? "md:grid-cols-2" : "max-w-md mx-auto"}`}>
+            {c.pricing.options.map((o, i) => (
+              <Reveal key={o.label} delay={i * 0.08}>
+                <div className="h-full bg-white rounded-2xl border border-[#eadfce] p-7 flex flex-col shadow-sm">
+                  <h3 className="font-serif text-2xl text-[#1a1a1a] mb-1">{o.label}</h3>
+                  {o.note && <p className="text-sm text-muted-foreground mb-4">{o.note}</p>}
+                  <div className="font-serif text-4xl font-extrabold text-primary mb-1">{formatINR(priceOf(o.variant))}</div>
+                  <p className="text-xs text-muted-foreground mb-6">One-on-one consultation with Dr. Sandeep Sawhney</p>
+                  <ul className="space-y-2 text-sm text-foreground/80 mb-6 flex-grow">
+                    <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Personalised chart analysis</li>
+                    <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Practical, easy-to-follow remedies</li>
+                    <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Book your preferred date &amp; time</li>
+                  </ul>
+                  <BookingModal defaultService={c.pricing.serviceId} consultationVariant={o.variant}>
+                    <Button className="w-full h-auto py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-b from-primary to-[#5A0606] hover:from-[#5A0606] hover:to-[#3d0404] shadow-lg">
+                      Book Appointment <CalendarDays className="w-4 h-4" />
+                    </Button>
+                  </BookingModal>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* STEPS */}
-      <section className="py-16 bg-secondary/15">
+      <section className="py-16">
         <div className="mx-auto w-[92%] max-w-6xl">
           <Reveal className="text-center mb-10">
             <p className="text-xs font-bold uppercase tracking-[.14em] text-primary/70">Simple Process</p>
@@ -314,7 +246,7 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
       </section>
 
       {/* TESTIMONIALS */}
-      <section className="py-16">
+      <section className="py-16 bg-white">
         <div className="mx-auto w-[92%] max-w-6xl">
           <Reveal className="text-center mb-10">
             <p className="text-xs font-bold uppercase tracking-[.14em]" style={{ color: c.accent }}>Real Stories</p>
@@ -323,7 +255,7 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
           <div className="grid gap-5 md:grid-cols-2">
             {c.testimonials.map((t, i) => (
               <Reveal key={t.name} delay={i * 0.08}>
-                <figure className="h-full bg-white rounded-2xl border border-[#eadfce] p-6">
+                <figure className="h-full bg-[#FFF9F0] rounded-2xl border border-[#eadfce] p-6">
                   <Stars className="mb-3" />
                   <blockquote className="text-[15px] italic text-foreground/80 mb-4">“{t.quote}”</blockquote>
                   <figcaption className="flex items-center gap-3">
@@ -381,11 +313,18 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
       <section className="py-16 bg-gradient-to-br from-primary to-[#5A0606] text-white text-center">
         <div className="mx-auto w-[92%] max-w-3xl">
           <Reveal>
-            <h2 className="font-serif text-3xl md:text-4xl text-white">Your Answers Are Just One Call Away</h2>
-            <p className="text-white/85 mt-3 mb-6 max-w-xl mx-auto">Don't stay stuck in doubt. Book your free consultation with Dr. Sandeep Sawhney today.</p>
-            <Button onClick={scrollToForm} className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-secondary text-[#5A0606] hover:bg-secondary hover:brightness-105 shadow-lg">
-              {c.cta} <ArrowRight className="w-4 h-4" />
-            </Button>
+            <h2 className="font-serif text-3xl md:text-4xl text-white">Your Answers Are Just One Session Away</h2>
+            <p className="text-white/85 mt-3 mb-6 max-w-xl mx-auto">Book your consultation with Dr. Sandeep Sawhney — pick a slot from the calendar and get clarity.</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <BookingModal defaultService={c.pricing.serviceId}>
+                <Button className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-secondary text-[#5A0606] hover:bg-secondary hover:brightness-105 shadow-lg">
+                  {c.cta} <CalendarDays className="w-4 h-4" />
+                </Button>
+              </BookingModal>
+              <Button onClick={scrollToCharges} variant="outline" className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-transparent border-2 border-secondary/60 text-secondary hover:bg-secondary hover:text-[#5A0606]">
+                View Charges <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
           </Reveal>
         </div>
       </section>
@@ -405,22 +344,12 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
 
       {/* STICKY MOBILE BAR */}
       <div className="fixed bottom-0 inset-x-0 z-50 grid grid-cols-2 gap-2 p-2.5 bg-white border-t border-[#eadfce] shadow-[0_-8px_24px_rgba(0,0,0,.08)] md:hidden">
-        <a href={`tel:${CONTACT.phoneDigits}`} className="flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-white font-bold"><Phone className="w-4 h-4" /> Call Now</a>
+        <BookingModal defaultService={c.pricing.serviceId}>
+          <button className="flex items-center justify-center gap-2 h-12 w-full rounded-xl bg-primary text-white font-bold"><CalendarDays className="w-4 h-4" /> Book Now</button>
+        </BookingModal>
         <a href={waHref} target="_blank" rel="noopener" className="flex items-center justify-center gap-2 h-12 rounded-xl bg-[#25D366] text-white font-bold"><MessageCircle className="w-4 h-4" /> WhatsApp</a>
       </div>
       <div className="h-16 md:hidden" />
-
-      {/* THANK YOU */}
-      <Dialog open={done} onOpenChange={setDone}>
-        <DialogContent className="max-w-sm text-center rounded-3xl">
-          <div className="mx-auto grid place-items-center h-16 w-16 rounded-full bg-green-100 text-green-600 mb-2"><PartyPopper className="w-8 h-8" /></div>
-          <h3 className="font-serif text-2xl text-primary">Thank You!</h3>
-          <p className="text-muted-foreground">Your request has been received. Our team will call you shortly. For faster help, message us on WhatsApp now.</p>
-          <a href={waHref} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-2 h-12 rounded-xl bg-[#25D366] text-white font-bold mt-1">
-            <MessageCircle className="w-5 h-5" /> Chat on WhatsApp
-          </a>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

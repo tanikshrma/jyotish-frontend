@@ -22,6 +22,12 @@ export type LandingConfig = {
   service: string;              // ServiceId used for serviceInterest mapping
   serviceInterest: string;      // exact SINGLE_OPTIONS value
   primaryConcern: string;       // exact SINGLE_OPTIONS value
+  /** Consultation charges, mirroring the prices used across the website. */
+  pricing: {
+    /** ServiceId in shared/pricing.ts — also the BookingModal defaultService. */
+    serviceId: string;
+    options: { variant?: string; label: string; note?: string }[];
+  };
   formTitle: string;
   formSub: string;
   cta: string;
@@ -61,9 +67,10 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     service: "career-guidance",
     serviceInterest: "Career Guidance",
     primaryConcern: "Career",
-    formTitle: "Get Your Free Career Consultation",
+    pricing: { serviceId: "career-guidance", options: [{ label: "Career Guidance Consultation" }] },
+    formTitle: "Book Your Career Consultation",
     formSub: "Speak with Dr. Sandeep — only a few slots open each day.",
-    cta: "Book My Free Consultation",
+    cta: "Book My Consultation",
     concernLabel: "What's your main career concern?",
     concerns: ["Job change / new opportunity", "Business growth & expansion", "Promotion / feeling stuck", "Career direction & confusion", "Foreign job / relocation", "Something else"],
     benefitsTitle: "What Your Career Reading Reveals",
@@ -79,8 +86,8 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     ],
     faqs: [
       { q: "What do I need to share?", a: "Just your date, time and place of birth — and your main career question. Nothing else." },
-      { q: "Is the first consultation really free?", a: "Yes. Fill the form and our team calls you to understand your situation and give initial guidance at no cost." },
-      { q: "How soon will I be contacted?", a: "Usually within a few working hours. For anything urgent, message us on WhatsApp." },
+      { q: "What does the consultation cost?", a: "The Career Guidance consultation is Rs 3,999. You can pick your slot and pay securely while booking." },
+      { q: "How does booking work?", a: "Choose a date and time from the live calendar, confirm payment, and your appointment is booked with Dr. Sandeep." },
     ],
   },
 
@@ -102,9 +109,13 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     service: "vastu-consultancy",
     serviceInterest: "Vastu Consultancy",
     primaryConcern: "Property/Vastu",
-    formTitle: "Get Your Free Vastu Consultation",
+    pricing: { serviceId: "vastu-consultancy", options: [
+      { variant: "online", label: "Online Discussion", note: "Virtual consultation from your floor plan" },
+      { variant: "site-visit", label: "On-Site Visit", note: "+ travelling expenses (as per location)" },
+    ] },
+    formTitle: "Book Your Vastu Consultation",
     formSub: "Talk to our Vastu expert — limited slots each day.",
-    cta: "Book My Free Vastu Check",
+    cta: "Book My Vastu Consultation",
     concernLabel: "What's troubling your space?",
     concerns: ["Financial loss / money not staying", "Health problems in the family", "Conflicts & lack of peace", "Career / business not growing", "Buying or building a new property", "Something else"],
     benefitsTitle: "What Your Vastu Consultation Covers",
@@ -121,7 +132,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     faqs: [
       { q: "Do I need to break walls?", a: "No. Our remedies are practical and non-destructive — placement, colours and simple corrections you can do easily." },
       { q: "Can it be done online?", a: "Yes. Share your floor plan and directions and we can do a detailed online Vastu analysis." },
-      { q: "Is the first consultation free?", a: "Yes — fill the form and our team will call you for an initial assessment at no cost." },
+      { q: "What does the consultation cost?", a: "Online Vastu discussion is Rs 49,999 and an on-site visit is Rs 99,999 plus travelling expenses. Pick a slot and pay securely while booking." },
     ],
   },
 
@@ -143,9 +154,10 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     service: "matchmaking-consultation",
     serviceInterest: "Matchmaking Consultation",
     primaryConcern: "Marriage/Relationship",
-    formTitle: "Get Your Free Marriage Consultation",
+    pricing: { serviceId: "matchmaking-consultation", options: [{ label: "Matchmaking Consultation" }] },
+    formTitle: "Book Your Marriage Consultation",
     formSub: "Speak with Dr. Sandeep — limited slots open daily.",
-    cta: "Book My Free Consultation",
+    cta: "Book My Consultation",
     concernLabel: "What would you like help with?",
     concerns: ["Delay in marriage", "Kundli matching for a proposal", "Manglik dosha concern", "Love marriage / family approval", "Problems in married life", "Something else"],
     benefitsTitle: "What Your Marriage Reading Reveals",
@@ -162,7 +174,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     faqs: [
       { q: "What details do you need?", a: "Birth date, time and place — for one or both people if it's a matchmaking question." },
       { q: "Do you help with love marriages too?", a: "Yes. We guide on compatibility, timing and remedies for family approval and harmony." },
-      { q: "Is the first consultation free?", a: "Yes — submit the form and our team will call you to understand your situation at no cost." },
+      { q: "What does the consultation cost?", a: "The Matchmaking consultation is Rs 2,999. Choose your slot from the calendar and pay securely while booking." },
     ],
   },
 };
