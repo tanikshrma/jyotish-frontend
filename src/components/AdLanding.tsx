@@ -9,7 +9,6 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { BookingModal } from "@/components/BookingModal";
-import { formatINR, getPriceInRupees } from "../../shared/pricing";
 import { LOGO, DOCTOR_PHOTO, CONTACT, type LandingConfig } from "@/pages/landing/landingConfig";
 
 /* Fade-up as the element scrolls into view */
@@ -54,14 +53,7 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
 
   useEffect(() => { document.title = `${c.theme} · JyotishNow`; }, [c.theme]);
 
-  const priceOf = (variant?: string) =>
-    getPriceInRupees(c.pricing.serviceId, variant ?? "default") ?? 0;
-  const prices = c.pricing.options.map((o) => priceOf(o.variant));
-  const fromPrice = Math.min(...prices);
-  const multi = c.pricing.options.length > 1;
-
   const waHref = `https://wa.me/${CONTACT.phoneDigits}?text=${encodeURIComponent(`Hi, I'd like to book a ${c.theme} consultation.`)}`;
-  const scrollToCharges = () => document.getElementById("charges")?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
     <div className="font-sans text-foreground bg-[#FFF9F0] min-h-screen">
@@ -128,20 +120,11 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
             <h2 className="font-serif text-2xl text-primary leading-tight">{c.formTitle}</h2>
             <p className="text-sm text-muted-foreground mt-1 mb-5">{c.formSub}</p>
 
-            <div className="rounded-2xl border border-secondary/40 bg-secondary/10 px-5 py-4 mb-5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Consultation Charges</p>
-              <p className="font-serif text-3xl font-extrabold text-primary leading-tight mt-0.5">
-                {multi && <span className="text-base font-sans font-semibold text-muted-foreground mr-1">from</span>}
-                {formatINR(fromPrice)}
-              </p>
-              {multi && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {c.pricing.options.map((o, i) => (
-                    <span key={o.label}>{i > 0 && " · "}{o.label}: <b className="text-foreground">{formatINR(priceOf(o.variant))}</b></span>
-                  ))}
-                </p>
-              )}
-            </div>
+            <ul className="rounded-2xl border border-secondary/40 bg-secondary/10 px-5 py-4 mb-5 space-y-2 text-sm text-foreground/80">
+              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> One-on-one session with Dr. Sandeep Sawhney</li>
+              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Personalised chart analysis &amp; practical remedies</li>
+              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Choose your own date &amp; time</li>
+            </ul>
 
             <BookingModal defaultService={c.pricing.serviceId}>
               <Button className="w-full h-auto py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-b from-primary to-[#5A0606] hover:from-[#5A0606] hover:to-[#3d0404] shadow-lg">
@@ -185,40 +168,6 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
                   <div className="grid place-items-center h-12 w-12 rounded-xl bg-secondary/20 text-primary mb-4"><b.icon className="w-6 h-6" /></div>
                   <h3 className="font-serif text-lg mb-1.5">{b.title}</h3>
                   <p className="text-sm text-muted-foreground">{b.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CONSULTATION CHARGES */}
-      <section id="charges" className="py-16 bg-secondary/10">
-        <div className="mx-auto w-[92%] max-w-5xl">
-          <Reveal className="text-center max-w-2xl mx-auto mb-10">
-            <p className="text-xs font-bold uppercase tracking-[.14em]" style={{ color: c.accent }}>Transparent Pricing</p>
-            <h2 className="font-serif text-3xl md:text-4xl mt-2">Consultation Charges</h2>
-            <p className="text-muted-foreground mt-3">Choose your slot from the live calendar and confirm your appointment — every session is one-on-one with our expert.</p>
-          </Reveal>
-
-          <div className={`grid gap-6 ${multi ? "md:grid-cols-2" : "max-w-md mx-auto"}`}>
-            {c.pricing.options.map((o, i) => (
-              <Reveal key={o.label} delay={i * 0.08}>
-                <div className="h-full bg-white rounded-2xl border border-[#eadfce] p-7 flex flex-col shadow-sm">
-                  <h3 className="font-serif text-2xl text-[#1a1a1a] mb-1">{o.label}</h3>
-                  {o.note && <p className="text-sm text-muted-foreground mb-4">{o.note}</p>}
-                  <div className="font-serif text-4xl font-extrabold text-primary mb-1">{formatINR(priceOf(o.variant))}</div>
-                  <p className="text-xs text-muted-foreground mb-6">One-on-one consultation with Dr. Sandeep Sawhney</p>
-                  <ul className="space-y-2 text-sm text-foreground/80 mb-6 flex-grow">
-                    <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Personalised chart analysis</li>
-                    <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Practical, easy-to-follow remedies</li>
-                    <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Book your preferred date &amp; time</li>
-                  </ul>
-                  <BookingModal defaultService={c.pricing.serviceId} consultationVariant={o.variant}>
-                    <Button className="w-full h-auto py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-b from-primary to-[#5A0606] hover:from-[#5A0606] hover:to-[#3d0404] shadow-lg">
-                      Book Appointment <CalendarDays className="w-4 h-4" />
-                    </Button>
-                  </BookingModal>
                 </div>
               </Reveal>
             ))}
@@ -321,9 +270,10 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
                   {c.cta} <CalendarDays className="w-4 h-4" />
                 </Button>
               </BookingModal>
-              <Button onClick={scrollToCharges} variant="outline" className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-transparent border-2 border-secondary/60 text-secondary hover:bg-secondary hover:text-[#5A0606]">
-                View Charges <ArrowRight className="w-4 h-4" />
-              </Button>
+              <a href={waHref} target="_blank" rel="noopener"
+                className="inline-flex items-center gap-2 h-auto py-3.5 px-8 rounded-full text-base font-bold border-2 border-secondary/60 text-secondary hover:bg-secondary hover:text-[#5A0606] transition">
+                Chat on WhatsApp <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
           </Reveal>
         </div>

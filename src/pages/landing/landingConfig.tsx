@@ -86,7 +86,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     ],
     faqs: [
       { q: "What do I need to share?", a: "Just your date, time and place of birth — and your main career question. Nothing else." },
-      { q: "What does the consultation cost?", a: "The Career Guidance consultation is Rs 3,999. You can pick your slot and pay securely while booking." },
+      { q: "What does the consultation cost?", a: "The fee is shown while you book — choose your slot and you will see the exact amount before any payment." },
       { q: "How does booking work?", a: "Choose a date and time from the live calendar, confirm payment, and your appointment is booked with Dr. Sandeep." },
     ],
   },
@@ -132,7 +132,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     faqs: [
       { q: "Do I need to break walls?", a: "No. Our remedies are practical and non-destructive — placement, colours and simple corrections you can do easily." },
       { q: "Can it be done online?", a: "Yes. Share your floor plan and directions and we can do a detailed online Vastu analysis." },
-      { q: "What does the consultation cost?", a: "Online Vastu discussion is Rs 49,999 and an on-site visit is Rs 99,999 plus travelling expenses. Pick a slot and pay securely while booking." },
+      { q: "What does the consultation cost?", a: "Charges depend on whether you choose an online discussion or an on-site visit. You will see the exact amount while booking, before any payment." },
     ],
   },
 
@@ -174,7 +174,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     faqs: [
       { q: "What details do you need?", a: "Birth date, time and place — for one or both people if it's a matchmaking question." },
       { q: "Do you help with love marriages too?", a: "Yes. We guide on compatibility, timing and remedies for family approval and harmony." },
-      { q: "What does the consultation cost?", a: "The Matchmaking consultation is Rs 2,999. Choose your slot from the calendar and pay securely while booking." },
+      { q: "What does the consultation cost?", a: "The fee is shown while you book — choose your slot and you will see the exact amount before any payment." },
     ],
   },
 };

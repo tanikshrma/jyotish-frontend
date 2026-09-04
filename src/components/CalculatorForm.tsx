@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { createOrder, loadRazorpayScript } from "@/lib/razorpay";
 import { deliverMatchmakingPdf, openInNewTab, KundliPdfError } from "@/lib/kundliPdf";
 import { formatINR, getPriceInRupees } from "../../shared/pricing";
-import { KaalSarpPDF } from "./KaalSarpPDF";
 import { MatchmakingPDF } from "./MatchmakingPDF";
 import { DateInputField, TimeInputField } from "./FormDateInput";
 
@@ -825,7 +824,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
                       <Star className="w-5 h-5 text-secondary" />
                       Sade Sati Timeline
                     </h5>
-                    <div className="overflow-x-auto max-h-[340px] overflow-y-auto">
+                    <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-secondary/10 text-foreground/60 text-[11px] uppercase tracking-wider sticky top-0">
                           <tr>
@@ -949,17 +948,17 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
                 <h5 className="font-bold text-lg text-primary border-b border-border/50 pb-2">
                   {type === 'lalkitab' ? 'Lal Kitab Planetary Placements' : 'Career Planetary Analysis'}
                 </h5>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-3">
                   {apiResult.response.map((p: any, i: number) => (
                     <div key={i} className="bg-white p-4 rounded-xl border border-border/50 shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between gap-3 border-b border-border/40 pb-2 mb-2">
                         <span className="font-bold text-foreground">{p.planet_considered}</span>
-                        <span className="text-xs font-semibold text-primary bg-primary/5 px-2 py-1 rounded-full">
-                          {p.planet_zodiac}{p.planet_location ? ` · House ${p.planet_location}` : ''}
+                        <span className="text-[11px] font-semibold text-primary bg-primary/5 px-2.5 py-1 rounded-full whitespace-nowrap flex-none">
+                          {p.planet_zodiac}{p.planet_location ? ` \u00b7 House ${p.planet_location}` : ''}
                         </span>
                       </div>
                       {p.general_prediction && (
-                        <p className="text-xs text-foreground/70 leading-relaxed line-clamp-5">{p.general_prediction}</p>
+                        <p className="text-[13px] text-foreground/75 leading-relaxed">{p.general_prediction}</p>
                       )}
                     </div>
                   ))}
@@ -974,7 +973,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 mt-8">
             <Button 
               onClick={handleDownloadPDF} 
               disabled={isLoading}

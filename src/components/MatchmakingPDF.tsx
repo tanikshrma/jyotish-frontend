@@ -95,8 +95,8 @@ export const MatchmakingPDF = React.forwardRef<HTMLDivElement, MatchmakingPDFPro
     >
       {/* Page 1: Cover */}
       <PageWrapper pageNumber={1} hideHeader={true}>
-        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-16 py-20">
-          <div className="w-80 h-40 relative mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-10 py-8">
+          <div className="w-64 h-28 relative mb-2">
             <img 
               src="https://vibe.filesafe.space/1782888190245745251/attachments/eeb5c854-e071-4e16-b563-90e6375205fb.png" 
               alt="Jyotish Now" 
@@ -116,8 +116,8 @@ export const MatchmakingPDF = React.forwardRef<HTMLDivElement, MatchmakingPDFPro
             <div className="h-0.5 w-24 bg-secondary mx-auto mt-6"></div>
           </div>
 
-          <div className="w-full max-w-2xl mx-auto grid grid-cols-2 gap-8">
-            <div className="bg-white/80 backdrop-blur-sm p-8 rounded-[2.5rem] border border-secondary/20 shadow-xl space-y-6 text-left">
+          <div className="w-full max-w-2xl mx-auto grid grid-cols-2 gap-6 shrink-0">
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[2rem] border border-secondary/20 shadow-xl space-y-4 text-left">
               <p className="text-[10px] uppercase tracking-[0.4em] text-foreground/40 font-bold">Boy's Details</p>
               <p className="text-2xl font-serif font-bold text-primary">{userData.boyName}</p>
               <div className="space-y-3">
@@ -127,12 +127,12 @@ export const MatchmakingPDF = React.forwardRef<HTMLDivElement, MatchmakingPDFPro
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.2em] text-foreground/40 font-bold">Birth Place</p>
-                  <p className="text-sm font-semibold text-foreground/90 truncate">{userData.boyPob}</p>
+                  <p className="text-sm font-semibold text-foreground/90 break-words">{userData.boyPob}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm p-8 rounded-[2.5rem] border border-secondary/20 shadow-xl space-y-6 text-left">
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-[2rem] border border-secondary/20 shadow-xl space-y-4 text-left">
               <p className="text-[10px] uppercase tracking-[0.4em] text-foreground/40 font-bold">Girl's Details</p>
               <p className="text-2xl font-serif font-bold text-primary">{userData.girlName}</p>
               <div className="space-y-3">
@@ -142,7 +142,7 @@ export const MatchmakingPDF = React.forwardRef<HTMLDivElement, MatchmakingPDFPro
                 </div>
                 <div>
                   <p className="text-[9px] uppercase tracking-[0.2em] text-foreground/40 font-bold">Birth Place</p>
-                  <p className="text-sm font-semibold text-foreground/90 truncate">{userData.girlPob}</p>
+                  <p className="text-sm font-semibold text-foreground/90 break-words">{userData.girlPob}</p>
                 </div>
               </div>
             </div>
