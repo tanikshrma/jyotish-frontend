@@ -352,31 +352,37 @@ export function ReportPurchaseForm({
   }
 
   return (
-    <div className="rounded-2xl sm:rounded-3xl bg-white p-5 sm:p-7 shadow-2xl">
-      {/* header + price */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-serif text-lg sm:text-xl font-bold leading-tight" style={{ color: config.theme.ink }}>
-            {config.formTitle}
-          </h3>
-          <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{config.formSub}</p>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-[11px] font-medium text-muted-foreground line-through">
-            {formatINR(config.compareAt)}
-          </div>
-          <div className="font-serif text-2xl sm:text-3xl font-extrabold leading-none" style={{ color: config.theme.ink }}>
-            {formatINR(config.price)}
-          </div>
-        </div>
-      </div>
+    <div className="overflow-hidden rounded-xl bg-white shadow-2xl sm:rounded-2xl">
+      <div className="h-1 w-full" style={{ background: gold }} />
+      <div className="p-5 sm:p-6">
+        {/* header */}
+        <h3 className="font-serif text-lg font-bold leading-tight sm:text-xl" style={{ color: config.theme.ink }}>
+          {config.formTitle}
+        </h3>
+        <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{config.formSub}</p>
 
-      {/* step rail */}
-      <div className="mt-5 flex items-center gap-2" aria-hidden>
+        {/* price row */}
+        <div
+          className="mt-4 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 border-y py-3"
+          style={{ borderColor: "#EFE6D8" }}
+        >
+          <span className="font-serif text-3xl font-extrabold leading-none" style={{ color: config.theme.ink }}>
+            {formatINR(config.price)}
+          </span>
+          <span className="text-[13px] text-muted-foreground line-through">
+            {formatINR(config.compareAt)}
+          </span>
+          <span className="ml-auto text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: `${config.theme.ink}aa` }}>
+            {config.pages}
+          </span>
+        </div>
+
+        {/* step rail */}
+        <div className="mt-4 flex items-center gap-2" aria-hidden>
         {[1, 2].map((n) => (
           <div
             key={n}
-            className="h-1.5 flex-1 rounded-full transition-colors duration-300"
+            className="h-1 flex-1 rounded-full transition-colors duration-300"
             style={{ background: step >= n ? config.theme.ink : "#E7E1D8" }}
           />
         ))}
@@ -572,7 +578,8 @@ export function ReportPurchaseForm({
         <li className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 shrink-0" style={{ color: config.theme.ink }} /> Delivered in minutes</li>
         <li className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 shrink-0" style={{ color: config.theme.ink }} /> Emailed to you</li>
         <li className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 shrink-0" style={{ color: config.theme.ink }} /> Details never shared</li>
-      </ul>
+        </ul>
+      </div>
     </div>
   );
 }
