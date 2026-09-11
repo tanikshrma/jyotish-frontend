@@ -281,7 +281,9 @@ export function ReportPurchaseForm({
                 }];
             setDelivered(pdfs);
             setStatus("done");
-            pdfs.forEach((p, i) => setTimeout(() => openInNewTab(p.url), i * 300));
+            // deliverKundliPdf already opens each PDF in a tab and saves a copy
+            // to disk. Opening again here gave every customer two tabs per
+            // report; the success card below is the deliberate re-open path.
             toast.success(`Your ${config.name} is ready`, {
               description: delivery.emailed
                 ? "Downloaded and emailed to you. The links never expire."
