@@ -86,6 +86,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
   const { ink, cta, ctaDark, tint, band, gold } = c.theme;
   const formRef = useRef<HTMLDivElement>(null);
   const [showBar, setShowBar] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { h, m, s } = useMidnightCountdown();
 
   const savePct = useMemo(
@@ -118,6 +119,14 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
     return () => document.body.classList.remove("report-buybar-open");
   }, [showBar]);
 
+  /* Sticky header gains a shadow once the page moves. */
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const waHref = `https://wa.me/${REPORT_CONTACT.phoneDigits}?text=${encodeURIComponent(
@@ -139,9 +148,15 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
   );
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white font-sans text-[#2A2320]">
+        /* overflow-x-CLIP, not hidden: `hidden` makes this a scroll container and
+       silently breaks `position: sticky` on the header. `clip` contains
+       overflow without that side effect. */
+    <div className="min-h-screen overflow-x-clip bg-white font-sans text-[#2A2320]">
       {/* ------------------------------------------------ urgency bar */}
-      <div className="px-3 py-2 text-center text-[12px] font-semibold text-white sm:text-[13px]" style={{ background: ink }}>
+      <div
+        className="px-3 py-2 text-center text-[12px] font-semibold text-white sm:text-[13px]"
+        style={{ background: `linear-gradient(rgba(0,0,0,.42), rgba(0,0,0,.42)), ${ink}` }}
+      >
         <span className="opacity-90">Today's price {formatINR(c.price)} — </span>
         <span style={{ color: "#FFD27A" }}>{savePct}% off</span>
         <span className="opacity-90"> · ends in </span>
@@ -149,14 +164,22 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       </div>
 
       {/* ---------------------------------------------------- header */}
-      <header className="sticky top-0 z-40 border-b border-[#F0E6D6] bg-white/95 backdrop-blur-md">
+      <header
+        className="sticky top-0 z-40 transition-shadow duration-300"
+        style={{
+          background: ink,
+          borderBottom: `1px solid ${gold}59`,
+          boxShadow: scrolled ? "0 10px 26px -14px rgba(0,0,0,.65)" : "none",
+        }}
+      >
         <div className="mx-auto flex w-[92%] max-w-6xl items-center justify-between gap-3 py-2.5">
-          <span className="inline-flex items-center rounded-lg px-3 py-1.5" style={{ background: ink }}>
-            <img src={LOGO} alt="JyotishNow" className="h-7 w-auto object-contain sm:h-9" />
-          </span>
+          <img src={LOGO} alt="JyotishNow" className="h-9 w-auto object-contain sm:h-11" />
           <div className="flex items-center gap-4">
-            <a href={`tel:${REPORT_CONTACT.phoneDigits}`} className="hidden items-center gap-2 text-[13.5px] font-bold sm:inline-flex" style={{ color: ink }}>
-              <Phone className="h-4 w-4" /> {REPORT_CONTACT.phone}
+            <a
+              href={`tel:${REPORT_CONTACT.phoneDigits}`}
+              className="hidden items-center gap-2 text-[13.5px] font-bold text-white transition-opacity hover:opacity-85 sm:inline-flex"
+            >
+              <Phone className="h-4 w-4" style={{ color: gold }} /> {REPORT_CONTACT.phone}
             </a>
             <button
               onClick={scrollToForm}
@@ -320,16 +343,25 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             Typeset and printable — not a web page dressed up as a PDF.
           </p>
 
-          <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="mx-auto w-full max-w-[300px] rotate-[-1.5deg] transition-transform hover:rotate-0">
-              <ReportPage config={c} />
-            </div>
-            <div className="mx-auto hidden w-full max-w-[300px] rotate-[1deg] transition-transform hover:rotate-0 sm:block">
-              <ReportPage config={c} />
-            </div>
-            <div className="mx-auto hidden w-full max-w-[300px] rotate-[-0.5deg] transition-transform hover:rotate-0 lg:block">
-              <ReportPage config={c} />
-            </div>
+          {/* three genuinely different spreads, not one page repeated */}
+          <div className="mt-9 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {([
+              { page: "chart", label: "Charts & planetary positions", tilt: "-1.5deg", show: "" },
+              { page: "houses", label: "House-by-house analysis", tilt: "1deg", show: "hidden sm:block" },
+              { page: "dasha", label: "Dasha timeline & Ashtakvarga", tilt: "-0.5deg", show: "hidden lg:block" },
+            ] as const).map((sp) => (
+              <div key={sp.page} className={`mx-auto w-full max-w-[300px] ${sp.show}`}>
+                <div
+                  className="transition-transform duration-300 hover:rotate-0"
+                  style={{ transform: `rotate(${sp.tilt})` }}
+                >
+                  <ReportPage config={c} page={sp.page} />
+                </div>
+                <p className="mt-3 text-center text-[12.5px] font-bold" style={{ color: ink }}>
+                  {sp.label}
+                </p>
+              </div>
+            ))}
           </div>
           <p className="mt-6 text-center text-[12.5px] italic text-[#8A7C72]">
             Sample pages shown with an illustrative chart. Yours is generated from your own birth details.
