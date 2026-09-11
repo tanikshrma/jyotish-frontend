@@ -340,7 +340,7 @@ export function ReportPurchaseForm({
               key={p.url}
               onClick={() => openInNewTab(p.url)}
               className="h-auto w-full justify-between gap-3 rounded-xl px-4 py-3.5 text-left text-white"
-              style={{ background: config.theme.ink }}
+              style={{ background: `linear-gradient(180deg, ${config.theme.cta}, ${config.theme.ctaDark})` }}
             >
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
               <FileDown className="h-4 w-4 shrink-0" />
@@ -355,7 +355,7 @@ export function ReportPurchaseForm({
     // deliberately no overflow-hidden here: it would clip the place-of-birth
     // suggestion list, which hangs below the input.
     <div className="rounded-xl bg-white shadow-2xl sm:rounded-2xl">
-      <div className="h-1 w-full rounded-t-xl sm:rounded-t-2xl" style={{ background: gold }} />
+      <div className="h-1.5 w-full rounded-t-xl sm:rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${config.theme.cta}, ${config.theme.ctaDark})` }} />
       <div className="p-5 sm:p-6">
         {/* header */}
         <h3 className="font-serif text-lg font-bold leading-tight sm:text-xl" style={{ color: config.theme.ink }}>
@@ -491,8 +491,8 @@ export function ReportPurchaseForm({
 
             <Button
               onClick={goStep2}
-              className="h-auto w-full rounded-xl py-4 text-base font-bold text-white sm:col-span-2"
-              style={{ background: config.theme.ink }}
+              className="h-auto w-full rounded-xl py-4 text-base font-extrabold text-white shadow-lg sm:col-span-2"
+              style={{ background: `linear-gradient(180deg, ${config.theme.cta}, ${config.theme.ctaDark})` }}
             >
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
@@ -546,8 +546,8 @@ export function ReportPurchaseForm({
             <Button
               onClick={handleBuy}
               disabled={busy}
-              className="h-auto w-full rounded-xl py-4 text-base font-bold text-white disabled:opacity-80"
-              style={{ background: config.theme.ink }}
+              className="h-auto w-full rounded-xl py-4 text-base font-extrabold text-white shadow-lg disabled:opacity-80"
+              style={{ background: `linear-gradient(180deg, ${config.theme.cta}, ${config.theme.ctaDark})` }}
             >
               {status === "starting" ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening secure checkout…</>

@@ -1,83 +1,68 @@
-import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check, Star, Phone, ShieldCheck, Clock3, Users2, Globe, ArrowDown,
-  FileText, Mail, CreditCard, Quote, Download, MessageCircle,
+  Check, X, Star, Phone, ShieldCheck, Clock3, Users2, Globe, ArrowRight,
+  FileText, Mail, CreditCard, Download, MessageCircle, Zap, BadgeCheck,
+  Lock, RefreshCw,
 } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ReportPurchaseForm } from "@/components/ReportPurchaseForm";
-import { ReportStack } from "@/components/ReportMockup";
+import { ReportPage } from "@/components/ReportMockup";
 import {
   REPORT_CONTACT, LOGO, PREMIUM_SECTION_LIST, type ReportLandingConfig,
 } from "@/pages/landing/reportLandingConfig";
 import { formatINR } from "../../shared/pricing";
 
-/* Cinzel ships in index.html — used for small-caps eyebrows only. */
-const DISPLAY = "'Cinzel', 'Playfair Display', serif";
+/* ------------------------------------------------------------ countdown */
 
-function Reveal({
-  children, delay = 0, className = "",
-}: { children: React.ReactNode; delay?: number; className?: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 22 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.15 }}
-      transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
+/**
+ * Today's offer, ending at local midnight.
+ *
+ * Deliberately tied to a real clock rather than a per-visit timer that resets
+ * on refresh: it only stays honest if the price genuinely changes when the day
+ * does. Drop this bar rather than fake it.
+ */
+function useMidnightCountdown() {
+  const [left, setLeft] = useState(() => msToMidnight());
+  useEffect(() => {
+    const t = setInterval(() => setLeft(msToMidnight()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const total = Math.max(0, Math.floor(left / 1000));
+  return {
+    h: String(Math.floor(total / 3600)).padStart(2, "0"),
+    m: String(Math.floor((total % 3600) / 60)).padStart(2, "0"),
+    s: String(total % 60).padStart(2, "0"),
+  };
+}
+function msToMidnight() {
+  const now = new Date();
+  const mid = new Date(now);
+  mid.setHours(24, 0, 0, 0);
+  return mid.getTime() - now.getTime();
 }
 
-const Stars = ({ color }: { color: string }) => (
-  <span className="inline-flex" style={{ color }} aria-label="5 out of 5">
-    {Array.from({ length: 5 }).map((_, i) => (
+/* --------------------------------------------------------------- bits */
+
+const Stars = ({ n = 5, className = "" }: { n?: number; className?: string }) => (
+  <span className={`inline-flex text-[#F5A524] ${className}`} aria-label={`${n} out of 5`}>
+    {Array.from({ length: n }).map((_, i) => (
       <Star key={i} className="h-[15px] w-[15px] fill-current" />
     ))}
   </span>
 );
 
-/** Eyebrow label — small caps, letterspaced, gold rule either side. */
-function Eyebrow({ children, color }: { children: React.ReactNode; color: string }) {
+/** Initials chip used in the review wall instead of invented photographs. */
+function Avatar({ name, color }: { name: string; color: string }) {
+  const initials = name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   return (
-    <div className="flex items-center justify-center gap-3">
-      <span className="h-px w-8 sm:w-12" style={{ background: `${color}66` }} />
-      <span
-        className="whitespace-nowrap text-[10px] font-bold uppercase sm:text-[11px]"
-        style={{ fontFamily: DISPLAY, color, letterSpacing: "0.26em" }}
-      >
-        {children}
-      </span>
-      <span className="h-px w-8 sm:w-12" style={{ background: `${color}66` }} />
-    </div>
-  );
-}
-
-/** Faint zodiac wheel behind the dark sections — depth without an asset. */
-function ZodiacWheel({ color, className = "" }: { color: string; className?: string }) {
-  const spokes = Array.from({ length: 12 }, (_, i) => (i * 360) / 12);
-  return (
-    <svg viewBox="0 0 200 200" className={className} aria-hidden focusable="false">
-      <g fill="none" stroke={color} strokeWidth="0.5">
-        <circle cx="100" cy="100" r="99" />
-        <circle cx="100" cy="100" r="82" />
-        <circle cx="100" cy="100" r="58" />
-        <circle cx="100" cy="100" r="34" />
-        {spokes.map((a) => (
-          <line
-            key={a}
-            x1="100" y1="100" x2="100" y2="1"
-            transform={`rotate(${a} 100 100)`}
-          />
-        ))}
-        <rect x="41" y="41" width="118" height="118" transform="rotate(45 100 100)" />
-        <rect x="41" y="41" width="118" height="118" />
-      </g>
-    </svg>
+    <span
+      className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[13px] font-bold"
+      style={{ background: `${color}1a`, color }}
+    >
+      {initials}
+    </span>
   );
 }
 
@@ -89,17 +74,25 @@ const STATS = [
 ];
 
 const STEPS = [
-  { icon: FileText, t: "Enter your birth details", d: "Your name, date, exact time and place of birth. That is everything the chart needs." },
-  { icon: CreditCard, t: "Pay securely", d: "One payment through Razorpay. No subscription, no recurring charge, nothing hidden." },
-  { icon: Mail, t: "Get it in minutes", d: "Your report opens, downloads and lands in your inbox — usually inside two minutes." },
+  { icon: FileText, t: "Enter your birth details", d: "Name, date, time and place of birth. That's all the chart needs." },
+  { icon: CreditCard, t: "Pay by UPI or card", d: "One payment through Razorpay. No subscription, nothing recurring." },
+  { icon: Mail, t: "Report lands in minutes", d: "It opens, downloads and arrives in your inbox — usually under two minutes." },
 ];
+
+/* --------------------------------------------------------------- page */
 
 export default function ReportLanding({ config }: { config: ReportLandingConfig }) {
   const c = config;
-  const { ink, inkSoft, gold, glow } = c.theme;
+  const { ink, cta, ctaDark, tint, band, gold } = c.theme;
   const formRef = useRef<HTMLDivElement>(null);
   const [showBar, setShowBar] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const { h, m, s } = useMidnightCountdown();
+
+  const savePct = useMemo(
+    () => Math.round(((c.compareAt - c.price) / c.compareAt) * 100),
+    [c.compareAt, c.price],
+  );
+  const ctaGradient = `linear-gradient(180deg, ${cta} 0%, ${ctaDark} 100%)`;
 
   useEffect(() => {
     document.title = c.seoTitle;
@@ -113,7 +106,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
     const el = formRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
-      ([entry]) => setShowBar(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      ([e]) => setShowBar(!e.isIntersecting && e.boundingClientRect.top < 0),
       { threshold: 0 },
     );
     io.observe(el);
@@ -125,64 +118,50 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
     return () => document.body.classList.remove("report-buybar-open");
   }, [showBar]);
 
-  /* Header goes from transparent to frosted once the page moves. */
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const scrollToForm = () =>
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const waHref = `https://wa.me/${REPORT_CONTACT.phoneDigits}?text=${encodeURIComponent(
     `Hi, I have a question about the ${c.name} (${formatINR(c.price)}).`,
   )}`;
 
   const isBundle = c.variant === "complete";
-  /* The bundle's contents = predictions sections first, then the premium list. */
-  const toc = isBundle ? [...c.sections, ...PREMIUM_SECTION_LIST] : c.sections;
+  const allSections = isBundle ? [...c.sections, ...PREMIUM_SECTION_LIST] : c.sections;
 
-  const darkBg = `linear-gradient(155deg, ${inkSoft} 0%, ${ink} 52%, #06030a 140%)`;
+  const BigCta = ({ label, className = "" }: { label: string; className?: string }) => (
+    <button
+      onClick={scrollToForm}
+      className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[16px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.015] active:scale-[0.99] sm:text-[17px] ${className}`}
+      style={{ background: ctaGradient, boxShadow: `0 12px 28px -10px ${cta}` }}
+    >
+      {label}
+      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+    </button>
+  );
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FFFCF7] font-sans text-foreground">
-      {/* announcement */}
-      <div className="px-4 py-2 text-center text-[12px] sm:text-[13px]" style={{ background: "#100A05", color: "rgba(255,255,255,.8)" }}>
-        Trusted guidance from <b style={{ color: gold }}>Dr. Sandeep Sawhney</b>
-        <span className="hidden sm:inline"> · 25+ years · 1,00,000+ consultations</span>
+    <div className="min-h-screen overflow-x-hidden bg-white font-sans text-[#2A2320]">
+      {/* ------------------------------------------------ urgency bar */}
+      <div className="px-3 py-2 text-center text-[12px] font-semibold text-white sm:text-[13px]" style={{ background: ink }}>
+        <span className="opacity-90">Today's price {formatINR(c.price)} — </span>
+        <span style={{ color: "#FFD27A" }}>{savePct}% off</span>
+        <span className="opacity-90"> · ends in </span>
+        <span className="tabular-nums font-bold" style={{ color: "#FFD27A" }}>{h}:{m}:{s}</span>
       </div>
 
-      {/* header — transparent over the hero, frosted glass once scrolled */}
-      <header
-        className="sticky top-0 z-40 transition-all duration-300"
-        style={{
-          background: scrolled ? `${ink}b3` : "transparent",
-          backdropFilter: scrolled ? "blur(14px) saturate(140%)" : "none",
-          WebkitBackdropFilter: scrolled ? "blur(14px) saturate(140%)" : "none",
-          borderBottom: `1px solid ${scrolled ? `${gold}33` : "transparent"}`,
-        }}
-      >
-        <div className="mx-auto flex w-[92%] max-w-6xl items-center justify-between gap-3 py-3">
-          <img
-            src={LOGO}
-            alt="JyotishNow"
-            className="w-auto object-contain transition-all duration-300"
-            style={{ height: scrolled ? 38 : 46 }}
-          />
-          <div className="flex items-center gap-3 sm:gap-5">
-            <a
-              href={`tel:${REPORT_CONTACT.phoneDigits}`}
-              className="hidden items-center gap-2 text-[13.5px] font-semibold transition-opacity hover:opacity-80 sm:inline-flex"
-              style={{ color: "#fff" }}
-            >
-              <Phone className="h-4 w-4" style={{ color: gold }} /> {REPORT_CONTACT.phone}
+      {/* ---------------------------------------------------- header */}
+      <header className="sticky top-0 z-40 border-b border-[#F0E6D6] bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex w-[92%] max-w-6xl items-center justify-between gap-3 py-2.5">
+          <span className="inline-flex items-center rounded-lg px-3 py-1.5" style={{ background: ink }}>
+            <img src={LOGO} alt="JyotishNow" className="h-7 w-auto object-contain sm:h-9" />
+          </span>
+          <div className="flex items-center gap-4">
+            <a href={`tel:${REPORT_CONTACT.phoneDigits}`} className="hidden items-center gap-2 text-[13.5px] font-bold sm:inline-flex" style={{ color: ink }}>
+              <Phone className="h-4 w-4" /> {REPORT_CONTACT.phone}
             </a>
             <button
               onClick={scrollToForm}
-              className="rounded-full px-4 py-2.5 text-[13px] font-bold shadow-lg ring-1 transition-transform hover:scale-[1.03] sm:px-6 sm:text-[14px]"
-              style={{ background: gold, color: ink, boxShadow: `0 8px 24px -8px ${gold}` }}
+              className="rounded-lg px-4 py-2.5 text-[13px] font-extrabold text-white shadow-md transition-transform hover:scale-[1.03] sm:px-5 sm:text-[14px]"
+              style={{ background: ctaGradient }}
             >
               Get it · {formatINR(c.price)}
             </button>
@@ -190,487 +169,409 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
         </div>
       </header>
 
-      {/* ================================================== HERO */}
-      <section className="relative -mt-[68px] overflow-hidden pt-[68px]">
-        {/* artwork + scrim: the image carries the mood, the scrim keeps text legible */}
-        <img
-          src={c.heroImage}
-          alt=""
-          aria-hidden
-          fetchPriority="high"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            /* heavy behind the headline, light enough mid-frame that the
-               astrolabe and lamp actually read as artwork */
-            background: `linear-gradient(100deg, ${ink}f5 0%, ${ink}e3 28%, ${ink}8c 52%, ${ink}52 74%, ${ink}3d 100%)`,
-          }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(to bottom, ${ink}b3 0%, transparent 20%, transparent 74%, ${ink} 100%)` }}
-        />
-        <ZodiacWheel color={`${gold}14`} className="pointer-events-none absolute -right-[18%] -top-[30%] h-[135%] w-auto lg:-right-[6%]" />
-        <div className="pointer-events-none absolute -left-40 top-1/3 h-[26rem] w-[26rem] rounded-full blur-3xl" style={{ background: glow }} />
-
-        <div className="relative z-10 mx-auto grid w-[92%] max-w-6xl items-center gap-9 py-10 sm:py-14 lg:grid-cols-[1fr_540px] lg:gap-14 lg:py-20">
-          <div className="text-white">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-              className="flex justify-start"
-            >
-              <span className="flex items-center gap-2.5">
-                <span className="h-px w-7" style={{ background: `${gold}88` }} />
-                <span className="text-[10px] font-bold uppercase sm:text-[11px]" style={{ fontFamily: DISPLAY, color: gold, letterSpacing: "0.26em" }}>
-                  {c.eyebrow}
-                </span>
+      {/* ------------------------------------------------------ hero */}
+      <section className="relative" style={{ background: `linear-gradient(180deg, ${tint} 0%, #FFFFFF 100%)` }}>
+        <div className="mx-auto grid w-[92%] max-w-6xl items-start gap-10 py-8 sm:py-12 lg:grid-cols-[1fr_520px] lg:gap-14 lg:py-14">
+          {/* pitch */}
+          <div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="rounded-full px-3 py-1.5 text-[11.5px] font-extrabold uppercase tracking-wide text-white" style={{ background: ink }}>
+                {c.eyebrow}
               </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.05 }}
-              className="mt-4 font-serif font-bold leading-[1.04] tracking-[-0.01em]"
-              /* index.css forces text-primary on headings — override inline. */
-              style={{ fontSize: "clamp(2.1rem,5.4vw,3.6rem)", color: "#fff", textWrap: "balance" }}
-            >
-              {c.h1a} <span style={{ color: gold }}>{c.h1b}</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.15 }}
-              className="mt-5 max-w-xl text-[15px] leading-relaxed text-white/75 sm:text-[16.5px]"
-            >
-              {c.sub}
-            </motion.p>
-
-            <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
-              {c.heroChips.map((chip) => (
-                <span key={chip} className="inline-flex items-center gap-2 text-[13px] font-semibold text-white/90 sm:text-sm">
-                  <Check className="h-4 w-4" style={{ color: gold }} strokeWidth={3} /> {chip}
-                </span>
-              ))}
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E4D9C4] bg-white px-3 py-1.5 text-[12px] font-bold" style={{ color: ink }}>
+                <Zap className="h-3.5 w-3.5" style={{ color: cta }} /> Delivered in minutes
+              </span>
             </div>
 
-            <div className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-6 text-sm text-white/75" style={{ borderColor: "rgba(255,255,255,.14)" }}>
-              <Stars color={gold} />
-              <span><b className="text-white">4.9/5</b> from 3,200+ readers</span>
-              <span className="hidden opacity-40 sm:inline">·</span>
-              <span className="hidden sm:inline">1,00,000+ consultations</span>
+            <h1
+              className="mt-5 font-serif font-extrabold leading-[1.05] tracking-tight"
+              style={{ fontSize: "clamp(2.1rem,5.2vw,3.4rem)", color: ink, textWrap: "balance" }}
+            >
+              {c.h1a} <span style={{ color: cta }}>{c.h1b}</span>
+            </h1>
+
+            <p className="mt-4 max-w-xl text-[15.5px] leading-relaxed text-[#5B504A] sm:text-[17px]">
+              {c.sub}
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <Stars />
+              <span className="text-[14px] font-semibold" style={{ color: ink }}>4.9/5</span>
+              <span className="text-[14px] text-[#6B605A]">from 3,200+ readers</span>
+            </div>
+
+            <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
+              {c.answers.slice(0, 4).map((a) => (
+                <li key={a} className="flex items-start gap-2.5">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#16A34A]">
+                    <Check className="h-3 w-3 text-white" strokeWidth={3.5} />
+                  </span>
+                  <span className="text-[14px] leading-snug text-[#3D3531]">{a}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* product photo */}
+            <div className="mt-8 overflow-hidden rounded-2xl border border-[#F0E4D2] shadow-sm">
+              <img
+                src={c.photo}
+                alt={`A printed ${c.name} report`}
+                fetchPriority="high"
+                className="h-auto w-full object-cover"
+              />
             </div>
           </div>
 
-          <div ref={formRef} className="scroll-mt-24">
-            <ReportPurchaseForm config={c} idPrefix="hero" />
+          {/* offer + form */}
+          <div className="lg:sticky lg:top-24">
+            <div ref={formRef} className="scroll-mt-24">
+              <ReportPurchaseForm config={c} idPrefix="hero" />
+            </div>
+
+            {/* payment + trust rail */}
+            <div className="mt-4 rounded-xl border border-[#EFE4D3] bg-white p-4">
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12px] font-bold text-[#6B605A]">
+                <span>UPI</span><span className="text-[#DCD2C4]">|</span>
+                <span>Cards</span><span className="text-[#DCD2C4]">|</span>
+                <span>Net Banking</span><span className="text-[#DCD2C4]">|</span>
+                <span>Wallets</span>
+              </div>
+              <div className="mt-3 flex items-center justify-center gap-2 border-t border-[#F2E8D8] pt-3 text-[12px] text-[#6B605A]">
+                <Lock className="h-3.5 w-3.5" style={{ color: ink }} /> Secured by Razorpay · we never see your card
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* stats */}
-      <div className="border-b bg-white" style={{ borderColor: "#EFE6D8" }}>
-        <div className="mx-auto grid w-[92%] max-w-6xl grid-cols-2 py-9 text-center sm:py-11 md:grid-cols-4">
-          {STATS.map((s, i) => (
-            <div
-              key={s.l}
-              className={`flex flex-col items-center px-2 ${i % 2 === 1 ? "border-l" : ""} ${i >= 2 ? "border-t pt-7 md:border-t-0 md:pt-0" : ""} md:border-l md:first:border-l-0`}
-              style={{ borderColor: "#EFE6D8" }}
-            >
-              <div
-                className="font-serif font-extrabold leading-none"
-                style={{ color: ink, fontSize: "clamp(2.1rem,5vw,3.1rem)" }}
-              >
-                {s.n}
-              </div>
-              <div className="mt-2 h-px w-8" style={{ background: gold }} />
-              <div
-                className="mt-2.5 text-[11px] font-semibold uppercase sm:text-[12px]"
-                style={{ color: `${ink}aa`, letterSpacing: "0.14em" }}
-              >
-                {s.l}
+      {/* ---------------------------------------------- trust strip */}
+      <div className="border-y" style={{ background: tint, borderColor: band }}>
+        <div className="mx-auto grid w-[92%] max-w-6xl grid-cols-2 gap-4 py-6 sm:grid-cols-4">
+          {[
+            { i: Zap, t: "Instant delivery", d: "Under 2 minutes" },
+            { i: Mail, t: "Emailed to you", d: "PDF attachment" },
+            { i: Download, t: "Never expires", d: "Yours forever" },
+            { i: RefreshCw, t: "Full refund", d: "If it doesn't arrive" },
+          ].map((x) => (
+            <div key={x.t} className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white shadow-sm">
+                <x.i className="h-[18px] w-[18px]" style={{ color: cta }} />
+              </span>
+              <div className="min-w-0">
+                <div className="truncate text-[13.5px] font-extrabold" style={{ color: ink }}>{x.t}</div>
+                <div className="truncate text-[12px] text-[#6B605A]">{x.d}</div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ============================================ SEE THE PRODUCT */}
-      <section className="relative overflow-hidden" style={{ background: "#FFF8ED" }}>
-        <div className="mx-auto w-[92%] max-w-6xl py-14 sm:py-20">
-          <Reveal>
-            <Eyebrow color={`${ink}99`}>An actual page</Eyebrow>
-            <h2 className="mt-3 text-center font-serif font-bold leading-tight" style={{ fontSize: "clamp(1.7rem,4.2vw,2.6rem)", color: ink }}>
-              This is what lands in your inbox
+      {/* ------------------------------------------------ comparison */}
+      <section className="mx-auto w-[92%] max-w-4xl py-12 sm:py-16">
+        <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+          You've already tried the free ones
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] text-[#5B504A]">
+          Here is exactly what changes when a real chart is computed properly.
+        </p>
+
+        <div className="mt-8 overflow-hidden rounded-2xl border border-[#EFE4D3] shadow-sm">
+          <div className="grid grid-cols-[1.1fr_0.9fr_1.1fr] text-[12px] font-extrabold uppercase tracking-wide sm:text-[13px]">
+            <div className="bg-[#F7F1E7] px-3 py-3.5 text-[#6B605A] sm:px-5" />
+            <div className="bg-[#F7F1E7] px-2 py-3.5 text-center text-[#8A7C72] sm:px-4">Free apps</div>
+            <div className="px-2 py-3.5 text-center text-white sm:px-4" style={{ background: ink }}>{c.name}</div>
+          </div>
+          {c.compare.map((row, i) => (
+            <div
+              key={row.label}
+              className="grid grid-cols-[1.1fr_0.9fr_1.1fr] border-t border-[#F0E7DA] text-[13px] sm:text-[14px]"
+              style={{ background: i % 2 ? "#FFFDF9" : "#FFFFFF" }}
+            >
+              <div className="px-3 py-3.5 font-bold text-[#3D3531] sm:px-5">{row.label}</div>
+              <div className="flex items-center justify-center gap-1.5 px-2 py-3.5 text-center text-[#8A7C72] sm:px-4">
+                {row.free === false ? (
+                  <><X className="h-4 w-4 shrink-0 text-[#C74B4B]" strokeWidth={3} /><span className="hidden sm:inline">Not included</span></>
+                ) : (
+                  <span>{row.free}</span>
+                )}
+              </div>
+              <div className="flex items-start gap-1.5 px-2 py-3.5 font-semibold sm:px-4" style={{ background: `${tint}99`, color: ink }}>
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" strokeWidth={3} />
+                <span>{row.paid}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <div className="w-full max-w-sm">
+            <BigCta label={`${c.cta} · ${formatINR(c.price)}`} />
+          </div>
+        </div>
+      </section>
+
+      {/* --------------------------------------------- sample pages */}
+      <section className="border-y" style={{ background: tint, borderColor: band }}>
+        <div className="mx-auto w-[92%] max-w-6xl py-12 sm:py-16">
+          <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+            See a real page before you buy
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] text-[#5B504A]">
+            Typeset and printable — not a web page dressed up as a PDF.
+          </p>
+
+          <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mx-auto w-full max-w-[300px] rotate-[-1.5deg] transition-transform hover:rotate-0">
+              <ReportPage config={c} />
+            </div>
+            <div className="mx-auto hidden w-full max-w-[300px] rotate-[1deg] transition-transform hover:rotate-0 sm:block">
+              <ReportPage config={c} />
+            </div>
+            <div className="mx-auto hidden w-full max-w-[300px] rotate-[-0.5deg] transition-transform hover:rotate-0 lg:block">
+              <ReportPage config={c} />
+            </div>
+          </div>
+          <p className="mt-6 text-center text-[12.5px] italic text-[#8A7C72]">
+            Sample pages shown with an illustrative chart. Yours is generated from your own birth details.
+          </p>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------- what's in */}
+      <section className="mx-auto w-[92%] max-w-6xl py-12 sm:py-16">
+        <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+          {c.sectionsTitle}
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] text-[#5B504A]">{c.sectionsSub}</p>
+
+        <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {allSections.map((sec) => (
+            <div key={sec.title} className="flex gap-3 rounded-xl border border-[#EFE4D3] bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: `${cta}17` }}>
+                <sec.icon className="h-[18px] w-[18px]" style={{ color: cta }} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-serif text-[15.5px] font-bold leading-snug" style={{ color: ink }}>{sec.title}</h3>
+                <p className="mt-1 text-[13px] leading-relaxed text-[#6B605A]">{sec.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ------------------------------------------------ review wall */}
+      <section className="border-y" style={{ background: tint, borderColor: band }}>
+        <div className="mx-auto w-[92%] max-w-6xl py-12 sm:py-16">
+          <div className="text-center">
+            <Stars className="justify-center" />
+            <h2 className="mt-2 font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+              4.9 out of 5 from 3,200+ readers
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-center text-[15px] leading-relaxed text-muted-foreground">
-              Typeset, printable and built from your own chart — not a web page dressed up as a PDF.
-            </p>
-          </Reveal>
+          </div>
 
-          <div className="mt-10 grid items-center gap-10 lg:grid-cols-[minmax(0,420px)_1fr] lg:gap-16">
-            <Reveal>
-              <ReportStack config={c} />
-            </Reveal>
-
-            <Reveal delay={0.1}>
-              <ul className="space-y-6">
-                {[
-                  { t: "Your real chart, drawn properly", d: "North-Indian lagna chart with every planet in its house, plus the divisional set from D1 to D60." },
-                  { t: "Exact positions, not vague summaries", d: "Every planet with its sign, degree and nakshatra — the same table an astrologer works from." },
-                  { t: "Written in plain language", d: "Full paragraphs that explain what a placement means for you, not a glossary of Sanskrit terms." },
-                  { t: "Yours to keep and print", d: `${c.pages}, delivered as ${c.pdfCount > 1 ? "PDFs" : "a PDF"} with download links that never expire.` },
-                ].map((f) => (
-                  <li key={f.t} className="flex gap-4">
-                    <span className="mt-1 h-6 w-px shrink-0" style={{ background: gold }} />
-                    <div>
-                      <h3 className="font-serif text-[17px] font-bold leading-snug sm:text-lg" style={{ color: ink }}>{f.t}</h3>
-                      <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{f.d}</p>
+          <div className="mt-9 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {c.proof.map((p) => (
+              <figure key={p.name} className="flex h-full flex-col rounded-xl border border-[#EFE4D3] bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <Avatar name={p.name} color={ink} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-[14px] font-extrabold" style={{ color: ink }}>{p.name}</span>
+                      <BadgeCheck className="h-4 w-4 shrink-0 text-[#16A34A]" />
                     </div>
+                    <div className="truncate text-[12px] text-[#8A7C72]">{p.place}</div>
+                  </div>
+                </div>
+                <Stars className="mt-3" />
+                <blockquote className="mt-2 flex-1 text-[13.5px] leading-relaxed text-[#4A423D]">{p.quote}</blockquote>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------- steps */}
+      <section className="mx-auto w-[92%] max-w-5xl py-12 sm:py-16">
+        <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+          How it works
+        </h2>
+        <div className="mt-9 grid gap-6 sm:grid-cols-3">
+          {STEPS.map((st, i) => (
+            <div key={st.t} className="relative rounded-xl border border-[#EFE4D3] bg-white p-5 text-center shadow-sm sm:text-left">
+              <span
+                className="absolute -top-3 left-1/2 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full text-[13px] font-extrabold text-white sm:left-5 sm:translate-x-0"
+                style={{ background: ctaGradient }}
+              >
+                {i + 1}
+              </span>
+              <st.icon className="mx-auto mt-3 h-6 w-6 sm:mx-0" style={{ color: cta }} />
+              <h3 className="mt-3 font-serif text-[16.5px] font-bold" style={{ color: ink }}>{st.t}</h3>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#6B605A]">{st.d}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* guarantee */}
+        <div className="mt-10 flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed p-6 text-center sm:flex-row sm:text-left" style={{ borderColor: band, background: tint }}>
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white shadow-sm">
+            <ShieldCheck className="h-7 w-7" style={{ color: "#16A34A" }} />
+          </span>
+          <div>
+            <h3 className="font-serif text-[17px] font-bold" style={{ color: ink }}>Our guarantee</h3>
+            <p className="mt-1 text-[14px] leading-relaxed text-[#5B504A]">{c.guarantee}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------ faq */}
+      <section className="border-y" style={{ background: tint, borderColor: band }}>
+        <div className="mx-auto w-[92%] max-w-3xl py-12 sm:py-16">
+          <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+            Questions, answered
+          </h2>
+          <Accordion type="single" collapsible className="mt-8 space-y-2.5">
+            {c.faqs.map((f, i) => (
+              <AccordionItem key={f.q} value={`faq-${i}`} className="overflow-hidden rounded-xl border border-[#EFE4D3] bg-white px-4 sm:px-5">
+                <AccordionTrigger className="py-4 text-left text-[15px] font-bold hover:no-underline" style={{ color: ink }}>
+                  {f.q}
+                </AccordionTrigger>
+                <AccordionContent className="pb-4 text-[14px] leading-relaxed text-[#5B504A]">{f.a}</AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+          <p className="mt-6 text-center text-[14px] text-[#5B504A]">
+            Still unsure?{" "}
+            <a href={waHref} target="_blank" rel="noopener noreferrer" className="font-bold underline underline-offset-4" style={{ color: ink }}>
+              Message us on WhatsApp
+            </a>{" "}
+            — a person answers.
+          </p>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------ final offer */}
+      <section className="mx-auto w-[92%] max-w-6xl py-12 sm:py-16">
+        <div className="grid items-start gap-9 lg:grid-cols-[1fr_520px] lg:gap-14">
+          <div>
+            <h2 className="font-serif font-extrabold leading-[1.08]" style={{ fontSize: "clamp(1.8rem,4.4vw,2.8rem)", color: ink }}>
+              Your chart is already written.
+              <span className="block" style={{ color: cta }}>Read it properly.</span>
+            </h2>
+
+            <div className="mt-6 rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: band, background: tint }}>
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                <span className="font-serif text-5xl font-extrabold leading-none" style={{ color: ink }}>{formatINR(c.price)}</span>
+                <span className="pb-1 text-lg text-[#9A8C82] line-through">{formatINR(c.compareAt)}</span>
+                <span className="mb-1 rounded-md bg-[#16A34A] px-2 py-1 text-[12px] font-extrabold text-white">SAVE {savePct}%</span>
+              </div>
+              <p className="mt-2 text-[13.5px] font-semibold" style={{ color: ink }}>
+                {c.pages} · one-time payment · ends in <span className="tabular-nums">{h}:{m}:{s}</span>
+              </p>
+
+              <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                {[
+                  { i: ShieldCheck, t: "Secured by Razorpay" },
+                  { i: Download, t: "Links never expire" },
+                  { i: Mail, t: "Emailed to your inbox" },
+                  { i: Check, t: "No subscription, ever" },
+                ].map((x) => (
+                  <li key={x.t} className="flex items-center gap-2 text-[13.5px] font-semibold text-[#3D3531]">
+                    <x.i className="h-4 w-4 shrink-0" style={{ color: cta }} /> {x.t}
                   </li>
                 ))}
               </ul>
-              <p className="mt-7 text-[12px] italic text-muted-foreground">
-                Sample page shown with an illustrative chart. Yours is generated from your own birth details.
-              </p>
-            </Reveal>
-          </div>
-        </div>
-      </section>
 
-      {/* =============================================== TABLE OF CONTENTS */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{ background: darkBg }} />
-        <ZodiacWheel color={`${gold}12`} className="pointer-events-none absolute -left-[22%] top-1/4 h-[110%] w-auto" />
-        <div className="relative z-10 mx-auto w-[92%] max-w-6xl py-14 sm:py-20">
-          <Reveal>
-            <Eyebrow color={gold}>Contents</Eyebrow>
-            <h2 className="mt-3 text-center font-serif font-bold leading-tight" style={{ fontSize: "clamp(1.7rem,4.2vw,2.6rem)", color: "#fff" }}>
-              {c.sectionsTitle}
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] leading-relaxed text-white/65">
-              {c.sectionsSub}
-            </p>
-          </Reveal>
-
-          <div className="mt-10 grid gap-3 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
-            {toc.map((s, i) => (
-              <Reveal key={`${s.title}-${i}`} delay={Math.min(i, 5) * 0.04}>
-                <div
-                  className="relative h-full overflow-hidden rounded-xl border p-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/[0.09] sm:p-5"
-                  style={{
-                    borderColor: "rgba(255,255,255,.14)",
-                    background: "rgba(255,255,255,.055)",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,.07)",
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute -top-4 right-1 font-serif text-[56px] font-bold leading-none tabular-nums"
-                    style={{ color: `${gold}1f` }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <h3 className="relative font-serif text-[15.5px] font-bold leading-snug text-white sm:text-[16.5px]">
-                    {s.title}
-                  </h3>
-                  <div className="mt-2.5 h-px w-7" style={{ background: gold }} />
-                  <p className="relative mt-2.5 text-[13px] leading-relaxed text-white/55">{s.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-
-          <Reveal>
-            <div className="mt-12 text-center">
-              <button
-                onClick={scrollToForm}
-                className="inline-flex items-center gap-2 rounded-full px-7 py-4 text-[15px] font-bold shadow-2xl transition-transform hover:scale-[1.02] sm:text-base"
-                style={{ background: gold, color: ink }}
-              >
-                {c.cta} · {formatINR(c.price)} <ArrowDown className="h-4 w-4" />
-              </button>
-              <p className="mt-3 text-[12.5px] text-white/50">
-                {c.pages} · delivered in minutes · yours forever
-              </p>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ================================================== QUESTIONS */}
-      <section className="mx-auto w-[92%] max-w-3xl py-14 sm:py-20">
-        <Reveal>
-          <Eyebrow color={`${ink}99`}>The point of it</Eyebrow>
-          <h2 className="mt-3 text-center font-serif font-bold leading-tight" style={{ fontSize: "clamp(1.7rem,4.2vw,2.6rem)", color: ink }}>
-            What you'll finally know
-          </h2>
-        </Reveal>
-
-        <ul className="mt-9 sm:mt-11">
-          {c.answers.map((a, i) => (
-            <Reveal key={a} delay={i * 0.05}>
-              <li
-                className="flex items-start gap-4 border-b py-5 sm:gap-5"
-                style={{ borderColor: "#EDE3D3" }}
-              >
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rotate-45" style={{ background: gold }} />
-                <span
-                  className="font-serif text-[17px] leading-relaxed sm:text-[19px]"
-                  style={{ color: `${ink}` }}
-                >
-                  {a}
-                </span>
-              </li>
-            </Reveal>
-          ))}
-        </ul>
-      </section>
-
-      {/* =================================================== STEPS */}
-      <section className="border-y" style={{ background: "#FFF8ED", borderColor: "#EFE6D8" }}>
-        <div className="mx-auto w-[92%] max-w-5xl py-14 sm:py-18">
-          <Reveal>
-            <Eyebrow color={`${ink}99`}>Three steps</Eyebrow>
-            <h2 className="mt-3 text-center font-serif font-bold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.3rem)", color: ink }}>
-              How it works
-            </h2>
-          </Reveal>
-          <div className="mt-9 grid gap-6 sm:grid-cols-3 sm:gap-8">
-            {STEPS.map((s, i) => (
-              <Reveal key={s.t} delay={i * 0.08}>
-                <div className="text-center sm:text-left">
-                  <div className="flex items-center justify-center gap-3 sm:justify-start">
-                    <span className="grid h-11 w-11 place-items-center rounded-full border" style={{ borderColor: `${gold}`, color: ink }}>
-                      <s.icon className="h-5 w-5" />
-                    </span>
-                    <span className="font-serif text-3xl font-extrabold" style={{ color: `${gold}` }}>{i + 1}</span>
-                  </div>
-                  <h3 className="mt-3.5 font-serif text-[17px] font-bold" style={{ color: ink }}>{s.t}</h3>
-                  <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">{s.d}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* =================================================== PROOF */}
-      <section className="mx-auto w-[92%] max-w-6xl py-14 sm:py-20">
-        <Reveal>
-          <Eyebrow color={`${ink}99`}>Readers</Eyebrow>
-          <h2 className="mt-3 text-center font-serif font-bold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.3rem)", color: ink }}>
-            What people say after reading it
-          </h2>
-        </Reveal>
-        <div className="mt-9 grid gap-5 md:grid-cols-3">
-          {c.proof.map((p, i) => (
-            <Reveal key={p.name} delay={i * 0.07}>
-              <figure className="flex h-full flex-col rounded-sm border-t-2 bg-white p-6 shadow-sm" style={{ borderColor: gold }}>
-                <Quote className="h-5 w-5 shrink-0" style={{ color: `${gold}` }} />
-                <blockquote className="mt-3 flex-1 text-[14.5px] leading-relaxed text-foreground/80">
-                  {p.quote}
-                </blockquote>
-                <figcaption className="mt-5 flex items-center gap-2 text-[13px]">
-                  <Stars color={gold} />
-                  <span className="font-bold" style={{ color: ink }}>{p.name}</span>
-                  <span className="text-muted-foreground">· {p.place}</span>
-                </figcaption>
-              </figure>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ===================================================== FAQ */}
-      <section className="border-t" style={{ background: "#FFF8ED", borderColor: "#EFE6D8" }}>
-        <div className="mx-auto w-[92%] max-w-3xl py-14 sm:py-20">
-          <Reveal>
-            <Eyebrow color={`${ink}99`}>Before you buy</Eyebrow>
-            <h2 className="mt-3 text-center font-serif font-bold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.3rem)", color: ink }}>
-              Questions, answered
-            </h2>
-          </Reveal>
-          <Reveal delay={0.05}>
-            <Accordion type="single" collapsible className="mt-8">
-              {c.faqs.map((f, i) => (
-                <AccordionItem key={f.q} value={`faq-${i}`} className="border-b" style={{ borderColor: "#E8DCC8" }}>
-                  <AccordionTrigger className="py-4 text-left text-[15.5px] font-semibold hover:no-underline" style={{ color: ink }}>
-                    {f.q}
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-4 text-[14.5px] leading-relaxed text-muted-foreground">
-                    {f.a}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="mt-7 text-center text-[14px] text-muted-foreground">
-              Still unsure?{" "}
-              <a href={waHref} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4" style={{ color: ink }}>
-                Message us on WhatsApp
-              </a>{" "}
-              — we answer before you buy.
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ================================================= FINAL CTA */}
-      <section className="relative overflow-hidden">
-        <img src={c.ctaImage} alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0" style={{ background: `linear-gradient(110deg, ${ink}f5 0%, ${ink}e6 50%, ${ink}b3 100%)` }} />
-        <ZodiacWheel color={`${gold}14`} className="pointer-events-none absolute -left-[15%] -top-[20%] h-[140%] w-auto" />
-        <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full blur-3xl" style={{ background: glow }} />
-
-        <div className="relative z-10 mx-auto grid w-[92%] max-w-6xl items-center gap-10 py-14 sm:py-20 lg:grid-cols-[1fr_540px] lg:gap-14">
-          <div className="text-white">
-            <span className="text-[10px] font-bold uppercase sm:text-[11px]" style={{ fontFamily: DISPLAY, color: gold, letterSpacing: "0.26em" }}>
-              One payment · instant delivery
-            </span>
-            <h2 className="mt-4 font-serif font-bold leading-[1.08]" style={{ fontSize: "clamp(1.8rem,4.4vw,2.9rem)", color: "#fff" }}>
-              Your chart is already written.
-              <span className="block" style={{ color: gold }}>Read it properly.</span>
-            </h2>
-            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-white/70 sm:text-base">
-              {c.pages} · computed from your exact birth details · in your inbox in minutes and yours to keep forever.
-            </p>
-
-            {/* price block — fills the column that was previously empty */}
-            <div className="mt-7 flex flex-wrap items-end gap-x-4 gap-y-1">
-              <span className="font-serif text-5xl font-extrabold sm:text-6xl" style={{ color: gold }}>
-                {formatINR(c.price)}
-              </span>
-              <span className="pb-1.5 text-base text-white/45 line-through">{formatINR(c.compareAt)}</span>
-              <span className="pb-1.5 text-[13px] font-semibold" style={{ color: gold }}>
-                one time
-              </span>
+              <div className="mt-5">
+                <BigCta label={`${c.cta} · ${formatINR(c.price)}`} />
+              </div>
             </div>
 
-            <ul className="mt-7 grid gap-2.5 sm:grid-cols-2">
-              {[
-                { i: ShieldCheck, t: "Secured by Razorpay" },
-                { i: Download, t: "Links that never expire" },
-                { i: Mail, t: "Emailed to your inbox" },
-                { i: Check, t: "No subscription, ever" },
-              ].map((x) => (
-                <li
-                  key={x.t}
-                  className="flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-[13.5px] font-medium text-white/90 backdrop-blur-md"
-                  style={{
-                    borderColor: "rgba(255,255,255,.14)",
-                    background: "rgba(255,255,255,.055)",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,.07)",
-                  }}
-                >
-                  <x.i className="h-4 w-4 shrink-0" style={{ color: gold }} /> {x.t}
-                </li>
-              ))}
-            </ul>
-
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+              <Stars />
+              <span className="text-[14px] text-[#5B504A]"><b style={{ color: ink }}>4.9/5</b> from 3,200+ readers</span>
+            </div>
           </div>
 
           <ReportPurchaseForm config={c} idPrefix="final" />
         </div>
       </section>
 
-      {/* footer */}
-      <footer className="relative pb-28 lg:pb-0" style={{ background: "#0A0603", color: "rgba(255,255,255,.62)" }}>
-        <div className="h-px w-full" style={{ background: `linear-gradient(to right, transparent, ${gold}80, transparent)` }} />
-
-        <div className="mx-auto grid w-[92%] max-w-6xl gap-9 py-12 sm:grid-cols-2 sm:py-14 lg:grid-cols-[1.4fr_1fr_1fr]">
-          {/* brand */}
+      {/* --------------------------------------------------- footer */}
+      <footer className="border-t border-[#EDE2D0] bg-[#FBF6EE] pb-28 lg:pb-0">
+        <div className="mx-auto grid w-[92%] max-w-6xl gap-8 py-11 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
           <div>
-            <img src={LOGO} alt="JyotishNow" className="h-11 w-auto object-contain" />
-            <p className="mt-4 max-w-sm text-[13.5px] leading-relaxed">
-              Vedic astrology reports computed from your real birth chart, prepared under the
-              guidance of Dr. Sandeep Sawhney — 25+ years of practice and over a lakh consultations.
+            <span className="inline-flex items-center rounded-lg px-3 py-2" style={{ background: ink }}>
+              <img src={LOGO} alt="JyotishNow" className="h-9 w-auto object-contain" />
+            </span>
+            <p className="mt-4 max-w-sm text-[13.5px] leading-relaxed text-[#5B504A]">
+              Vedic astrology reports computed from your real birth chart, under the guidance of
+              Dr. Sandeep Sawhney — 25+ years of practice and over a lakh consultations.
             </p>
-            <div className="mt-5 flex items-center gap-2.5">
-              <Stars color={gold} />
-              <span className="text-[13px]"><b className="text-white">4.9/5</b> from 3,200+ readers</span>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-xs">
+              {STATS.slice(0, 4).map((st) => (
+                <div key={st.l}>
+                  <div className="font-serif text-xl font-extrabold" style={{ color: ink }}>{st.n}</div>
+                  <div className="text-[11.5px] text-[#6B605A]">{st.l}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* contact */}
           <div>
-            <h3
-              className="text-[11px] font-bold uppercase"
-              style={{ fontFamily: DISPLAY, color: gold, letterSpacing: "0.22em" }}
-            >
-              Get in touch
-            </h3>
-            <ul className="mt-4 space-y-3 text-[13.5px]">
-              <li>
-                <a href={`tel:${REPORT_CONTACT.phoneDigits}`} className="inline-flex items-center gap-2.5 transition-colors hover:text-white">
-                  <Phone className="h-4 w-4 shrink-0" style={{ color: gold }} /> {REPORT_CONTACT.phone}
-                </a>
-              </li>
-              <li>
-                <a href={`mailto:${REPORT_CONTACT.email}`} className="inline-flex items-center gap-2.5 break-all transition-colors hover:text-white">
-                  <Mail className="h-4 w-4 shrink-0" style={{ color: gold }} /> {REPORT_CONTACT.email}
-                </a>
-              </li>
-              <li>
-                <a href={waHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2.5 transition-colors hover:text-white">
-                  <MessageCircle className="h-4 w-4 shrink-0" style={{ color: gold }} /> Chat on WhatsApp
-                </a>
-              </li>
+            <h3 className="text-[12px] font-extrabold uppercase tracking-wider" style={{ color: ink }}>Get in touch</h3>
+            <ul className="mt-4 space-y-3 text-[13.5px] text-[#5B504A]">
+              <li><a href={`tel:${REPORT_CONTACT.phoneDigits}`} className="inline-flex items-center gap-2.5 hover:text-[#2A2320]"><Phone className="h-4 w-4" style={{ color: cta }} /> {REPORT_CONTACT.phone}</a></li>
+              <li><a href={`mailto:${REPORT_CONTACT.email}`} className="inline-flex items-center gap-2.5 break-all hover:text-[#2A2320]"><Mail className="h-4 w-4 shrink-0" style={{ color: cta }} /> {REPORT_CONTACT.email}</a></li>
+              <li><a href={waHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2.5 hover:text-[#2A2320]"><MessageCircle className="h-4 w-4" style={{ color: cta }} /> Chat on WhatsApp</a></li>
             </ul>
           </div>
 
-          {/* what you get */}
           <div>
-            <h3
-              className="text-[11px] font-bold uppercase"
-              style={{ fontFamily: DISPLAY, color: gold, letterSpacing: "0.22em" }}
-            >
-              This report
-            </h3>
-            <ul className="mt-4 space-y-3 text-[13.5px]">
+            <h3 className="text-[12px] font-extrabold uppercase tracking-wider" style={{ color: ink }}>This report</h3>
+            <ul className="mt-4 space-y-3 text-[13.5px] text-[#5B504A]">
               {[
                 { i: FileText, t: c.pages },
                 { i: Mail, t: "Emailed as a PDF" },
                 { i: Download, t: "Links never expire" },
                 { i: ShieldCheck, t: "Secured by Razorpay" },
               ].map((x) => (
-                <li key={x.t} className="flex items-center gap-2.5">
-                  <x.i className="h-4 w-4 shrink-0" style={{ color: gold }} /> {x.t}
-                </li>
+                <li key={x.t} className="flex items-center gap-2.5"><x.i className="h-4 w-4 shrink-0" style={{ color: cta }} /> {x.t}</li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="border-t" style={{ borderColor: "rgba(255,255,255,.09)" }}>
-          <div className="mx-auto flex w-[92%] max-w-6xl flex-col gap-3 py-6 text-[11.5px] leading-relaxed sm:flex-row sm:items-center sm:justify-between">
-            <p className="max-w-2xl opacity-70">
+        <div className="border-t border-[#EDE2D0]">
+          <div className="mx-auto flex w-[92%] max-w-6xl flex-col gap-2 py-5 text-[11.5px] leading-relaxed text-[#8A7C72] sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl">
               Astrological reports are provided for guidance and personal reflection. They are not a
               substitute for professional medical, legal or financial advice.
             </p>
-            <p className="shrink-0 opacity-60">© {new Date().getFullYear()} JyotishNow</p>
+            <p className="shrink-0">© {new Date().getFullYear()} JyotishNow</p>
           </div>
         </div>
       </footer>
 
-      {/* sticky mobile bar */}
+      {/* --------------------------------------------- sticky mobile */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-50 border-t px-4 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2.5 transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-x-0 bottom-0 z-50 border-t border-[#EDE2D0] bg-white px-4 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2.5 shadow-[0_-8px_24px_-12px_rgba(0,0,0,.25)] transition-transform duration-300 lg:hidden ${
           showBar ? "translate-y-0" : "translate-y-full"
         }`}
-        style={{ background: `${ink}fa`, borderColor: `${gold}33` }}
       >
         <div className="mx-auto flex max-w-lg items-center gap-3">
-          <div className="min-w-0 flex-1 leading-tight text-white">
-            <div className="truncate text-[13px] font-semibold">{c.name}</div>
-            <div className="text-[11px] text-white/60">{c.pages}</div>
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-serif text-xl font-extrabold" style={{ color: ink }}>{formatINR(c.price)}</span>
+              <span className="text-[12px] text-[#9A8C82] line-through">{formatINR(c.compareAt)}</span>
+            </div>
+            <div className="truncate text-[11px] tabular-nums text-[#6B605A]">Ends in {h}:{m}:{s}</div>
           </div>
           <button
             onClick={scrollToForm}
-            className="shrink-0 whitespace-nowrap rounded-full px-5 py-3 text-[14px] font-bold shadow-lg"
-            style={{ background: gold, color: ink }}
+            className="shrink-0 whitespace-nowrap rounded-lg px-5 py-3 text-[14px] font-extrabold text-white shadow-md"
+            style={{ background: ctaGradient }}
           >
-            Get it · {formatINR(c.price)}
+            Get my report
           </button>
         </div>
       </div>

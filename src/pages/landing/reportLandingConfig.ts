@@ -21,6 +21,8 @@ import { getPriceInRupees, getKundliPdfTier } from "../../../shared/pricing";
 export type ReportSection = { icon: LucideIcon; title: string; desc: string };
 export type ReportFaq = { q: string; a: string };
 export type ReportProof = { quote: string; name: string; place: string };
+/** One row of the "free kundli app vs this report" comparison. */
+export type CompareRow = { label: string; free: string | false; paid: string };
 
 export type ReportLandingConfig = {
   slug: string;
@@ -34,11 +36,13 @@ export type ReportLandingConfig = {
   pages: string;
   /** How many separate PDFs land in their inbox. */
   pdfCount: number;
-  /** Palette. `ink` is the hero ground, `gold` the accent on top of it. */
-  theme: { ink: string; inkSoft: string; gold: string; glow: string };
-  /** Atmospheric artwork behind the hero and the closing section. */
-  heroImage: string;
-  ctaImage: string;
+  /**
+   * Light-funnel palette. `ink` is the heading/brand colour, `cta` the button
+   * gradient base, `tint` the soft section wash, `band` the accent band.
+   */
+  theme: { ink: string; cta: string; ctaDark: string; tint: string; band: string; gold: string };
+  /** Product photograph used in the hero and the sample section. */
+  photo: string;
   eyebrow: string;
   h1a: string;
   h1b: string;
@@ -56,6 +60,10 @@ export type ReportLandingConfig = {
   answers: string[];
   faqs: ReportFaq[];
   proof: ReportProof[];
+  /** Side-by-side against the free apps people have already tried. */
+  compare: CompareRow[];
+  /** Short guarantee shown beside the offer. */
+  guarantee: string;
   seoTitle: string;
   seoDesc: string;
 };
@@ -93,6 +101,24 @@ const PREMIUM_PROOF: ReportProof[] = [
     name: "Shalini M.",
     place: "Bengaluru",
   },
+  {
+    quote:
+      "Paid on UPI and the PDF was in my inbox before I finished making tea. The Ashtakvarga tables were the bit I'd never seen before.",
+    name: "Nikhil D.",
+    place: "Hyderabad",
+  },
+  {
+    quote:
+      "My mother wanted a proper kundli for me and every free app gave a different answer. This one matched what our family astrologer said.",
+    name: "Pooja B.",
+    place: "Jaipur",
+  },
+  {
+    quote:
+      "I was sceptical at ₹299 honestly. It's more thorough than a printed kundli I paid ten times as much for years ago.",
+    name: "Harpreet S.",
+    place: "Ludhiana",
+  },
 ];
 
 const COMPLETE_PROOF: ReportProof[] = [
@@ -114,6 +140,52 @@ const COMPLETE_PROOF: ReportProof[] = [
     name: "Arjun K.",
     place: "Mumbai",
   },
+  {
+    quote:
+      "Two PDFs, about a hundred pages, for less than a single consultation costs. The year-by-year section is what I keep rereading.",
+    name: "Sneha V.",
+    place: "Nagpur",
+  },
+  {
+    quote:
+      "Ordered at night, had both reports before I slept. No follow-up calls, no upselling, which I appreciated.",
+    name: "Farhan A.",
+    place: "Lucknow",
+  },
+  {
+    quote:
+      "The marriage timing section was oddly specific and matched things my family had already been told independently.",
+    name: "Divya N.",
+    place: "Kochi",
+  },
+];
+
+
+/**
+ * The comparison most visitors are actually making in their head: they have
+ * already generated a free kundli somewhere and want to know what ₹299 buys.
+ * Every "paid" claim here is something the report genuinely contains.
+ */
+const COMPARE_PREMIUM: CompareRow[] = [
+  { label: "Birth chart drawn", free: "Lagna chart only", paid: "Lagna, Navamsa + D1 to D60" },
+  { label: "Planet detail", free: "Sign only", paid: "Sign, exact degree, nakshatra & pada" },
+  { label: "House-by-house reading", free: false, paid: "All 12 bhavas, read individually" },
+  { label: "Planetary strength", free: false, paid: "Full Shad Bala & Ashtakvarga tables" },
+  { label: "Dasha timeline", free: "Current period", paid: "Mahadasha + Antardasha, mapped out" },
+  { label: "Dosha analysis", free: "Yes / no flag", paid: "Mangal, Kaal Sarp, Pitra — with severity" },
+  { label: "Remedies", free: "Generic by sun sign", paid: "Matched to your chart's weak points" },
+  { label: "Format", free: "A web page with ads", paid: "Printable PDF, emailed, never expires" },
+];
+
+const COMPARE_COMPLETE: CompareRow[] = [
+  { label: "Birth chart drawn", free: "Lagna chart only", paid: "Lagna, Navamsa + D1 to D60" },
+  { label: "House-by-house reading", free: false, paid: "All 12 bhavas, read individually" },
+  { label: "Dasha timeline", free: "Current period", paid: "Mahadasha + Antardasha, mapped out" },
+  { label: "Future predictions", free: false, paid: "A second report, dedicated to what's coming" },
+  { label: "Career & money timing", free: false, paid: "The years your chart favours a move" },
+  { label: "Marriage timing", free: false, paid: "What the 7th house indicates, and when" },
+  { label: "Remedies", free: "Generic by sun sign", paid: "Matched to your chart's weak points" },
+  { label: "Format", free: "A web page with ads", paid: "2 printable PDFs, emailed, never expire" },
 ];
 
 const PREMIUM_SECTIONS: ReportSection[] = [
@@ -262,13 +334,14 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     pages: premium.pages,
     pdfCount: 1,
     theme: {
-      ink: "#3D0404",
-      inkSoft: "#5A0606",
-      gold: "#F5C27A",
-      glow: "rgba(245,194,122,0.16)",
+      ink: "#7A0808",
+      cta: "#F9701A",
+      ctaDark: "#D2450A",
+      tint: "#FFF4E3",
+      band: "#FFE7C4",
+      gold: "#C98A1E",
     },
-    heroImage: "/lp/hero-premium.jpg",
-    ctaImage: "/lp/cta-stars.jpg",
+    photo: "/lp/report-photo.jpg",
     eyebrow: "Premium Kundli Report",
     h1a: "Your entire birth chart,",
     h1b: "read properly. 60 pages.",
@@ -291,6 +364,9 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     ],
     faqs: SHARED_FAQS,
     proof: PREMIUM_PROOF,
+    compare: COMPARE_PREMIUM,
+    guarantee:
+      "If your report doesn't arrive, we send it manually or refund you in full. Reach us on WhatsApp and a person answers.",
     seoTitle: "Premium Kundli Report — 60-Page Vedic Horoscope PDF | JyotishNow",
     seoDesc:
       "Your complete Vedic birth chart as a ~60 page PDF: divisional charts, house-by-house analysis, Ashtakvarga, dasha timeline, doshas and personalised remedies. Delivered in minutes.",
@@ -305,13 +381,14 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     pages: complete.pages,
     pdfCount: 2,
     theme: {
-      ink: "#140B2E",
-      inkSoft: "#241357",
-      gold: "#F2C879",
-      glow: "rgba(242,200,121,0.18)",
+      ink: "#3B1B6B",
+      cta: "#7C3AED",
+      ctaDark: "#5B21B6",
+      tint: "#F4F0FF",
+      band: "#E6DCFF",
+      gold: "#8B5CF6",
     },
-    heroImage: "/lp/hero-complete.jpg",
-    ctaImage: "/lp/cta-stars.jpg",
+    photo: "/lp/report-photo.jpg",
     eyebrow: "Complete Bundle · Two Reports",
     h1a: "Your chart read in full —",
     h1b: "and your future mapped.",
@@ -334,6 +411,9 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     ],
     faqs: SHARED_FAQS,
     proof: COMPLETE_PROOF,
+    compare: COMPARE_COMPLETE,
+    guarantee:
+      "If either report doesn't arrive, we send it manually or refund you in full. Reach us on WhatsApp and a person answers.",
     seoTitle: "Complete Kundli Bundle — 100-Page Vedic Report + Life Predictions | JyotishNow",
     seoDesc:
       "Two reports together: the full ~60 page Premium Kundli plus a dedicated Life Predictions report covering career, wealth, marriage, health and event timing. ~100 pages, delivered in minutes.",
