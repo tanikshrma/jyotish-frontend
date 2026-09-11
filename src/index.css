@@ -101,6 +101,17 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* While a report landing page shows its sticky mobile buy bar, lift the
+     floating WhatsApp widget clear of it. Desktop has no bar, so it stays put. */
+  body.report-buybar-open [data-floating-wa] {
+    bottom: 6.5rem;
+  }
+  @media (min-width: 1024px) {
+    body.report-buybar-open [data-floating-wa] {
+      bottom: 1.5rem;
+    }
+  }
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
