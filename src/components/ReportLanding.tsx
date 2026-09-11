@@ -8,7 +8,7 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ReportPurchaseForm } from "@/components/ReportPurchaseForm";
-import { ReportPage, ReportStack } from "@/components/ReportMockup";
+import { ReportStack } from "@/components/ReportMockup";
 import {
   REPORT_CONTACT, LOGO, PREMIUM_SECTION_LIST, type ReportLandingConfig,
 } from "@/pages/landing/reportLandingConfig";
@@ -171,7 +171,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
         <div className="pointer-events-none absolute -left-40 top-1/3 h-[26rem] w-[26rem] rounded-full blur-3xl" style={{ background: glow }} />
         <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 120%, transparent 40%, rgba(0,0,0,.5) 100%)" }} />
 
-        <div className="relative z-10 mx-auto grid w-[92%] max-w-6xl items-center gap-9 py-10 sm:py-14 lg:grid-cols-[1fr_440px] lg:gap-14 lg:py-20">
+        <div className="relative z-10 mx-auto grid w-[92%] max-w-6xl items-center gap-9 py-10 sm:py-14 lg:grid-cols-[1fr_540px] lg:gap-14 lg:py-20">
           <div className="text-white">
             <motion.div
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
@@ -225,12 +225,26 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
 
       {/* stats */}
       <div className="border-b bg-white" style={{ borderColor: "#EFE6D8" }}>
-        <div className="mx-auto grid w-[92%] max-w-6xl grid-cols-2 gap-5 py-6 text-center md:grid-cols-4">
-          {STATS.map((s) => (
-            <div key={s.l} className="flex flex-col items-center">
-              <s.icon className="mb-1 h-4 w-4" style={{ color: gold }} />
-              <div className="font-serif text-xl font-extrabold sm:text-2xl" style={{ color: ink }}>{s.n}</div>
-              <div className="text-[11px] text-muted-foreground sm:text-xs">{s.l}</div>
+        <div className="mx-auto grid w-[92%] max-w-6xl grid-cols-2 py-9 text-center sm:py-11 md:grid-cols-4">
+          {STATS.map((s, i) => (
+            <div
+              key={s.l}
+              className={`flex flex-col items-center px-2 ${i % 2 === 1 ? "border-l" : ""} ${i >= 2 ? "border-t pt-7 md:border-t-0 md:pt-0" : ""} md:border-l md:first:border-l-0`}
+              style={{ borderColor: "#EFE6D8" }}
+            >
+              <div
+                className="font-serif font-extrabold leading-none"
+                style={{ color: ink, fontSize: "clamp(2.1rem,5vw,3.1rem)" }}
+              >
+                {s.n}
+              </div>
+              <div className="mt-2 h-px w-8" style={{ background: gold }} />
+              <div
+                className="mt-2.5 text-[11px] font-semibold uppercase sm:text-[12px]"
+                style={{ color: `${ink}aa`, letterSpacing: "0.14em" }}
+              >
+                {s.l}
+              </div>
             </div>
           ))}
         </div>
@@ -283,7 +297,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       <section className="relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: darkBg }} />
         <ZodiacWheel color={`${gold}12`} className="pointer-events-none absolute -left-[22%] top-1/4 h-[110%] w-auto" />
-        <div className="relative z-10 mx-auto w-[92%] max-w-5xl py-14 sm:py-20">
+        <div className="relative z-10 mx-auto w-[92%] max-w-6xl py-14 sm:py-20">
           <Reveal>
             <Eyebrow color={gold}>Contents</Eyebrow>
             <h2 className="mt-3 text-center font-serif font-bold leading-tight" style={{ fontSize: "clamp(1.7rem,4.2vw,2.6rem)", color: "#fff" }}>
@@ -294,25 +308,25 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             </p>
           </Reveal>
 
-          <div className="mt-10 grid gap-x-12 sm:mt-12 lg:grid-cols-2">
+          <div className="mt-10 grid gap-3 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
             {toc.map((s, i) => (
-              <Reveal key={`${s.title}-${i}`} delay={Math.min(i, 6) * 0.03}>
+              <Reveal key={`${s.title}-${i}`} delay={Math.min(i, 5) * 0.04}>
                 <div
-                  className="flex items-baseline gap-4 border-b py-4 sm:gap-5 sm:py-5"
-                  style={{ borderColor: "rgba(255,255,255,.11)" }}
+                  className="relative h-full overflow-hidden rounded-lg border p-4 transition-colors duration-300 hover:bg-white/[0.07] sm:p-5"
+                  style={{ borderColor: "rgba(255,255,255,.13)", background: "rgba(255,255,255,.035)" }}
                 >
                   <span
-                    className="shrink-0 font-serif text-[15px] font-bold tabular-nums sm:text-base"
-                    style={{ color: `${gold}` }}
+                    aria-hidden
+                    className="pointer-events-none absolute -top-4 right-1 font-serif text-[56px] font-bold leading-none tabular-nums"
+                    style={{ color: `${gold}1f` }}
                   >
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-serif text-[16.5px] font-bold leading-snug text-white sm:text-[17.5px]">
-                      {s.title}
-                    </h3>
-                    <p className="mt-1 text-[13.5px] leading-relaxed text-white/55">{s.desc}</p>
-                  </div>
+                  <h3 className="relative font-serif text-[15.5px] font-bold leading-snug text-white sm:text-[16.5px]">
+                    {s.title}
+                  </h3>
+                  <div className="mt-2.5 h-px w-7" style={{ background: gold }} />
+                  <p className="relative mt-2.5 text-[13px] leading-relaxed text-white/55">{s.desc}</p>
                 </div>
               </Reveal>
             ))}
@@ -460,7 +474,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
         <ZodiacWheel color={`${gold}14`} className="pointer-events-none absolute -left-[15%] -top-[20%] h-[140%] w-auto" />
         <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full blur-3xl" style={{ background: glow }} />
 
-        <div className="relative z-10 mx-auto grid w-[92%] max-w-6xl items-center gap-10 py-14 sm:py-20 lg:grid-cols-[1fr_440px] lg:gap-14">
+        <div className="relative z-10 mx-auto grid w-[92%] max-w-6xl items-center gap-10 py-14 sm:py-20 lg:grid-cols-[1fr_540px] lg:gap-14">
           <div className="text-white">
             <span className="text-[10px] font-bold uppercase sm:text-[11px]" style={{ fontFamily: DISPLAY, color: gold, letterSpacing: "0.26em" }}>
               One payment · instant delivery
@@ -497,10 +511,6 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
               ))}
             </ul>
 
-            {/* small product reminder, desktop only */}
-            <div className="mt-9 hidden max-w-[210px] lg:block">
-              <ReportPage config={c} />
-            </div>
           </div>
 
           <ReportPurchaseForm config={c} idPrefix="final" />

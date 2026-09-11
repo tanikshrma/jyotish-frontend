@@ -352,8 +352,10 @@ export function ReportPurchaseForm({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-white shadow-2xl sm:rounded-2xl">
-      <div className="h-1 w-full" style={{ background: gold }} />
+    // deliberately no overflow-hidden here: it would clip the place-of-birth
+    // suggestion list, which hangs below the input.
+    <div className="rounded-xl bg-white shadow-2xl sm:rounded-2xl">
+      <div className="h-1 w-full rounded-t-xl sm:rounded-t-2xl" style={{ background: gold }} />
       <div className="p-5 sm:p-6">
         {/* header */}
         <h3 className="font-serif text-lg font-bold leading-tight sm:text-xl" style={{ color: config.theme.ink }}>
@@ -393,8 +395,9 @@ export function ReportPurchaseForm({
 
       <div className="mt-4 space-y-3.5">
         {step === 1 ? (
-          <>
-            <Field label="Full name" htmlFor={`${idPrefix}-name`} error={errors.name}>
+          /* two columns from sm up — keeps the card inside one screen */
+          <div className="grid gap-3.5 sm:grid-cols-2">
+            <Field className="sm:col-span-2" label="Full name" htmlFor={`${idPrefix}-name`} error={errors.name}>
               <Input
                 id={`${idPrefix}-name`}
                 value={form.name}
@@ -437,14 +440,13 @@ export function ReportPurchaseForm({
                   <option value="">MM</option>
                   {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">24-hour</span>
               </div>
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                Not sure? The closest time you know is enough.
+                24-hour clock. The closest time you know is fine.
               </p>
             </Field>
 
-            <Field label="Place of birth" htmlFor={`${idPrefix}-pob`} error={errors.pob}>
+            <Field className="sm:col-span-2" label="Place of birth" htmlFor={`${idPrefix}-pob`} error={errors.pob}>
               <div className="relative" ref={placeBoxRef}>
                 <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -489,14 +491,15 @@ export function ReportPurchaseForm({
 
             <Button
               onClick={goStep2}
-              className="h-auto w-full rounded-xl py-4 text-base font-bold text-white"
+              className="h-auto w-full rounded-xl py-4 text-base font-bold text-white sm:col-span-2"
               style={{ background: config.theme.ink }}
             >
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
-          </>
+          </div>
         ) : (
           <>
+            <div className="grid gap-3.5 sm:grid-cols-2">
             <Field label="Email address" htmlFor={`${idPrefix}-email`} error={errors.email}>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -526,6 +529,7 @@ export function ReportPurchaseForm({
                 error={errors.phone}
               />
             </Field>
+            </div>
 
             <div className="rounded-xl px-4 py-3" style={{ background: `${gold}1f` }}>
               <div className="flex items-center justify-between gap-3 text-sm">
@@ -587,12 +591,12 @@ export function ReportPurchaseForm({
 /* ------------------------------------------------------------ field shell */
 
 function Field({
-  label, htmlFor, error, children,
+  label, htmlFor, error, children, className,
 }: {
-  label: string; htmlFor?: string; error?: string; children: React.ReactNode;
+  label: string; htmlFor?: string; error?: string; children: React.ReactNode; className?: string;
 }) {
   return (
-    <div>
+    <div className={className}>
       <Label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-semibold text-foreground">
         {label}
       </Label>
