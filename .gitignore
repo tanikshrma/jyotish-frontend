@@ -37,3 +37,4 @@ src/tailwind.config.vibe.json
 *.tsbuildinfo
 public/*.zip
 storage/
+.env*
