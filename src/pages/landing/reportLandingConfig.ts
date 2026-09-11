@@ -36,6 +36,9 @@ export type ReportLandingConfig = {
   pdfCount: number;
   /** Palette. `ink` is the hero ground, `gold` the accent on top of it. */
   theme: { ink: string; inkSoft: string; gold: string; glow: string };
+  /** Atmospheric artwork behind the hero and the closing section. */
+  heroImage: string;
+  ctaImage: string;
   eyebrow: string;
   h1a: string;
   h1b: string;
@@ -264,6 +267,8 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
       gold: "#F5C27A",
       glow: "rgba(245,194,122,0.16)",
     },
+    heroImage: "/lp/hero-premium.jpg",
+    ctaImage: "/lp/cta-stars.jpg",
     eyebrow: "Premium Kundli Report",
     h1a: "Your entire birth chart,",
     h1b: "read properly. 60 pages.",
@@ -305,6 +310,8 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
       gold: "#F2C879",
       glow: "rgba(242,200,121,0.18)",
     },
+    heroImage: "/lp/hero-complete.jpg",
+    ctaImage: "/lp/cta-stars.jpg",
     eyebrow: "Complete Bundle · Two Reports",
     h1a: "Your chart read in full —",
     h1b: "and your future mapped.",

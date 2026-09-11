@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Check, Star, Phone, ShieldCheck, Clock3, Users2, Globe, ArrowDown,
-  FileText, Mail, CreditCard, Quote, Download,
+  FileText, Mail, CreditCard, Quote, Download, MessageCircle,
 } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
@@ -99,6 +99,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
   const { ink, inkSoft, gold, glow } = c.theme;
   const formRef = useRef<HTMLDivElement>(null);
   const [showBar, setShowBar] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     document.title = c.seoTitle;
@@ -124,6 +125,14 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
     return () => document.body.classList.remove("report-buybar-open");
   }, [showBar]);
 
+  /* Header goes from transparent to frosted once the page moves. */
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const scrollToForm = () =>
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -145,18 +154,35 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
         <span className="hidden sm:inline"> · 25+ years · 1,00,000+ consultations</span>
       </div>
 
-      {/* header */}
-      <header className="sticky top-0 z-40 border-b backdrop-blur-md" style={{ background: `${ink}f5`, borderColor: `${gold}2e` }}>
-        <div className="mx-auto flex w-[92%] max-w-6xl items-center justify-between gap-3 py-2.5">
-          <img src={LOGO} alt="JyotishNow" className="h-9 w-auto object-contain sm:h-12" />
-          <div className="flex items-center gap-2">
-            <a href={`tel:${REPORT_CONTACT.phoneDigits}`} className="hidden items-center gap-2 text-sm font-semibold sm:inline-flex" style={{ color: `${gold}` }}>
-              <Phone className="h-4 w-4" /> {REPORT_CONTACT.phone}
+      {/* header — transparent over the hero, frosted glass once scrolled */}
+      <header
+        className="sticky top-0 z-40 transition-all duration-300"
+        style={{
+          background: scrolled ? `${ink}b3` : "transparent",
+          backdropFilter: scrolled ? "blur(14px) saturate(140%)" : "none",
+          WebkitBackdropFilter: scrolled ? "blur(14px) saturate(140%)" : "none",
+          borderBottom: `1px solid ${scrolled ? `${gold}33` : "transparent"}`,
+        }}
+      >
+        <div className="mx-auto flex w-[92%] max-w-6xl items-center justify-between gap-3 py-3">
+          <img
+            src={LOGO}
+            alt="JyotishNow"
+            className="w-auto object-contain transition-all duration-300"
+            style={{ height: scrolled ? 38 : 46 }}
+          />
+          <div className="flex items-center gap-3 sm:gap-5">
+            <a
+              href={`tel:${REPORT_CONTACT.phoneDigits}`}
+              className="hidden items-center gap-2 text-[13.5px] font-semibold transition-opacity hover:opacity-80 sm:inline-flex"
+              style={{ color: "#fff" }}
+            >
+              <Phone className="h-4 w-4" style={{ color: gold }} /> {REPORT_CONTACT.phone}
             </a>
             <button
               onClick={scrollToForm}
-              className="rounded-full px-4 py-2 text-[13px] font-bold shadow-lg transition-transform hover:scale-[1.03] sm:px-5 sm:text-sm"
-              style={{ background: gold, color: ink }}
+              className="rounded-full px-4 py-2.5 text-[13px] font-bold shadow-lg ring-1 transition-transform hover:scale-[1.03] sm:px-6 sm:text-[14px]"
+              style={{ background: gold, color: ink, boxShadow: `0 8px 24px -8px ${gold}` }}
             >
               Get it · {formatINR(c.price)}
             </button>
@@ -165,11 +191,29 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       </header>
 
       {/* ================================================== HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{ background: darkBg }} />
-        <ZodiacWheel color={`${gold}1c`} className="pointer-events-none absolute -right-[18%] -top-[30%] h-[135%] w-auto opacity-70 lg:-right-[6%]" />
+      <section className="relative -mt-[68px] overflow-hidden pt-[68px]">
+        {/* artwork + scrim: the image carries the mood, the scrim keeps text legible */}
+        <img
+          src={c.heroImage}
+          alt=""
+          aria-hidden
+          fetchPriority="high"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            /* heavy behind the headline, light enough mid-frame that the
+               astrolabe and lamp actually read as artwork */
+            background: `linear-gradient(100deg, ${ink}f5 0%, ${ink}e3 28%, ${ink}8c 52%, ${ink}52 74%, ${ink}3d 100%)`,
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(to bottom, ${ink}b3 0%, transparent 20%, transparent 74%, ${ink} 100%)` }}
+        />
+        <ZodiacWheel color={`${gold}14`} className="pointer-events-none absolute -right-[18%] -top-[30%] h-[135%] w-auto lg:-right-[6%]" />
         <div className="pointer-events-none absolute -left-40 top-1/3 h-[26rem] w-[26rem] rounded-full blur-3xl" style={{ background: glow }} />
-        <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 120%, transparent 40%, rgba(0,0,0,.5) 100%)" }} />
 
         <div className="relative z-10 mx-auto grid w-[92%] max-w-6xl items-center gap-9 py-10 sm:py-14 lg:grid-cols-[1fr_540px] lg:gap-14 lg:py-20">
           <div className="text-white">
@@ -312,8 +356,12 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             {toc.map((s, i) => (
               <Reveal key={`${s.title}-${i}`} delay={Math.min(i, 5) * 0.04}>
                 <div
-                  className="relative h-full overflow-hidden rounded-lg border p-4 transition-colors duration-300 hover:bg-white/[0.07] sm:p-5"
-                  style={{ borderColor: "rgba(255,255,255,.13)", background: "rgba(255,255,255,.035)" }}
+                  className="relative h-full overflow-hidden rounded-xl border p-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/[0.09] sm:p-5"
+                  style={{
+                    borderColor: "rgba(255,255,255,.14)",
+                    background: "rgba(255,255,255,.055)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,.07)",
+                  }}
                 >
                   <span
                     aria-hidden
@@ -470,7 +518,8 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
 
       {/* ================================================= FINAL CTA */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{ background: darkBg }} />
+        <img src={c.ctaImage} alt="" aria-hidden loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(110deg, ${ink}f5 0%, ${ink}e6 50%, ${ink}b3 100%)` }} />
         <ZodiacWheel color={`${gold}14`} className="pointer-events-none absolute -left-[15%] -top-[20%] h-[140%] w-auto" />
         <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full blur-3xl" style={{ background: glow }} />
 
@@ -498,14 +547,22 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
               </span>
             </div>
 
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+            <ul className="mt-7 grid gap-2.5 sm:grid-cols-2">
               {[
                 { i: ShieldCheck, t: "Secured by Razorpay" },
                 { i: Download, t: "Links that never expire" },
                 { i: Mail, t: "Emailed to your inbox" },
                 { i: Check, t: "No subscription, ever" },
               ].map((x) => (
-                <li key={x.t} className="flex items-center gap-2.5 text-[14px] text-white/85">
+                <li
+                  key={x.t}
+                  className="flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-[13.5px] font-medium text-white/90 backdrop-blur-md"
+                  style={{
+                    borderColor: "rgba(255,255,255,.14)",
+                    background: "rgba(255,255,255,.055)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,.07)",
+                  }}
+                >
                   <x.i className="h-4 w-4 shrink-0" style={{ color: gold }} /> {x.t}
                 </li>
               ))}
@@ -518,14 +575,82 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       </section>
 
       {/* footer */}
-      <footer className="px-4 pb-28 pt-9 text-center text-[12.5px] lg:pb-9" style={{ background: "#0C0704", color: "rgba(255,255,255,.6)" }}>
-        <img src={LOGO} alt="JyotishNow" className="mx-auto mb-4 h-10 w-auto object-contain opacity-90" />
-        <p>{REPORT_CONTACT.phone} · {REPORT_CONTACT.email}</p>
-        <p className="mx-auto mt-3 max-w-xl text-[11.5px] leading-relaxed opacity-65">
-          Astrological reports are provided for guidance and personal reflection. They are not
-          a substitute for professional medical, legal or financial advice.
-        </p>
-        <p className="mt-4 text-[11.5px] opacity-55">© {new Date().getFullYear()} JyotishNow. All rights reserved.</p>
+      <footer className="relative pb-28 lg:pb-0" style={{ background: "#0A0603", color: "rgba(255,255,255,.62)" }}>
+        <div className="h-px w-full" style={{ background: `linear-gradient(to right, transparent, ${gold}80, transparent)` }} />
+
+        <div className="mx-auto grid w-[92%] max-w-6xl gap-9 py-12 sm:grid-cols-2 sm:py-14 lg:grid-cols-[1.4fr_1fr_1fr]">
+          {/* brand */}
+          <div>
+            <img src={LOGO} alt="JyotishNow" className="h-11 w-auto object-contain" />
+            <p className="mt-4 max-w-sm text-[13.5px] leading-relaxed">
+              Vedic astrology reports computed from your real birth chart, prepared under the
+              guidance of Dr. Sandeep Sawhney — 25+ years of practice and over a lakh consultations.
+            </p>
+            <div className="mt-5 flex items-center gap-2.5">
+              <Stars color={gold} />
+              <span className="text-[13px]"><b className="text-white">4.9/5</b> from 3,200+ readers</span>
+            </div>
+          </div>
+
+          {/* contact */}
+          <div>
+            <h3
+              className="text-[11px] font-bold uppercase"
+              style={{ fontFamily: DISPLAY, color: gold, letterSpacing: "0.22em" }}
+            >
+              Get in touch
+            </h3>
+            <ul className="mt-4 space-y-3 text-[13.5px]">
+              <li>
+                <a href={`tel:${REPORT_CONTACT.phoneDigits}`} className="inline-flex items-center gap-2.5 transition-colors hover:text-white">
+                  <Phone className="h-4 w-4 shrink-0" style={{ color: gold }} /> {REPORT_CONTACT.phone}
+                </a>
+              </li>
+              <li>
+                <a href={`mailto:${REPORT_CONTACT.email}`} className="inline-flex items-center gap-2.5 break-all transition-colors hover:text-white">
+                  <Mail className="h-4 w-4 shrink-0" style={{ color: gold }} /> {REPORT_CONTACT.email}
+                </a>
+              </li>
+              <li>
+                <a href={waHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2.5 transition-colors hover:text-white">
+                  <MessageCircle className="h-4 w-4 shrink-0" style={{ color: gold }} /> Chat on WhatsApp
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* what you get */}
+          <div>
+            <h3
+              className="text-[11px] font-bold uppercase"
+              style={{ fontFamily: DISPLAY, color: gold, letterSpacing: "0.22em" }}
+            >
+              This report
+            </h3>
+            <ul className="mt-4 space-y-3 text-[13.5px]">
+              {[
+                { i: FileText, t: c.pages },
+                { i: Mail, t: "Emailed as a PDF" },
+                { i: Download, t: "Links never expire" },
+                { i: ShieldCheck, t: "Secured by Razorpay" },
+              ].map((x) => (
+                <li key={x.t} className="flex items-center gap-2.5">
+                  <x.i className="h-4 w-4 shrink-0" style={{ color: gold }} /> {x.t}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="border-t" style={{ borderColor: "rgba(255,255,255,.09)" }}>
+          <div className="mx-auto flex w-[92%] max-w-6xl flex-col gap-3 py-6 text-[11.5px] leading-relaxed sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl opacity-70">
+              Astrological reports are provided for guidance and personal reflection. They are not a
+              substitute for professional medical, legal or financial advice.
+            </p>
+            <p className="shrink-0 opacity-60">© {new Date().getFullYear()} JyotishNow</p>
+          </div>
+        </div>
       </footer>
 
       {/* sticky mobile bar */}
