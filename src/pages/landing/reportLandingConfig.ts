@@ -68,6 +68,20 @@ export type ReportLandingConfig = {
   seoDesc: string;
 };
 
+/**
+ * One palette for every report lander. Both pages are the same brand and the
+ * same product family, so they deliberately share this rather than carrying a
+ * theme each — a per-page palette made them read as two different companies.
+ */
+export const BRAND_THEME = {
+  ink: "#7A0808",      // headings, offer bar, sticky header
+  cta: "#F9701A",      // button gradient top
+  ctaDark: "#D2450A",  // button gradient bottom
+  tint: "#FFF4E3",     // soft section wash
+  band: "#FFE7C4",     // section borders / accent band
+  gold: "#C98A1E",     // rules and small accents
+} as const;
+
 export const REPORT_CONTACT = {
   phone: "+91 70155 44187",
   phoneDigits: "917015544187",
@@ -333,14 +347,7 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     compareAt: 999,
     pages: premium.pages,
     pdfCount: 1,
-    theme: {
-      ink: "#7A0808",
-      cta: "#F9701A",
-      ctaDark: "#D2450A",
-      tint: "#FFF4E3",
-      band: "#FFE7C4",
-      gold: "#C98A1E",
-    },
+    theme: BRAND_THEME,
     photo: "/lp/report-photo.jpg",
     eyebrow: "Premium Kundli Report",
     h1a: "Your entire birth chart,",
@@ -380,14 +387,7 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     compareAt: 1499,
     pages: complete.pages,
     pdfCount: 2,
-    theme: {
-      ink: "#3B1B6B",
-      cta: "#7C3AED",
-      ctaDark: "#5B21B6",
-      tint: "#F4F0FF",
-      band: "#E6DCFF",
-      gold: "#8B5CF6",
-    },
+    theme: BRAND_THEME,
     photo: "/lp/report-photo.jpg",
     eyebrow: "Complete Bundle · Two Reports",
     h1a: "Your chart read in full —",

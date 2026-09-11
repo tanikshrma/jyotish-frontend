@@ -42,6 +42,13 @@ describe("Kundli report landing pages", () => {
     }
   });
 
+  it("every lander shares one brand palette", () => {
+    // Both pages sell the same product family under the same brand. A per-page
+    // palette made them read as two different companies.
+    const themes = Object.values(REPORT_LANDING_CONFIGS).map((c) => c.theme);
+    for (const t of themes) expect(t).toBe(themes[0]);
+  });
+
   it("the anchor price is above the real price on every page", () => {
     for (const config of Object.values(REPORT_LANDING_CONFIGS)) {
       expect(config.compareAt).toBeGreaterThan(config.price);
