@@ -111,7 +111,7 @@ const PREMIUM_PROOF: ReportProof[] = [
   },
   {
     quote:
-      "Sixty pages, properly laid out, and in plain language. Worth far more than what I paid for it.",
+      "Over seventy pages, properly laid out, and in plain language. Worth far more than what I paid for it.",
     name: "Shalini M.",
     place: "Bengaluru",
   },
@@ -351,9 +351,9 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     photo: "/lp/report-photo.jpg",
     eyebrow: "Premium Kundli Report",
     h1a: "Your entire birth chart,",
-    h1b: "read properly. 60 pages.",
+    h1b: "read properly. 74 pages.",
     sub: "Not a four-page summary with your name pasted on top. This is your complete Vedic horoscope — every planet, every house, every dasha period and every yoga in your chart — computed from your exact birth details and delivered as a PDF in under two minutes.",
-    heroChips: ["~60 pages", "Delivered in minutes", "Yours forever"],
+    heroChips: [premium.pages, "Delivered in minutes", "Yours forever"],
     formTitle: "Get your Premium Kundli",
     formSub: "Enter your birth details exactly as they are. Everything is computed from them.",
     cta: "Get My Premium Kundli",
@@ -374,9 +374,9 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     compare: COMPARE_PREMIUM,
     guarantee:
       "If your report doesn't arrive, we send it manually or refund you in full. Reach us on WhatsApp and a person answers.",
-    seoTitle: "Premium Kundli Report — 60-Page Vedic Horoscope PDF | JyotishNow",
+    seoTitle: "Premium Kundli Report — 74-Page Vedic Horoscope PDF | JyotishNow",
     seoDesc:
-      "Your complete Vedic birth chart as a ~60 page PDF: divisional charts, house-by-house analysis, Ashtakvarga, dasha timeline, doshas and personalised remedies. Delivered in minutes.",
+      "Your complete Vedic birth chart as a ~74 page PDF: divisional charts, house-by-house analysis, Ashtakvarga, dasha timeline, doshas and personalised remedies. Delivered in minutes.",
   },
 
   "complete-kundli": {
@@ -392,8 +392,8 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     eyebrow: "Complete Bundle · Two Reports",
     h1a: "Your chart read in full —",
     h1b: "and your future mapped.",
-    sub: "Two complete reports, delivered together. The full 60-page Premium Kundli that reads your chart as it stands, plus a dedicated Life Predictions report that reads it forward — career, wealth, marriage, health and the timing of what's coming.",
-    heroChips: ["2 PDFs · ~100 pages", "Delivered together", "Yours forever"],
+    sub: "Two complete reports, delivered together. The full 74-page Premium Kundli that reads your chart as it stands, plus a dedicated ~24-page Life Predictions report that reads it forward — career, wealth, marriage, health and the timing of what's coming.",
+    heroChips: [complete.pages, "Delivered together", "Yours forever"],
     formTitle: "Get both reports",
     formSub: "Enter your birth details exactly as they are. Both reports are built from them.",
     cta: "Get Both My Reports",
@@ -414,9 +414,9 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     compare: COMPARE_COMPLETE,
     guarantee:
       "If either report doesn't arrive, we send it manually or refund you in full. Reach us on WhatsApp and a person answers.",
-    seoTitle: "Complete Kundli Bundle — 100-Page Vedic Report + Life Predictions | JyotishNow",
+    seoTitle: "Complete Kundli Bundle — 98-Page Vedic Report + Life Predictions | JyotishNow",
     seoDesc:
-      "Two reports together: the full ~60 page Premium Kundli plus a dedicated Life Predictions report covering career, wealth, marriage, health and event timing. ~100 pages, delivered in minutes.",
+      "Two reports together: the full ~74 page Premium Kundli plus a dedicated ~24 page Life Predictions report covering career, wealth, marriage, health and event timing. ~98 pages, delivered in minutes.",
   },
 };
 

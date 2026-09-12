@@ -175,7 +175,7 @@ export const KUNDLI_PDF_TIERS: KundliPdfTier[] = [
     name: "Premium Kundli",
     tagline: "Our most popular full lifetime report.",
     pdfTypes: ["large"],
-    pages: "~60 pages",
+    pages: "~74 pages",
     badge: "Most popular",
     features: [
       "Everything in Detailed",
@@ -188,7 +188,7 @@ export const KUNDLI_PDF_TIERS: KundliPdfTier[] = [
     name: "Life Predictions",
     tagline: "Forward-looking predictions across life areas.",
     pdfTypes: ["prediction"],
-    pages: "~40 pages",
+    pages: "~24 pages",
     features: [
       "Career, wealth, marriage & health",
       "Dasha-wise life predictions",
@@ -200,7 +200,7 @@ export const KUNDLI_PDF_TIERS: KundliPdfTier[] = [
     name: "Complete Bundle",
     tagline: "Premium report + Life Predictions together.",
     pdfTypes: ["large", "prediction"],
-    pages: "2 PDFs · ~100 pages",
+    pages: "2 PDFs · ~98 pages",
     badge: "Best value",
     features: [
       "Premium Kundli (full report)",
