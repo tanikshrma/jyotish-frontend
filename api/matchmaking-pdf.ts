@@ -176,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         String(body.email ?? ""),
         `${body.boy_name} & ${body.girl_name}`,
         REPORT_NAME,
-        pdfs,
+        [{ ...pdfs[0], sizeBytes: bytes.length }],
       );
 
       await updateJob(paymentId, { status: "ready", pdfs, emailed });

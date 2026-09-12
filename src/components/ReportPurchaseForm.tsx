@@ -56,6 +56,8 @@ export function ReportPurchaseForm({
   const [step, setStep] = useState<1 | 2>(1);
   const [status, setStatus] = useState<Status>("idle");
   const [delivered, setDelivered] = useState<DeliveredPdf[]>([]);
+  // Whether the server handed the email to Prospect IQ — not proof of arrival.
+  const [emailed, setEmailed] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
   const [form, setForm] = useState({
@@ -281,6 +283,7 @@ export function ReportPurchaseForm({
                   fileName: delivery.fileName,
                 }];
             setDelivered(pdfs);
+            setEmailed(Boolean(delivery.emailed));
             setStatus("done");
             // deliverKundliPdf already opens each PDF in a tab and saves a copy
             // to disk. Opening again here gave every customer two tabs per
@@ -335,7 +338,17 @@ export function ReportPurchaseForm({
           Your report is ready
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          We've emailed it to <b className="break-all">{form.email}</b>. The download links never expire.
+          {emailed ? (
+            <>
+              It's on its way to <b className="break-all">{form.email}</b> and usually arrives within a few
+              minutes. The download links below never expire.
+            </>
+          ) : (
+            <>
+              We couldn't email it this time, so please save the download links below — they never
+              expire. Message us on WhatsApp and we'll send it over.
+            </>
+          )}
         </p>
         <div className="mt-5 space-y-2.5">
           {delivered.map((p) => (

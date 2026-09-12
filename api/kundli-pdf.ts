@@ -114,11 +114,42 @@ const esc = (s: string) =>
 
 /** One delivered PDF: its friendly report name + permanent CDN link. */
 
+/** A delivered report plus its size, which decides whether it can be attached. */
+export type EmailPdf = DeliveredPdf & { sizeBytes?: number };
+
+/**
+ * Raw bytes of PDF we attach to one email. Attachments grow ~37% once
+ * base64-encoded, and the send is accepted by Prospect IQ but silently dropped
+ * downstream when the message is too big: a single 19.9 MB Premium Kundli
+ * (~27 MB encoded) arrived, while the Complete Bundle's 19.9 + 6.2 MB (~36 MB
+ * encoded) never did. 20 MB raw stays at the size we have seen delivered.
+ * Anything that doesn't fit still reaches the customer via its download link.
+ */
+export const ATTACH_BUDGET_BYTES = 20 * 1024 * 1024;
+
+/** Which PDFs to attach: smallest first, while the total stays in budget. */
+export const pickAttachments = (
+  pdfs: EmailPdf[],
+  budget = ATTACH_BUDGET_BYTES,
+): Set<string> => {
+  const picked = new Set<string>();
+  let used = 0;
+  for (const p of [...pdfs].sort((a, b) => (a.sizeBytes ?? 0) - (b.sizeBytes ?? 0))) {
+    const n = p.sizeBytes ?? 0;
+    if (used + n <= budget) {
+      picked.add(p.url);
+      used += n;
+    }
+  }
+  return picked;
+};
+
 /** A premium branded HTML email listing every report, each with its own link. */
 const buildEmailHtml = (
   customerName: string,
   tierName: string,
   pdfs: DeliveredPdf[],
+  attached: Set<string>,
 ): string => {
   const rows = pdfs
     .map(
@@ -126,7 +157,7 @@ const buildEmailHtml = (
       <tr>
         <td style="padding:14px 18px;border:1px solid #efe3cf;border-radius:12px;background:#fffdf9">
           <table width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td style="font-family:Georgia,serif;font-size:15px;color:#3a2412;font-weight:bold">📜 ${esc(p.name)}</td>
+            <td style="font-family:Georgia,serif;font-size:15px;color:#3a2412;font-weight:bold">📜 ${esc(p.name)}${attached.has(p.url) ? ' <span style="font:600 11px Arial;color:#8a7c68">· attached</span>' : ""}</td>
             <td align="right">
               <a href="${esc(p.url)}" style="background:#7A0808;color:#fff;text-decoration:none;padding:9px 16px;border-radius:8px;font:bold 13px Arial,sans-serif;display:inline-block">Download</a>
             </td>
@@ -148,12 +179,16 @@ const buildEmailHtml = (
         <div style="padding:28px 26px;color:#4a3b2c;font:15px/1.65 Arial,sans-serif">
           <p style="margin:0 0 6px">Namaste ${esc(customerName)},</p>
           <p style="margin:0 0 20px">Your personalised Vedic report is ready and yours to keep forever. ${
-            pdfs.length > 1
-              ? "Both PDFs are attached and linked below:"
-              : "Your PDF is attached and linked below:"
+            attached.size === pdfs.length
+              ? pdfs.length > 1
+                ? "Both PDFs are attached and linked below:"
+                : "Your PDF is attached and linked below:"
+              : attached.size > 0
+                ? "Download your reports below — the smaller one is also attached. Larger files are too big for email, so use the button."
+                : "Download your report below — it is too large to attach to an email, so use the button."
           }</p>
           <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
-          <p style="margin:22px 0 0;font-size:13px;color:#8a7c68">Tip: the download links never expire — save this email. If a button doesn't work, the PDF is also attached to this message.</p>
+          <p style="margin:22px 0 0;font-size:13px;color:#8a7c68">Tip: the download links never expire — save this email.${attached.size ? " Anything marked attached is also on this message." : ""}</p>
           <div style="margin:26px 0 6px;border-top:1px solid #efe3cf"></div>
           <p style="margin:14px 0 0">With warm regards,<br><strong style="color:#7A0808">${esc(BRAND.company_name)}</strong><br><span style="font-size:13px;color:#8a7c68">${esc(BRAND.website)} · ${esc(BRAND.phone)}</span></p>
         </div>
@@ -172,11 +207,17 @@ export const emailReport = async (
   to: string,
   customerName: string,
   tierName: string,
-  pdfs: DeliveredPdf[],
+  pdfs: EmailPdf[],
 ): Promise<boolean> => {
   if (!PIQ_TOKEN || !PIQ_LOCATION || !to || pdfs.length === 0) return false;
   try {
     const headers = { ...piqHeaders(), "Content-Type": "application/json" };
+    const attached = pickAttachments(pdfs);
+    const mb = (n: number) => (n / 1048576).toFixed(1);
+    console.log(
+      `[email] ${pdfs.length} report(s), attaching ${attached.size}: ` +
+        pdfs.map((p) => `${p.name} ${mb(p.sizeBytes ?? 0)}MB${attached.has(p.url) ? "" : " (link only)"}`).join(", "),
+    );
 
     // A conversation message needs a contact to attach to.
     const upsert = await fetch(`${PIQ_BASE}/contacts/upsert`, {
@@ -203,9 +244,9 @@ export const emailReport = async (
         type: "Email",
         contactId,
         subject: `Your JyotishNow ${tierName} 🪔`,
-        html: buildEmailHtml(customerName, tierName, pdfs),
+        html: buildEmailHtml(customerName, tierName, pdfs, attached),
         emailFrom: PIQ_FROM,
-        attachments: pdfs.map((p) => p.url),
+        ...(attached.size ? { attachments: pdfs.filter((p) => attached.has(p.url)).map((p) => p.url) } : {}),
       }),
     });
     if (!send.ok) {
@@ -477,7 +518,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         String(body.email ?? ""),
         String(body.name),
         tierName,
-        pdfs,
+        results.map((r) => ({
+          name: PDF_TYPE_NAME[r.pdfType],
+          url: r.url,
+          fileName: r.fileName,
+          sizeBytes: r.sizeBytes,
+        })),
       );
 
       await updateJob(paymentId, { status: "ready", pdfs, emailed });
