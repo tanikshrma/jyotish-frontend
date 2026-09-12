@@ -191,7 +191,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               body: JSON.stringify({
                 type: "Email",
                 contactId,
-                emailFrom: "myjyotishnow@gmail.com",
+                // Same sender as the report email, so moving to a verified
+                // domain is one env change rather than a hunt through the code.
+                emailFrom: process.env.PROSPECTIQ_EMAIL_FROM || "myjyotishnow@gmail.com",
                 subject: `Receipt: ${serviceName} (${amountStr}) - JyotishNow`,
                 html: htmlEmailContent,
                 locationId,
