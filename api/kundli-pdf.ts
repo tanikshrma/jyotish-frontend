@@ -91,10 +91,19 @@ export const uploadToProspectIQ = async (
     form.append("hosted", "false");
     form.append("name", fileName);
 
-    const response = await fetch(
-      `${PIQ_BASE}/medias/upload-file?altId=${PIQ_LOCATION}&altType=location`,
-      { method: "POST", headers: piqHeaders(), body: form },
-    );
+    // Bounded, with one retry: a stalled upload must not hang a paid order.
+    let response: Response | null = null;
+    for (let attempt = 1; attempt <= 2 && !response; attempt++) {
+      try {
+        response = await fetch(
+          `${PIQ_BASE}/medias/upload-file?altId=${PIQ_LOCATION}&altType=location`,
+          { method: "POST", headers: piqHeaders(), body: form, signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS) },
+        );
+      } catch (error) {
+        console.error(`[kundli-pdf] media upload attempt ${attempt} failed: ${(error as Error).name}`);
+      }
+    }
+    if (!response) return null;
     const data = await readJsonResponse(response);
     if (!response.ok || !data.url) {
       console.error("[kundli-pdf] media upload failed", response.status, data);
@@ -222,6 +231,7 @@ export const emailReport = async (
     // A conversation message needs a contact to attach to.
     const upsert = await fetch(`${PIQ_BASE}/contacts/upsert`, {
       method: "POST",
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
       headers,
       body: JSON.stringify({
         locationId: PIQ_LOCATION,
@@ -239,6 +249,7 @@ export const emailReport = async (
 
     const send = await fetch(`${PIQ_BASE}/conversations/messages`, {
       method: "POST",
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
       headers,
       body: JSON.stringify({
         type: "Email",
@@ -280,6 +291,7 @@ const getOrderVariant = async (orderId: string): Promise<string | null> => {
     const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RZP_SECRET}`).toString("base64");
     const r = await fetch(`https://api.razorpay.com/v1/orders/${orderId}`, {
       headers: { Authorization: `Basic ${auth}` },
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
     if (!r.ok) return null;
     const order = await readJsonResponse(r);
@@ -309,22 +321,58 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * 15-25s). Until then S3 answers 403/404. So poll the URL until it's really
  * there. The upstream link expires in ~2h, so this window is safe.
  */
-export const fetchWhenReady = async (
+/**
+ * Every upstream call is time-boxed. Without this a single stalled S3
+ * transfer hung a paid Complete Bundle indefinitely: the job sat "pending"
+ * with one socket open to the PDF bucket and nothing was ever logged. Node's
+ * own fetch timeouts don't help when a transfer trickles rather than dies.
+ */
+export const READY_CHECK_TIMEOUT_MS = 15_000;
+export const DOWNLOAD_TIMEOUT_MS = 60_000;
+export const DOWNLOAD_ATTEMPTS = 3;
+export const API_TIMEOUT_MS = 30_000;
+export const UPLOAD_TIMEOUT_MS = 90_000;
+
+export const downloadWhenReady = async (
   url: string,
   maxWaitMs = 90_000,
-): Promise<Response | null> => {
+): Promise<Buffer | null> => {
   const safeUrl = encodeURI(url); // the path can contain spaces ("Sun Aug 23 2026")
+
+  // 1. Wait for the object to exist. A 1-byte ranged GET keeps each check tiny
+  //    (and works with a GET-signed URL, unlike HEAD); its body is always
+  //    released so a not-yet-ready check can't leave a socket open.
   const start = Date.now();
   let delay = 1500;
-  let last: Response | null = null;
-  while (Date.now() - start < maxWaitMs) {
-    last = await fetch(safeUrl);
-    if (last.ok) return last;
+  for (;;) {
+    try {
+      const probe = await fetch(safeUrl, {
+        headers: { Range: "bytes=0-0" },
+        signal: AbortSignal.timeout(READY_CHECK_TIMEOUT_MS),
+      });
+      await probe.body?.cancel();
+      if (probe.ok) break;
+    } catch {
+      /* timed out or reset — treat as not ready yet */
+    }
+    if (Date.now() - start > maxWaitMs) return null;
     await sleep(delay);
     delay = Math.min(delay + 1000, 5000);
   }
-  last = await fetch(safeUrl);
-  return last.ok ? last : null;
+
+  // 2. Download it, each attempt bounded so a stall retries on a fresh
+  //    connection instead of hanging the job.
+  for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++) {
+    try {
+      const file = await fetch(safeUrl, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+      if (file.ok) return Buffer.from(await file.arrayBuffer());
+      await file.body?.cancel();
+      console.error(`[pdf] download attempt ${attempt} got HTTP ${file.status}`);
+    } catch (error) {
+      console.error(`[pdf] download attempt ${attempt} failed: ${(error as Error).name}`);
+    }
+  }
+  return null;
 };
 
 /** Generates ONE VedicAstro PDF and re-hosts it permanently on Prospect IQ. */
@@ -348,7 +396,11 @@ const generatePdf = async (
     ...BRAND,
   });
 
-  const queued = await fetch(`${BASE_URL}/pdf/horoscope-queue?${params}`);
+  const t0 = Date.now();
+  const at = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
+  const queued = await fetch(`${BASE_URL}/pdf/horoscope-queue?${params}`, {
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
+  });
   const data = await readJsonResponse(queued);
   const status = Number(data.status ?? queued.status);
 
@@ -375,16 +427,18 @@ const generatePdf = async (
     console.log(`[kundli-pdf] ${data.remaining_calls} upstream calls remaining`);
   }
 
-  // The queue endpoint is async — poll the S3 URL until the file is uploaded.
-  const file = await fetchWhenReady(data.response as string);
-  if (!file) {
+  // The queue endpoint is async — wait for the S3 file, then download it.
+  const bytes = await downloadWhenReady(data.response as string);
+  if (!bytes) {
+    console.error(`[kundli-pdf] ${pdfType}: never retrieved (gave up at ${at()})`);
     return { ok: false, status: 502, error: "Report generated but could not be retrieved" };
   }
-  const bytes = Buffer.from(await file.arrayBuffer());
+  console.log(`[kundli-pdf] ${pdfType}: downloaded ${(bytes.length / 1048576).toFixed(1)}MB at ${at()}`);
   const fileName = `JyotishNow_${PDF_TYPE_NAME[pdfType].replace(/\s+/g, "_")}_${safeName(String(body.name))}.pdf`;
 
   const stored = await uploadToProspectIQ(bytes, fileName);
   if (!stored) {
+    console.error(`[kundli-pdf] ${pdfType}: could not be stored (gave up at ${at()})`);
     return {
       ok: false,
       status: 502,
@@ -392,6 +446,7 @@ const generatePdf = async (
       code: "STORAGE_FAILED",
     };
   }
+  console.log(`[kundli-pdf] ${pdfType}: stored at ${at()}`);
   return { ok: true, url: stored.url, fileId: stored.fileId, fileName, sizeBytes: bytes.length, pdfType };
 };
 

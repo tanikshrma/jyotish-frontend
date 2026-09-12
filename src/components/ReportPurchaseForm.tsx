@@ -523,7 +523,7 @@ export function ReportPurchaseForm({
                 />
               </div>
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                Your {config.pdfCount > 1 ? "reports are" : "report is"} emailed here as {config.pdfCount > 1 ? "attachments" : "an attachment"}.
+                Your {config.pdfCount > 1 ? "reports are" : "report is"} emailed here, with download links that never expire.
               </p>
             </Field>
 

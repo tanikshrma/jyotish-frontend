@@ -7,7 +7,8 @@ import { getPriceInRupees } from "../shared/pricing.js";
 import {
   BRAND,
   emailReport,
-  fetchWhenReady,
+  downloadWhenReady,
+  API_TIMEOUT_MS,
   jobResponse,
   safeName,
   uploadToProspectIQ,
@@ -123,7 +124,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...BRAND,
       });
 
-      const queued = await fetch(`${BASE_URL}/pdf/matching-queue?${params}`);
+      const queued = await fetch(`${BASE_URL}/pdf/matching-queue?${params}`, {
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      });
       const data = await readJsonResponse(queued);
       const status = Number(data.status ?? queued.status);
 
@@ -149,16 +152,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // The upstream link is only valid for ~2 hours and its S3 path contains
-      // spaces, both handled by fetchWhenReady.
-      const rendered = await fetchWhenReady(String(data.response));
-      if (!rendered) {
+      // spaces, both handled by downloadWhenReady.
+      const bytes = await downloadWhenReady(String(data.response));
+      if (!bytes) {
         await updateJob(paymentId, {
           status: "failed",
           error: "Report generated but could not be retrieved",
         });
         return;
       }
-      const bytes = Buffer.from(await rendered.arrayBuffer());
 
       const fileName = `JyotishNow_Kundli_Matching_${safeName(String(body.boy_name))}_${safeName(String(body.girl_name))}.pdf`;
       const stored = await uploadToProspectIQ(bytes, fileName);
