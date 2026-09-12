@@ -245,18 +245,22 @@ interface TimeInputFieldProps {
   className?: string;
 }
 
+/** "HH:MM", or "" when nothing is set yet — avoids a lone ":" in an empty field. */
+const joinTime = (t: { hour: string; minute: string }) =>
+  t.hour || t.minute ? `${t.hour}:${t.minute}` : "";
+
 export function TimeInputField({
   time,
   onTimeChange,
   placeholder = "HH:MM (e.g. 12:00)",
   className
 }: TimeInputFieldProps) {
-  const [inputValue, setInputValue] = useState<string>(`${time.hour}:${time.minute}`);
+  const [inputValue, setInputValue] = useState<string>(joinTime(time));
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     if (!isFocused) {
-      setInputValue(`${time.hour}:${time.minute}`);
+      setInputValue(joinTime(time));
     }
   }, [time.hour, time.minute, isFocused]);
 
@@ -285,7 +289,7 @@ export function TimeInputField({
 
   const handleBlur = () => {
     setIsFocused(false);
-    setInputValue(`${time.hour}:${time.minute}`);
+    setInputValue(joinTime(time));
   };
 
   return (
@@ -319,7 +323,7 @@ export function TimeInputField({
               <Label className="text-sm font-bold text-primary text-center uppercase tracking-wider">Hour</Label>
               <Select value={time.hour} onValueChange={(v) => onTimeChange({ ...time, hour: v })}>
                 <SelectTrigger className="w-[90px] h-12 text-lg px-3 bg-white border-b-2 border-0 border-border/60 text-foreground rounded-none shadow-none focus:ring-0 focus:border-primary">
-                  <SelectValue />
+                  <SelectValue placeholder="HH" />
                 </SelectTrigger>
                 <SelectContent className="h-[200px] bg-white border-border/60">
                   {Array.from({ length: 24 }).map((_, i) => {
@@ -333,7 +337,7 @@ export function TimeInputField({
               <Label className="text-sm font-bold text-primary text-center uppercase tracking-wider">Minute</Label>
               <Select value={time.minute} onValueChange={(v) => onTimeChange({ ...time, minute: v })}>
                 <SelectTrigger className="w-[90px] h-12 text-lg px-3 bg-white border-b-2 border-0 border-border/60 text-foreground rounded-none shadow-none focus:ring-0 focus:border-primary">
-                  <SelectValue />
+                  <SelectValue placeholder="MM" />
                 </SelectTrigger>
                 <SelectContent className="h-[200px] bg-white border-border/60">
                   {Array.from({ length: 60 }).map((_, i) => {

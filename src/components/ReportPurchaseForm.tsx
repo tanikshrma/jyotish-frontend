@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/PhoneInput";
+import { DateInputField, TimeInputField } from "@/components/FormDateInput";
 import { cn } from "@/lib/utils";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
 import { createOrder, loadRazorpayScript, verifyPayment } from "@/lib/razorpay";
@@ -23,15 +24,12 @@ import type { ReportLandingConfig } from "@/pages/landing/reportLandingConfig";
 
 /* ------------------------------------------------------------------ utils */
 
-/** DD/MM/YYYY for the astro API, from the native date input's YYYY-MM-DD. */
+/** DD/MM/YYYY for the astro API, from the date picker's YYYY-MM-DD. */
 const toApiDob = (isoDate: string): string => {
   if (!isoDate) return "";
   const [y, m, d] = isoDate.split("-");
   return y && m && d ? `${d}/${m}/${y}` : "";
 };
-
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
 type GeoPick = { label: string; lat: number; lon: number; tz: number };
 
@@ -64,6 +62,9 @@ export function ReportPurchaseForm({
     name: "", dob: "", hour: "", minute: "", pob: "", email: "", phone: "",
   });
   const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
+  const [dobDate, setDobDate] = useState<Date | undefined>();
+  // Open the calendar in a plausible birth decade rather than on today's month.
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(1995, 0, 1));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [placeQuery, setPlaceQuery] = useState("");
@@ -410,41 +411,33 @@ export function ReportPurchaseForm({
               />
             </Field>
 
-            <Field label="Date of birth" htmlFor={`${idPrefix}-dob`} error={errors.dob}>
-              <Input
-                id={`${idPrefix}-dob`}
-                type="date"
-                value={form.dob}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => set("dob", e.target.value)}
-                className="h-12 w-full rounded-xl text-base"
+            <Field label="Date of birth" error={errors.dob}>
+              <DateInputField
+                date={dobDate}
+                onDateChange={(d, iso) => {
+                  setDobDate(d);
+                  set("dob", iso);
+                }}
+                calendarMonth={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                className="h-12 text-base sm:text-base"
               />
             </Field>
 
             <Field label="Time of birth" error={errors.tob}>
-              <div className="flex items-center gap-2">
-                <select
-                  aria-label="Hour of birth"
-                  value={form.hour}
-                  onChange={(e) => { set("hour", e.target.value); setErrors((x) => ({ ...x, tob: "" })); }}
-                  className="h-12 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-base"
-                >
-                  <option value="">HH</option>
-                  {HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
-                </select>
-                <span className="text-muted-foreground">:</span>
-                <select
-                  aria-label="Minute of birth"
-                  value={form.minute}
-                  onChange={(e) => { set("minute", e.target.value); setErrors((x) => ({ ...x, tob: "" })); }}
-                  className="h-12 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-base"
-                >
-                  <option value="">MM</option>
-                  {MINUTES.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
+              <TimeInputField
+                time={{ hour: form.hour, minute: form.minute }}
+                onTimeChange={(t) => {
+                  // Picking an hour first shouldn't leave the minutes blank.
+                  const minute = t.hour && !t.minute ? "00" : t.minute;
+                  setForm((f) => ({ ...f, hour: t.hour, minute }));
+                  setErrors((e) => (e.tob ? { ...e, tob: "" } : e));
+                }}
+                placeholder="HH:MM"
+                className="h-12 text-base sm:text-base"
+              />
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                24-hour clock. The closest time you know is fine.
+                24-hour, e.g. 14:30. The closest time you know is fine.
               </p>
             </Field>
 
