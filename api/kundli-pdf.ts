@@ -12,7 +12,7 @@ import {
   type KundliPdfTier,
   type KundliPdfType,
 } from "../shared/pricing.js";
-import { createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
+import { RUN_INLINE, createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
 import { recordPaymentInCrm } from "./_crm.js";
 import { getPriceInRupees } from "../shared/pricing.js";
 
@@ -446,14 +446,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     orderId,
   });
 
-  // Respond NOW. A Complete Bundle takes 60-120s to render, download, re-host
-  // and email; Cloudflare kills anything past 100s, which previously lost the
-  // order after the customer had already paid. The browser polls
-  // /api/kundli-pdf-status instead, and the email goes out regardless.
-  res.status(202).json(jobResponse(job));
-
-  // --- background work, deliberately not awaited ---------------------------
-  void (async () => {
+  // Render, download, re-host and email. A Complete Bundle takes 60-120s.
+  const deliver = async () => {
     try {
       // Reports render in parallel so total time ≈ the slowest single report.
       const settled = await Promise.all(pdfTypes.map((pt) => generatePdf(pt, body)));
@@ -495,5 +489,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: "Report generation failed",
       }).catch(() => {});
     }
-  })();
+  };
+
+  // On Vercel the instance is frozen the moment it responds, so background
+  // work never finishes: do it inside the request and send the final result —
+  // the browser skips its poll loop when the reply is not "pending".
+  if (RUN_INLINE) {
+    await deliver();
+    const done = (await readJob(paymentId)) ?? job;
+    return res.status(200).json(jobResponse(done));
+  }
+
+  // On a long-lived server, respond NOW: Cloudflare kills anything past 100s,
+  // which previously lost the order after the customer had already paid. The
+  // browser polls /api/kundli-pdf-status instead; the email goes out regardless.
+  res.status(202).json(jobResponse(job));
+  void deliver();
 }

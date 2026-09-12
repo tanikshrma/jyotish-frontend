@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import crypto from "node:crypto";
 import { readJsonBody, readJsonResponse, requirePost } from "./_razorpay.js";
-import { createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
+import { RUN_INLINE, createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
 import { recordPaymentInCrm } from "./_crm.js";
 import { getPriceInRupees } from "../shared/pricing.js";
 import {
@@ -98,10 +98,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     paymentId,
     orderId,
   });
-  res.status(202).json(jobResponse(job));
-
-  // --- background work, deliberately not awaited ---------------------------
-  void (async () => {
+  // Render, re-host and email the report.
+  const deliver = async () => {
     try {
       const params = new URLSearchParams({
         api_key: API_KEY,
@@ -190,5 +188,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: "Report generation failed",
       }).catch(() => {});
     }
-  })();
+  };
+
+  // On Vercel the instance is frozen once it responds, so finish inside the
+  // request and send the final result; elsewhere reply 202 and let the browser
+  // poll, which keeps each request under Cloudflare's 100s ceiling.
+  if (RUN_INLINE) {
+    await deliver();
+    const done = (await readJob(paymentId)) ?? job;
+    return res.status(200).json(jobResponse(done));
+  }
+  res.status(202).json(jobResponse(job));
+  void deliver();
 }

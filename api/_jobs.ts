@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 /**
@@ -37,9 +38,20 @@ export type Job = {
   updatedAt: string;
 };
 
+/**
+ * Vercel runs functions on a read-only filesystem — only the OS temp dir is
+ * writable — and freezes an instance as soon as it has responded. So there the
+ * store lives in the temp dir, and handlers finish their work inside the
+ * request rather than in the background. On a long-lived Node server (the
+ * Hostinger deploy, behind Cloudflare's 100s ceiling) nothing changes.
+ */
+export const RUN_INLINE = Boolean(process.env.VERCEL);
+
 const JOBS_DIR =
   process.env.JOBS_DIR ||
-  path.join(process.env.STORAGE_DIR || path.join(process.cwd(), "storage"), "jobs");
+  (RUN_INLINE
+    ? path.join(os.tmpdir(), "jyotishnow-jobs")
+    : path.join(process.env.STORAGE_DIR || path.join(process.cwd(), "storage"), "jobs"));
 
 /** Payment ids are opaque; hash them so they never become a path. */
 const keyFor = (paymentId: string) =>
