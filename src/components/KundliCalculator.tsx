@@ -10,13 +10,15 @@ import { Card, CardContent } from "./ui/card";
 import { Loader2, Download, Printer, CalendarIcon, Clock, MapPin, X, ArrowRight, Lock, Sparkles, CheckCircle2, ShieldCheck, FileText, Star, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
-import { submitProspectIQLead } from "@/lib/prospectiq";
+import { submitProspectIQLead, splitName } from "@/lib/prospectiq";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
+import { TrackingFields } from "@/components/TrackingFields";
+import { submitWhenValid } from "@/lib/tracking";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
 import { deliverKundliPdf, openInNewTab, KundliPdfError, type DeliveredPdf } from "@/lib/kundliPdf";
 import { KundliPdfOptions } from "./KundliPdfOptions";
@@ -561,7 +563,20 @@ export function KundliCalculator() {
               <p className="text-foreground/70 text-lg">Enter the details below to generate your premium report.</p>
             </div>
             
-            <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+            <form id="jn-free-kundli" name="jn-free-kundli" className="space-y-6" onSubmit={handleSubmit} noValidate>
+              <TrackingFields
+                formId="jn-free-kundli"
+                lead={{
+                  ...splitName(formData.name),
+                  email: formData.email,
+                  phone: formData.phone ? toE164(formData.phone, countryIso) : "",
+                  gender: formData.gender,
+                  dateOfBirth: formData.dob,
+                  timeOfBirth: formData.tob || `${timeState.hour}:${timeState.minute}`,
+                  placeOfBirth: formData.pob,
+                  service: "kundli",
+                }}
+              />
               <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
                 {/* Full Name */}
                 <div className="space-y-2 relative group">
@@ -697,7 +712,7 @@ export function KundliCalculator() {
               </div>
 
               <div className="pt-4">
-                <Button type="submit" disabled={generationStep !== 'idle'} className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 text-white rounded-xl text-lg font-bold shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 ease-out hover:-translate-y-1 relative overflow-hidden group">
+                <Button type="button" onClick={submitWhenValid(() => validateForm())} disabled={generationStep !== 'idle'} className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 text-white rounded-xl text-lg font-bold shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 ease-out hover:-translate-y-1 relative overflow-hidden group">
                   <div className="absolute top-0 -left-[100%] w-[120%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:left-[200%] transition-all duration-1000 ease-in-out pointer-events-none" />
                   <span className="relative z-10 flex items-center justify-center">
                     {generationStep !== 'idle' ? (

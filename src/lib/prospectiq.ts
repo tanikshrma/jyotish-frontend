@@ -3,8 +3,7 @@ import {
   calendarForService,
   reportTypeFor,
   serviceInterestFor,
-  toIsoDate,
-} from "../../shared/prospectiq-schema";
+  toIsoDate, PIQ_FORM_FIELDS } from "../../shared/prospectiq-schema";
 
 /**
  * Client-side helper module to communicate with /api/prospectiq
@@ -67,28 +66,64 @@ export function getCalendarIdForService(serviceKey?: string): string {
   return calendarForService(serviceKey);
 }
 
+/** A field for the External Tracking script: input name, label and value. */
+export type TrackingField = { name: string; label: string; value: string };
+
+/** "Asha Devi Rao" -> { firstName: "Asha", lastName: "Devi Rao" }. */
+export const splitName = (full: string) => {
+  const [firstName = "", ...rest] = (full || "").trim().split(/\s+/);
+  return { firstName, lastName: rest.join(" ") };
+};
+
+/**
+ * One mapping from a website lead to Prospect IQ, used by both capture paths:
+ * `customFields` for the server-side contact upsert (by field id) and
+ * `trackingFields` for the External Tracking script (by field name + label).
+ * Deriving both here means the two can never disagree. Empty values are left
+ * out of both — an empty string overwrites good CRM data.
+ */
+export const leadFields = (lead: LeadData) => {
+  const values: Partial<Record<keyof typeof PIQ_FIELDS, string | null | undefined>> = {
+    birthDate: toIsoDate(lead.dateOfBirth),
+    timeOfBirth: lead.timeOfBirth,
+    placeOfBirth: lead.placeOfBirth,
+    serviceInterest: serviceInterestFor(lead.service),
+    reportType: reportTypeFor(lead.service),
+    consultationType: lead.consultationType,
+    rashi: lead.rashi,
+    guidanceWanted: lead.message,
+    partnerDateOfBirth: toIsoDate(lead.partnerDateOfBirth),
+    partnerTimeOfBirth: lead.partnerTimeOfBirth,
+    partnerPlaceOfBirth: lead.partnerPlaceOfBirth,
+    leadSource: "Website Form",
+  };
+  const filled = (Object.keys(values) as (keyof typeof PIQ_FIELDS)[])
+    .map((k) => [k, String(values[k] ?? "").trim()] as const)
+    .filter(([, v]) => v !== "");
+
+  const identity: TrackingField[] = [
+    { name: "first_name", label: "First Name", value: lead.firstName ?? "" },
+    { name: "last_name", label: "Last Name", value: lead.lastName ?? "" },
+    { name: "email", label: "Email", value: lead.email ?? "" },
+    { name: "phone", label: "Phone", value: lead.phone ?? "" },
+    { name: "gender", label: "Gender", value: lead.gender ?? "" },
+  ];
+
+  return {
+    customFields: filled.map(([k, v]) => ({ id: PIQ_FIELDS[k], value: v })),
+    trackingFields: [
+      ...identity,
+      ...filled.map(([k, v]) => ({ ...PIQ_FORM_FIELDS[k], value: v })),
+    ]
+      .map((f) => ({ ...f, value: f.value.trim() }))
+      .filter((f) => f.value !== ""),
+  };
+};
+
 export const submitProspectIQLead = async (lead: LeadData) => {
   try {
-    const interest = serviceInterestFor(lead.service);
-    const reportType = reportTypeFor(lead.service);
-    const birthIso = toIsoDate(lead.dateOfBirth);
-    const partnerDobIso = toIsoDate(lead.partnerDateOfBirth);
-
-    // Only send fields that have a value — empty strings overwrite good CRM data.
-    const customFields = [
-      birthIso && { id: PIQ_FIELDS.birthDate, value: birthIso },
-      lead.timeOfBirth && { id: PIQ_FIELDS.timeOfBirth, value: lead.timeOfBirth },
-      lead.placeOfBirth && { id: PIQ_FIELDS.placeOfBirth, value: lead.placeOfBirth },
-      interest && { id: PIQ_FIELDS.serviceInterest, value: interest },
-      reportType && { id: PIQ_FIELDS.reportType, value: reportType },
-      lead.consultationType && { id: PIQ_FIELDS.consultationType, value: lead.consultationType },
-      lead.rashi && { id: PIQ_FIELDS.rashi, value: lead.rashi },
-      lead.message && { id: PIQ_FIELDS.guidanceWanted, value: lead.message },
-      partnerDobIso && { id: PIQ_FIELDS.partnerDateOfBirth, value: partnerDobIso },
-      lead.partnerTimeOfBirth && { id: PIQ_FIELDS.partnerTimeOfBirth, value: lead.partnerTimeOfBirth },
-      lead.partnerPlaceOfBirth && { id: PIQ_FIELDS.partnerPlaceOfBirth, value: lead.partnerPlaceOfBirth },
-      { id: PIQ_FIELDS.leadSource, value: "Website Form" },
-    ].filter(Boolean);
+    // One mapping, shared with the tracking script — see leadFields().
+    const { customFields } = leadFields(lead);
 
     // Tags carry what the picklists can't express, so the CRM list is readable.
     const tags = lead.tags ?? [];

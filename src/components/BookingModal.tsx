@@ -10,6 +10,8 @@ import { Calendar, Clock, User, Phone, Mail, Sparkles, ChevronLeft, ChevronRight
 import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
+import { TrackingFields } from "@/components/TrackingFields";
+import { submitWhenValid } from "@/lib/tracking";
 export const BOOKING_SERVICES = [
   { value: "consultation-call", label: "Personal Consultation Call" },
   { value: "couple-consultation", label: "Couple Consultation" },
@@ -468,6 +470,17 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
           </DialogHeader>
         </div>
 
+        <form id="jn-booking" name="jn-booking" className="contents" onSubmit={handleSubmit} noValidate>
+          <TrackingFields
+            formId="jn-booking"
+            lead={{
+              firstName,
+              lastName,
+              email,
+              phone: phone ? toE164(phone, countryIso) : "",
+              service,
+            }}
+          />
         {/* ================= SCROLLABLE MIDDLE CONTENT ================= */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar relative z-10">
           {step === 1 ? (
@@ -774,8 +787,8 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
                   Back
                 </Button>
                 <Button 
-                  type="button" 
-                  onClick={handleSubmit}
+                  type="button"
+                  onClick={submitWhenValid(() => !!selectedSlot)}
                   disabled={isSubmitting || !selectedSlot}
                   className="flex-1 bg-gradient-to-r from-primary to-[#5a0606] hover:from-[#5a0606] hover:to-primary text-white h-12 rounded-xl shadow-md shadow-primary/20 transition-all duration-300 text-sm font-semibold relative overflow-hidden group disabled:opacity-50"
                 >
@@ -803,6 +816,7 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
           )}
         </div>
 
+        </form>
       </DialogContent>
     </Dialog>
   );

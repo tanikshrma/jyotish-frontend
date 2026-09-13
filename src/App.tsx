@@ -2,7 +2,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import BabyNameReport from "./pages/BabyNameReport";
@@ -26,6 +26,7 @@ import ZodiacSign from "./pages/ZodiacSign";
 import FreeKundliCalculator from "./pages/FreeKundliCalculator";
 import { Preloader } from "./components/Preloader";
 import { WhatsAppButton } from "./components/WhatsAppButton";
+import { trackPageView } from "./lib/tracking";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,28 @@ const ScrollToTop = () => {
   return null;
 };
 
+/**
+ * Reports each in-app navigation to Prospect IQ's External Tracking script,
+ * which only records the first page it loads on. The first view is left to
+ * the script itself so it isn't counted twice.
+ */
+const TrackPageViews = () => {
+  const { pathname, search } = useLocation();
+  const previous = useRef<string | null>(null);
+
+  useEffect(() => {
+    const here = `${pathname}${search}`;
+    const from = previous.current;
+    previous.current = here;
+    if (from === null || from === here) return;
+    // Give the new page a moment to set its document.title.
+    const t = setTimeout(() => trackPageView(`${window.location.origin}${from}`), 300);
+    return () => clearTimeout(t);
+  }, [pathname, search]);
+
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -59,6 +82,7 @@ const App = () => (
       <WhatsAppButton />
       <BrowserRouter>
         <ScrollToTop />
+        <TrackPageViews />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/about-us" element={<AboutUs />} />

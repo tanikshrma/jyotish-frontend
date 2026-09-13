@@ -15,7 +15,9 @@ import { createOrder, loadRazorpayScript, verifyPayment } from "@/lib/razorpay";
 import {
   deliverKundliPdf, KundliPdfError, openInNewTab, type DeliveredPdf,
 } from "@/lib/kundliPdf";
-import { submitProspectIQLead } from "@/lib/prospectiq";
+import { submitProspectIQLead, splitName, type LeadData } from "@/lib/prospectiq";
+import { TrackingFields } from "@/components/TrackingFields";
+import { submitWhenValid } from "@/lib/tracking";
 import {
   DEFAULT_COUNTRY_ISO, validateEmail, validatePhone, toE164,
 } from "@/lib/validation";
@@ -325,6 +327,19 @@ export function ReportPurchaseForm({
   const gold = config.theme.gold;
   const busy = status === "starting" || status === "delivering";
 
+  // Hero and closing forms render on the same page, so the id includes idPrefix.
+  const formId = `jn-${config.slug}-${idPrefix}`;
+  const trackingLead: LeadData = {
+    ...splitName(form.name),
+    email: form.email.trim(),
+    phone: form.phone ? toE164(form.phone, countryIso) : "",
+    dateOfBirth: form.dob,
+    timeOfBirth: form.hour && form.minute ? `${form.hour}:${form.minute}` : "",
+    placeOfBirth: picked?.label || form.pob,
+    service: "kundli",
+    serviceLabel: config.name,
+  };
+
   if (status === "done" && delivered.length) {
     return (
       <div className="rounded-2xl sm:rounded-3xl bg-white p-6 sm:p-8 shadow-2xl text-center">
@@ -370,7 +385,18 @@ export function ReportPurchaseForm({
   return (
     // deliberately no overflow-hidden here: it would clip the place-of-birth
     // suggestion list, which hangs below the input.
-    <div className="rounded-xl bg-white shadow-2xl sm:rounded-2xl">
+    <form
+      id={formId}
+      name={formId}
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (step === 1) goStep2();
+        else void handleBuy();
+      }}
+      className="rounded-xl bg-white shadow-2xl sm:rounded-2xl"
+    >
+      <TrackingFields formId={formId} lead={trackingLead} />
       <div className="h-1.5 w-full rounded-t-xl sm:rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${config.theme.cta}, ${config.theme.ctaDark})` }} />
       <div className="p-5 sm:p-6">
         {/* header */}
@@ -498,6 +524,7 @@ export function ReportPurchaseForm({
             </Field>
 
             <Button
+              type="button"
               onClick={goStep2}
               className="h-auto w-full rounded-xl py-4 text-base font-extrabold text-white shadow-lg sm:col-span-2"
               style={{ background: `linear-gradient(180deg, ${config.theme.cta}, ${config.theme.ctaDark})` }}
@@ -552,7 +579,8 @@ export function ReportPurchaseForm({
             </div>
 
             <Button
-              onClick={handleBuy}
+              type="button"
+              onClick={submitWhenValid(validateStep2)}
               disabled={busy}
               className="h-auto w-full rounded-xl py-4 text-base font-extrabold text-white shadow-lg disabled:opacity-80"
               style={{ background: `linear-gradient(180deg, ${config.theme.cta}, ${config.theme.ctaDark})` }}
@@ -592,7 +620,7 @@ export function ReportPurchaseForm({
         <li className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 shrink-0" style={{ color: config.theme.ink }} /> Details never shared</li>
         </ul>
       </div>
-    </div>
+    </form>
   );
 }
 

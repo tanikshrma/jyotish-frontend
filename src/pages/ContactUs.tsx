@@ -12,6 +12,8 @@ import { useState } from "react";
 import { submitProspectIQLead } from "@/lib/prospectiq";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
+import { TrackingFields } from "@/components/TrackingFields";
+import { submitWhenValid } from "@/lib/tracking";
 import { toast } from "sonner";
 
 export default function ContactUs() {
@@ -248,7 +250,17 @@ export default function ContactUs() {
                     <p className="text-foreground/70 text-lg">Fill out the form below and we'll get back to you shortly.</p>
                   </div>
                   
-                  <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+                  <form id="jn-contact-us" name="jn-contact-us" className="space-y-6" onSubmit={handleSubmit} noValidate>
+                    <TrackingFields
+                      formId="jn-contact-us"
+                      lead={{
+                        firstName: formData.firstName,
+                        lastName: formData.lastName,
+                        email: formData.email,
+                        phone: formData.phone ? toE164(formData.phone, countryIso) : "",
+                        message: [formData.subject, formData.message].filter(Boolean).join(": "),
+                      }}
+                    />
                     <div className="grid sm:grid-cols-2 gap-6">
                       <div className="space-y-2 relative group">
                         <label htmlFor="firstName" className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">First Name</label>
@@ -299,7 +311,7 @@ export default function ContactUs() {
                       {errors.message && <span className="text-xs text-red-600 font-medium mt-1 block">{errors.message}</span>}
                     </div>
                     
-                    <Button type="submit" disabled={isSubmitting} className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 text-white rounded-xl text-lg font-bold shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 ease-out hover:-translate-y-1 relative overflow-hidden group mt-4">
+                    <Button type="button" onClick={submitWhenValid(validateForm)} disabled={isSubmitting} className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 text-white rounded-xl text-lg font-bold shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 ease-out hover:-translate-y-1 relative overflow-hidden group mt-4">
                       <span className="relative z-10 flex items-center justify-center">
                         {isSubmitting ? "Sending..." : "Send Message"} <Send className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                       </span>

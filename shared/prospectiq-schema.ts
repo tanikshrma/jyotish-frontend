@@ -34,6 +34,34 @@ export const PIQ_FIELDS = {
 } as const;
 
 /**
+ * How each custom field is named and labelled on website forms, for Prospect
+ * IQ's External Tracking script — it matches captured inputs to CRM fields by
+ * input name and label. Names are the live field keys (minus the "contact."
+ * prefix) and labels the live field names, both read from
+ * GET /locations/{id}/customFields. Keep in step with PIQ_FIELDS.
+ */
+export const PIQ_FORM_FIELDS: Record<keyof typeof PIQ_FIELDS, { name: string; label: string }> = {
+  birthDate: { name: "birth_date", label: "Birth Date" },
+  timeOfBirth: { name: "time_of_birth", label: "Time of Birth" },
+  placeOfBirth: { name: "place_of_birth", label: "Place of Birth" },
+  rashi: { name: "rashi__moon_sign", label: "Rashi / Moon Sign" },
+  serviceInterest: { name: "service_interest", label: "Service Interest" },
+  reportType: { name: "report_type", label: "Report Type" },
+  primaryConcern: { name: "primary_concern", label: "Primary Concern" },
+  leadSource: { name: "lead_source", label: "Lead Source" },
+  consultationType: { name: "consultation_type", label: "Consultation Type" },
+  consultationLanguage: { name: "consultation_language", label: "Consultation Language" },
+  consultationDate: { name: "consultation_date", label: "Consultation Date" },
+  preferredCallTime: { name: "preferred_call_time", label: "Preferred Call Time" },
+  guidanceWanted: { name: "what_would_you_like_guidance_on", label: "What would you like guidance on?" },
+  gemstoneRecommended: { name: "gemstone_recommended", label: "Gemstone Recommended" },
+  remedyGiven: { name: "remedy_given", label: "Remedy Given" },
+  partnerDateOfBirth: { name: "partner_date_of_birth", label: "Partner Date of Birth" },
+  partnerTimeOfBirth: { name: "partner_time_of_birth", label: "Partner Time of Birth" },
+  partnerPlaceOfBirth: { name: "partner_place_of_birth", label: "Partner Place of Birth" },
+};
+
+/**
  * Allowed values for SINGLE_OPTIONS fields. Sending anything outside these
  * lists is rejected or dropped by Prospect IQ, so map to them exactly.
  */
@@ -126,11 +154,27 @@ export const SERVICE_TO_INTEREST: Record<string, string> = {
   "lalkitab-consultation": "Report",
   "baby-name": "Report",
   "kundli-calculator": "Complete Horoscope Analysis",
+  // The calculators and the landing checkout send these exact keys; the fuzzy
+  // lookup below found nothing for most of them, leaving the field blank.
+  kundli: "Complete Horoscope Analysis",
+  babyname: "Report",
+  kaalsarp: "Report",
+  sadesati: "Report",
+  lalkitab: "Report",
+  love: "Couple Kundli Analysis",
+  matchmaking: "Matchmaking Consultation",
+  career: "Career Guidance",
 };
 
 /** Maps a site service/report key onto the "Report Type" picklist value. */
 export const SERVICE_TO_REPORT_TYPE: Record<string, string> = {
-  "kundli-pdf": "Yearly Horoscope",
+  // A kundli is not a yearly horoscope, and the picklist has no kundli option;
+  // "Not Applicable" is honest until one is added in Prospect IQ.
+  "kundli-pdf": "Not Applicable",
+  kundli: "Not Applicable",
+  babyname: "Baby Name",
+  lalkitab: "Lal Kitab",
+  sadesati: "Not Applicable",
   "baby-name": "Baby Name",
   "lalkitab-consultation": "Lal Kitab",
   "lal-kitab": "Lal Kitab",

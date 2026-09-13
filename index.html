@@ -27,19 +27,23 @@
     <meta name="twitter:image" content="https://vibe.filesafe.space/meta/1782888190245745251/og_image.png">
     
     <link rel="canonical" href="https://jyotishnow.com/" />
-    <!--
-      Prospect IQ external-tracking script removed: it auto-captured every form
-      submit as an "Unidentified Form" event, creating a flood of empty, nameless
-      ghost contacts in the CRM. Real leads are captured server-side via
-      /api/prospectiq (see src/lib/prospectiq.ts), which stores full name/email/
-      phone + custom fields. Re-add a tracking pixel only once it is configured
-      not to create contacts from unidentified forms.
-    -->
   </head>
 
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!--
+      Prospect IQ External Tracking — page views and form submissions.
+      It only captures NAMED fields, so every lead form renders its values
+      through <TrackingFields> (src/components/TrackingFields.tsx); without
+      that, submits arrived as empty "Unidentified Form" contacts. In-app
+      route changes are reported by src/lib/tracking.ts.
+    -->
+    <script
+      src="https://app.jyotishnow.com/js/external-tracking.js"
+      data-tracking-id="tk_d60d077ec6de4d62b80caccebcd9ea10"
+      defer
+    ></script>
   </body>
 </html>

@@ -14,9 +14,11 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/components/PhoneInput";
 import { DEFAULT_COUNTRY_ISO, toE164, validateEmail, validatePhone } from "@/lib/validation";
+import { TrackingFields } from "@/components/TrackingFields";
+import { submitWhenValid } from "@/lib/tracking";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
 import { syllablesForNakshatra } from "@/lib/nakshatra";
-import { submitProspectIQLead } from "@/lib/prospectiq";
+import { submitProspectIQLead, splitName } from "@/lib/prospectiq";
 import { toast } from "sonner";
 import { createOrder, loadRazorpayScript } from "@/lib/razorpay";
 import { deliverMatchmakingPdf, openInNewTab, KundliPdfError } from "@/lib/kundliPdf";
@@ -486,9 +488,15 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
         email: formData.email,
         phone: toE164(formData.phone, countryIso),
         gender: formData.gender,
-        dateOfBirth: formattedDob,
-        timeOfBirth: `${timeState.hour}:${timeState.minute}`,
-        placeOfBirth: formData.pob,
+        // Baby Name collects the baby's birth details, not the parent's — keep
+        // them off the contact's own Birth Date and record them as a note.
+        ...(type === 'babyname'
+          ? { message: `Baby's birth details: ${formattedDob}, ${timeState.hour}:${timeState.minute}, ${formData.pob}` }
+          : {
+              dateOfBirth: formattedDob,
+              timeOfBirth: `${timeState.hour}:${timeState.minute}`,
+              placeOfBirth: formData.pob,
+            }),
         service: type,
         tags: [`Calculator: ${title}`, `Service: ${type}`],
         ...(isCoupleForm ? {
@@ -1158,7 +1166,33 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
           <p className="text-foreground/70 text-lg">Enter the details below to generate your report.</p>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-8" noValidate>
+        <form id={`jn-calculator-${type}`} name={`jn-calculator-${type}`} onSubmit={handleSubmit} className="space-y-8" noValidate>
+          <TrackingFields
+            formId={`jn-calculator-${type}`}
+            lead={{
+              ...splitName(formData.name),
+              email: formData.email,
+              phone: formData.phone ? toE164(formData.phone, countryIso) : "",
+              gender: formData.gender,
+              service: type,
+              ...(type === 'babyname'
+                ? {
+                    message: `Baby's birth details: ${date ? format(date, 'dd/MM/yyyy') : formData.dob}, ${timeState.hour}:${timeState.minute}, ${formData.pob}`,
+                  }
+                : {
+                    dateOfBirth: date ? format(date, 'yyyy-MM-dd') : formData.dob,
+                    timeOfBirth: `${timeState.hour}:${timeState.minute}`,
+                    placeOfBirth: formData.pob,
+                  }),
+              ...(isCoupleForm
+                ? {
+                    partnerDateOfBirth: date2 ? format(date2, 'yyyy-MM-dd') : '',
+                    partnerTimeOfBirth: `${timeState2.hour}:${timeState2.minute}`,
+                    partnerPlaceOfBirth: formData2.pob,
+                  }
+                : {}),
+            }}
+          />
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 pb-6 border-b border-border/50">
             <div className="space-y-2 relative group">
               <Label className="text-xs font-bold text-foreground/60 uppercase tracking-widest group-focus-within:text-secondary transition-colors">Phone Number</Label>
@@ -1187,7 +1221,7 @@ export function CalculatorForm({ type, title }: CalculatorFormProps) {
             renderPersonForm(false)
           )}
 
-          <Button type="submit" disabled={isLoading} className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 text-white rounded-xl text-lg font-bold shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 ease-out hover:-translate-y-1 relative overflow-hidden group">
+          <Button type="button" onClick={submitWhenValid(validateForm)} disabled={isLoading} className="w-full h-14 bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 text-white rounded-xl text-lg font-bold shadow-[0_8px_20px_-6px_rgba(122,8,8,0.4)] transition-all duration-300 ease-out hover:-translate-y-1 relative overflow-hidden group">
             <span className="relative z-10 flex items-center justify-center">
               {isLoading ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {loadingMessage}</>
