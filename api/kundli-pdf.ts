@@ -15,6 +15,7 @@ import {
 import { RUN_INLINE, createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
 import { recordPaymentInCrm } from "./_crm.js";
 import { getPriceInRupees } from "../shared/pricing.js";
+import { DEFAULT_PDF_LANG, DEFAULT_PDF_THEME_HUE } from "../shared/pdf-theme.js";
 
 /**
  * POST /api/kundli-pdf
@@ -45,13 +46,37 @@ const PIQ_FROM = process.env.PROSPECTIQ_EMAIL_FROM || "myjyotishnow@gmail.com";
 // "predictions", which the API rejects with 400 "Invalid PDF Size".
 const PDF_TYPES = ["small", "medium", "large", "prediction"] as const;
 
-export const BRAND = {
-  company_name: process.env.PDF_COMPANY_NAME || "JyotishNow",
-  address: process.env.PDF_ADDRESS || "Dr. Sandeep Sawhney, Ambala, Haryana, India",
-  website: process.env.PDF_WEBSITE || "www.jyotishnow.com",
-  email: process.env.PDF_EMAIL || "myjyotishnow@gmail.com",
-  phone: process.env.PDF_PHONE || "+91 7015544187",
+/**
+ * The contact block printed on the report's last page. VedicAstro controls its
+ * layout and colours; we control only these strings, so they are tidied here —
+ * the deployed env vars carry a "www." prefix and an unspaced phone number, and
+ * a report is the wrong place to discover that.
+ */
+const tidySite = (raw: string) =>
+  raw.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "");
+
+/** +917015544187 / +91 7015544187 → +91 70155 44187, as the site shows it. */
+const tidyPhone = (raw: string) => {
+  const digits = raw.replace(/[^\d]/g, "");
+  const local = digits.startsWith("91") && digits.length === 12 ? digits.slice(2) : digits;
+  return local.length === 10 ? `+91 ${local.slice(0, 5)} ${local.slice(5)}` : raw.trim();
 };
+
+export const BRAND = {
+  company_name: (process.env.PDF_COMPANY_NAME || "JyotishNow").trim(),
+  address: (process.env.PDF_ADDRESS || "Dr. Sandeep Sawhney · Ambala, Haryana, India").trim(),
+  website: tidySite(process.env.PDF_WEBSITE || "jyotishnow.com"),
+  email: (process.env.PDF_EMAIL || "myjyotishnow@gmail.com").trim(),
+  phone: tidyPhone(process.env.PDF_PHONE || "+91 7015544187"),
+};
+
+/**
+ * Cover band / heading colour, as a HUE in degrees — see shared/pdf-theme.ts.
+ * Overridable per deployment, but it must stay a number: a hex is ignored
+ * upstream and the report silently reverts to their default palette.
+ */
+export const PDF_THEME_HUE = process.env.PDF_THEME_HUE || DEFAULT_PDF_THEME_HUE;
+export const PDF_LANG = process.env.PDF_LANG || DEFAULT_PDF_LANG;
 
 const piqHeaders = () => ({
   Authorization: `Bearer ${PIQ_TOKEN}`,
@@ -389,9 +414,9 @@ const generatePdf = async (
     lon: String(body.lon),
     tz: String(body.tz),
     pob: String(body.pob ?? ""),
-    lang: String(body.lang ?? "en"),
+    lang: String(body.lang ?? PDF_LANG),
     style: String(body.style ?? "north"),
-    color: String(body.color ?? "140"),
+    color: String(body.color ?? PDF_THEME_HUE),
     pdf_type: pdfType,
     ...BRAND,
   });

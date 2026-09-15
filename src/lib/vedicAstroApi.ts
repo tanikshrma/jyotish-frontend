@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { DEFAULT_PDF_LANG, DEFAULT_PDF_THEME_HUE } from '../../shared/pdf-theme';
 
 /**
  * Client for VedicAstroAPI.
@@ -233,7 +234,7 @@ export const vedicAstroApi = {
       name: extra.name,
       pob: extra.pob,
       style: extra.style ?? 'north',
-      color: '140',
+      color: DEFAULT_PDF_THEME_HUE,
       pdf_type: extra.pdf_type ?? 'medium',
       ...payment,
     }),
@@ -249,7 +250,7 @@ export const vedicAstroApi = {
       boy_name: boy.name, boy_pob: boy.pob,
       girl_dob: girl.dob, girl_tob: girl.tob, girl_lat: girl.lat, girl_lon: girl.lon, girl_tz: girl.tz,
       girl_name: girl.name, girl_pob: girl.pob,
-      lang: boy.lang || 'en', style: 'north', color: '140',
+      lang: boy.lang || DEFAULT_PDF_LANG, style: 'north', color: DEFAULT_PDF_THEME_HUE,
       ...payment,
     }),
 };

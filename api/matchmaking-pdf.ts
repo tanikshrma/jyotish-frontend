@@ -6,6 +6,8 @@ import { recordPaymentInCrm } from "./_crm.js";
 import { getPriceInRupees } from "../shared/pricing.js";
 import {
   BRAND,
+  PDF_LANG,
+  PDF_THEME_HUE,
   emailReport,
   downloadWhenReady,
   API_TIMEOUT_MS,
@@ -118,9 +120,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         girl_lon: String(body.girl_lon),
         girl_tz: String(body.girl_tz),
         girl_pob: String(body.girl_pob ?? ""),
-        lang: String(body.lang ?? "en"),
+        lang: String(body.lang ?? PDF_LANG),
         style: String(body.style ?? "north"),
-        color: String(body.color ?? "140"),
+        color: String(body.color ?? PDF_THEME_HUE),
         ...BRAND,
       });
 

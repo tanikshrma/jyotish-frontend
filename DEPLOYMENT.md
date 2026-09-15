@@ -204,6 +204,24 @@ Branding on the report's last page comes from `PDF_COMPANY_NAME`, `PDF_ADDRESS`,
 `PDF_WEBSITE`, `PDF_EMAIL`, `PDF_PHONE`. The sending address is
 `PROSPECTIQ_EMAIL_FROM`.
 
+### Report look: what is ours and what is VedicAstro's
+
+| Part of the report | Set where |
+| --- | --- |
+| Company name, address, website, email, phone (last page) | `PDF_*` env vars, sent with every call |
+| Cover band + heading colour | `PDF_THEME_HUE`, sent as `color` |
+| Language (including the cover invocation) | `PDF_LANG`, sent as `lang` |
+| **Logo and the watermark on every page** | **VedicAstro dashboard → white-label settings. Not an API parameter.** |
+
+`color` is a **hue in degrees (0-360), not a hex code**. Verified against the
+live API: `140` (VedicAstro's sample) renders their green; `#7A0808` is rejected
+and silently falls back to a slate default; `0` renders `#d00101` with a
+`#ffe1e1` tint, which is the JyotishNow red family. Saturation and lightness are
+fixed by their template, so the exact brand maroon cannot be reproduced.
+
+If a generated report shows the wrong logo or a stranger's watermark, it is the
+white-label image on the VedicAstro account — no code change will override it.
+
 ## 7c. Why PDF delivery is asynchronous (important)
 
 A Complete Bundle renders two reports (~28 MB) and takes 60-120 seconds end to
