@@ -56,6 +56,12 @@ export type ReportLandingConfig = {
   sectionsTitle: string;
   sectionsSub: string;
   sections: ReportSection[];
+  /**
+   * Bundle pages only: the same sections split by which report they belong to,
+   * so ~18 cards read as two labelled reports rather than one undifferentiated
+   * wall. Omitted on single-report pages, which render `sections` flat.
+   */
+  sectionGroups?: { title: string; note: string; sections: ReportSection[] }[];
   /** Plain-language outcomes, shown as a checklist. */
   answers: string[];
   faqs: ReportFaq[];
@@ -337,6 +343,8 @@ const tierMeta = (variant: string) => {
 
 const premium = tierMeta("premium");
 const complete = tierMeta("complete");
+/** Only its page count is used — for labelling the bundle's two halves. */
+const predictions = tierMeta("predictions");
 
 export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
   "premium-kundli": {
@@ -401,6 +409,10 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     sectionsSub:
       "The Premium Kundli reads your chart as it is. Life Predictions reads it forward. You get both.",
     sections: PREDICTION_SECTIONS,
+    sectionGroups: [
+      { title: "Life Predictions report", note: predictions.pages, sections: PREDICTION_SECTIONS },
+      { title: "Premium Kundli report", note: premium.pages, sections: PREMIUM_SECTIONS },
+    ],
     answers: [
       "Which years ahead are built for growth — and which are for holding steady",
       "What your chart says about career direction, and when to make the move",

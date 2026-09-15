@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check, X, Star, Phone, ShieldCheck, Clock3, Users2, Globe, ArrowRight,
   FileText, Mail, CreditCard, Download, MessageCircle, Zap, BadgeCheck,
-  Lock, RefreshCw,
+  Lock, RefreshCw, ZoomIn,
 } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ReportPurchaseForm } from "@/components/ReportPurchaseForm";
 import { ReportPage } from "@/components/ReportMockup";
 import {
@@ -79,6 +80,24 @@ const STEPS = [
   { icon: Mail, t: "Report lands in minutes", d: "It opens, downloads and arrives in your inbox — usually under two minutes." },
 ];
 
+/** The three spreads shown as samples — genuinely different pages, not one repeated. */
+const SAMPLE_PAGES = [
+  { page: "chart", label: "Charts & planetary positions" },
+  { page: "houses", label: "House-by-house analysis" },
+  { page: "dasha", label: "Dasha timeline & Ashtakvarga" },
+] as const;
+
+/* One rhythm and one type scale for every band, rather than the same clamp()
+   and padding values retyped at each section. */
+const SECTION_PAD = "py-14 sm:py-20";
+const H2_CLASS =
+  "text-center font-serif font-extrabold leading-tight text-[clamp(1.65rem,4vw,2.4rem)]";
+const SUB_CLASS =
+  "mx-auto mt-3 max-w-2xl text-center text-[15px] leading-relaxed text-[#5B504A]";
+/** Keyboard focus ring for the hand-rolled (non-<Button>) CTAs. */
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7A0808]";
+
 /* --------------------------------------------------------------- page */
 
 export default function ReportLanding({ config }: { config: ReportLandingConfig }) {
@@ -133,13 +152,29 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
     `Hi, I have a question about the ${c.name} (${formatINR(c.price)}).`,
   )}`;
 
+  /**
+   * The bundle carries both reports' sections. Grouped when the config says how
+   * to split them, so the page shows "Life Predictions" and "Premium Kundli"
+   * rather than one 18-card wall.
+   */
   const isBundle = c.variant === "complete";
-  const allSections = isBundle ? [...c.sections, ...PREMIUM_SECTION_LIST] : c.sections;
+  const sectionGroups = c.sectionGroups ?? [
+    { title: "", note: "", sections: isBundle ? [...c.sections, ...PREMIUM_SECTION_LIST] : c.sections },
+  ];
+  const totalSections = sectionGroups.reduce((n, g) => n + g.sections.length, 0);
+  /** Phones get the first few of each group; the rest is one tap away. */
+  const MOBILE_PER_GROUP = 4;
+  const [showAllSections, setShowAllSections] = useState(false);
+  const hiddenOnMobile = sectionGroups.reduce(
+    (n, g) => n + Math.max(0, g.sections.length - MOBILE_PER_GROUP),
+    0,
+  );
+  const [zoom, setZoom] = useState<(typeof SAMPLE_PAGES)[number] | null>(null);
 
   const BigCta = ({ label, className = "" }: { label: string; className?: string }) => (
     <button
       onClick={scrollToForm}
-      className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[16px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.015] active:scale-[0.99] sm:text-[17px] ${className}`}
+      className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[16px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.015] active:scale-[0.99] sm:text-[17px] ${FOCUS_RING} ${className}`}
       style={{ background: ctaGradient, boxShadow: `0 12px 28px -10px ${cta}` }}
     >
       {label}
@@ -183,7 +218,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             </a>
             <button
               onClick={scrollToForm}
-              className="rounded-lg px-4 py-2.5 text-[13px] font-extrabold text-white shadow-md transition-transform hover:scale-[1.03] sm:px-5 sm:text-[14px]"
+              className={`rounded-lg px-4 py-2.5 text-[13px] font-extrabold text-white shadow-md transition-transform hover:scale-[1.03] sm:px-5 sm:text-[14px] ${FOCUS_RING} focus-visible:ring-offset-[#7A0808]`}
               style={{ background: ctaGradient }}
             >
               Get it · {formatINR(c.price)}
@@ -194,59 +229,48 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
 
       {/* ------------------------------------------------------ hero */}
       <section className="relative" style={{ background: `linear-gradient(180deg, ${tint} 0%, #FFFFFF 100%)` }}>
-        <div className="mx-auto grid w-[92%] max-w-6xl items-start gap-10 py-8 sm:py-12 lg:grid-cols-[1fr_520px] lg:gap-14 lg:py-14">
-          {/* pitch */}
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="rounded-full px-3 py-1.5 text-[11.5px] font-extrabold uppercase tracking-wide text-white" style={{ background: ink }}>
+        {/* Three grid children, explicitly placed: on phones they stack as
+            headline → form → proof, so the price and the first field are
+            reachable without scrolling past a paragraph and a photo. On desktop
+            the two pitch blocks stack in column 1 and the form rides column 2. */}
+        <div className="mx-auto grid w-[92%] max-w-6xl items-start gap-8 py-7 sm:py-12 lg:grid-cols-[1fr_520px] lg:gap-14 lg:py-14">
+          {/* pitch — headline */}
+          <div className="lg:col-start-1 lg:row-start-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="rounded-full px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[11.5px]"
+                style={{ background: ink }}
+              >
                 {c.eyebrow}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E4D9C4] bg-white px-3 py-1.5 text-[12px] font-bold" style={{ color: ink }}>
-                <Zap className="h-3.5 w-3.5" style={{ color: cta }} /> Delivered in minutes
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#E4D9C4] bg-white px-2.5 py-1 text-[10.5px] font-bold sm:px-3 sm:py-1.5 sm:text-[12px]"
+                style={{ color: ink }}
+              >
+                <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5" style={{ color: cta }} /> Delivered in minutes
               </span>
             </div>
 
             <h1
-              className="mt-5 font-serif font-extrabold leading-[1.05] tracking-tight"
-              style={{ fontSize: "clamp(2.1rem,5.2vw,3.4rem)", color: ink, textWrap: "balance" }}
+              className="mt-4 font-serif font-extrabold leading-[1.06] tracking-tight sm:mt-5"
+              style={{ fontSize: "clamp(1.95rem,5.2vw,3.4rem)", color: ink, textWrap: "balance" }}
             >
               {c.h1a} <span style={{ color: cta }}>{c.h1b}</span>
             </h1>
 
-            <p className="mt-4 max-w-xl text-[15.5px] leading-relaxed text-[#5B504A] sm:text-[17px]">
+            <p className="mt-3.5 max-w-xl text-[15px] leading-relaxed text-[#5B504A] sm:mt-4 sm:text-[17px]">
               {c.sub}
             </p>
 
-            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-5">
               <Stars />
               <span className="text-[14px] font-semibold" style={{ color: ink }}>4.9/5</span>
               <span className="text-[14px] text-[#6B605A]">from 3,200+ readers</span>
             </div>
-
-            <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
-              {c.answers.slice(0, 4).map((a) => (
-                <li key={a} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#16A34A]">
-                    <Check className="h-3 w-3 text-white" strokeWidth={3.5} />
-                  </span>
-                  <span className="text-[14px] leading-snug text-[#3D3531]">{a}</span>
-                </li>
-              ))}
-            </ul>
-
-            {/* product photo */}
-            <div className="mt-8 overflow-hidden rounded-2xl border border-[#F0E4D2] shadow-sm">
-              <img
-                src={c.photo}
-                alt={`A printed ${c.name} report`}
-                fetchPriority="high"
-                className="h-auto w-full object-cover"
-              />
-            </div>
           </div>
 
           {/* offer + form */}
-          <div className="lg:sticky lg:top-24">
+          <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24">
             <div ref={formRef} className="scroll-mt-24">
               <ReportPurchaseForm config={c} idPrefix="hero" />
             </div>
@@ -263,6 +287,32 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
                 <Lock className="h-3.5 w-3.5" style={{ color: ink }} /> Secured by Razorpay · we never see your card
               </div>
             </div>
+          </div>
+
+          {/* what it answers + the product shot — below the form on phones */}
+          <div className="lg:col-start-1 lg:row-start-2">
+            <ul className="grid gap-2.5 sm:grid-cols-2">
+              {c.answers.slice(0, 4).map((a) => (
+                <li key={a} className="flex items-start gap-2.5">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#16A34A]">
+                    <Check className="h-3 w-3 text-white" strokeWidth={3.5} />
+                  </span>
+                  <span className="text-[14px] leading-snug text-[#3D3531]">{a}</span>
+                </li>
+              ))}
+            </ul>
+
+            <figure className="mt-6 overflow-hidden rounded-2xl border border-[#F0E4D2] shadow-sm">
+              <img
+                src={c.photo}
+                alt={`A printed ${c.name} report`}
+                fetchPriority="high"
+                className="h-auto max-h-[230px] w-full object-cover sm:max-h-none"
+              />
+              <figcaption className="border-t border-[#F5EADB] bg-white px-4 py-2.5 text-center text-[12px] font-semibold text-[#6B605A]">
+                {c.pages} · delivered as a PDF you can print, keep or forward
+              </figcaption>
+            </figure>
           </div>
         </div>
       </section>
@@ -290,11 +340,11 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       </div>
 
       {/* ------------------------------------------------ comparison */}
-      <section className="mx-auto w-[92%] max-w-4xl py-12 sm:py-16">
-        <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+      <section className={`mx-auto w-[92%] max-w-4xl ${SECTION_PAD}`}>
+        <h2 className={H2_CLASS} style={{ color: ink }}>
           You've already tried the free ones
         </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] text-[#5B504A]">
+        <p className={SUB_CLASS}>
           Here is exactly what changes when a real chart is computed properly.
         </p>
 
@@ -335,68 +385,104 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
 
       {/* --------------------------------------------- sample pages */}
       <section className="border-y" style={{ background: tint, borderColor: band }}>
-        <div className="mx-auto w-[92%] max-w-6xl py-12 sm:py-16">
-          <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+        <div className={`mx-auto w-[92%] max-w-6xl ${SECTION_PAD}`}>
+          <h2 className={H2_CLASS} style={{ color: ink }}>
             See a real page before you buy
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] text-[#5B504A]">
-            Typeset and printable — not a web page dressed up as a PDF.
+          <p className={SUB_CLASS}>
+            Typeset and printable — not a web page dressed up as a PDF. Tap any page to read it full size.
           </p>
 
-          {/* three genuinely different spreads, not one page repeated */}
-          <div className="mt-9 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {([
-              { page: "chart", label: "Charts & planetary positions", tilt: "-1.5deg", show: "" },
-              { page: "houses", label: "House-by-house analysis", tilt: "1deg", show: "hidden sm:block" },
-              { page: "dasha", label: "Dasha timeline & Ashtakvarga", tilt: "-0.5deg", show: "hidden lg:block" },
-            ] as const).map((sp) => (
-              <div key={sp.page} className={`mx-auto w-full max-w-[300px] ${sp.show}`}>
-                <div
-                  className="transition-transform duration-300 hover:rotate-0"
-                  style={{ transform: `rotate(${sp.tilt})` }}
-                >
+          {/* Three genuinely different spreads. Phones get a snap scroller —
+              two of the three used to be display:none there, so most visitors
+              only ever saw one. */}
+          <div className="-mx-[4%] mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-[4%] pb-3 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0">
+            {SAMPLE_PAGES.map((sp) => (
+              <button
+                key={sp.page}
+                type="button"
+                onClick={() => setZoom(sp)}
+                aria-label={`Enlarge sample page: ${sp.label}`}
+                className={`group w-[76%] shrink-0 snap-center rounded-lg text-left sm:w-auto ${FOCUS_RING}`}
+              >
+                <div className="relative overflow-hidden rounded-[8px] transition-transform duration-300 group-hover:-translate-y-1">
                   <ReportPage config={c} page={sp.page} />
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/60 via-black/25 to-transparent py-3 text-[11.5px] font-bold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    <ZoomIn className="h-3.5 w-3.5" /> Read it full size
+                  </span>
                 </div>
                 <p className="mt-3 text-center text-[12.5px] font-bold" style={{ color: ink }}>
                   {sp.label}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
-          <p className="mt-6 text-center text-[12.5px] italic text-[#8A7C72]">
+          <p className="mt-5 text-center text-[12.5px] italic text-[#8A7C72]">
             Sample pages shown with an illustrative chart. Yours is generated from your own birth details.
           </p>
         </div>
       </section>
 
       {/* ------------------------------------------------- what's in */}
-      <section className="mx-auto w-[92%] max-w-6xl py-12 sm:py-16">
-        <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+      <section className={`mx-auto w-[92%] max-w-6xl ${SECTION_PAD}`}>
+        <h2 className={H2_CLASS} style={{ color: ink }}>
           {c.sectionsTitle}
         </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] text-[#5B504A]">{c.sectionsSub}</p>
+        <p className={SUB_CLASS}>{c.sectionsSub}</p>
 
-        <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {allSections.map((sec) => (
-            <div key={sec.title} className="flex gap-3 rounded-xl border border-[#EFE4D3] bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: `${cta}17` }}>
-                <sec.icon className="h-[18px] w-[18px]" style={{ color: cta }} />
-              </span>
-              <div className="min-w-0">
-                <h3 className="font-serif text-[15.5px] font-bold leading-snug" style={{ color: ink }}>{sec.title}</h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-[#6B605A]">{sec.desc}</p>
+        {sectionGroups.map((g, gi) => (
+          <div key={g.title || gi} className={gi === 0 ? "mt-8" : "mt-10"}>
+            {g.title && (
+              <div className="mb-4 flex items-center gap-3">
+                <h3 className="shrink-0 font-serif text-[17px] font-extrabold" style={{ color: ink }}>
+                  {g.title}
+                </h3>
+                <span className="shrink-0 rounded-full border border-[#E9DCC7] bg-[#FFFBF3] px-2.5 py-1 text-[11.5px] font-bold text-[#6B605A]">
+                  {g.note}
+                </span>
+                <span className="h-px flex-1" style={{ background: band }} aria-hidden />
               </div>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {g.sections.map((sec, i) => (
+                <div
+                  key={sec.title}
+                  className={`${
+                    !showAllSections && i >= MOBILE_PER_GROUP ? "hidden sm:flex" : "flex"
+                  } gap-3 rounded-xl border border-[#EFE4D3] bg-white p-4 shadow-sm transition-shadow hover:shadow-md`}
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: `${cta}17` }}>
+                    <sec.icon className="h-[18px] w-[18px]" style={{ color: cta }} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="font-serif text-[15.5px] font-bold leading-snug" style={{ color: ink }}>{sec.title}</h3>
+                    <p className="mt-1 text-[13px] leading-relaxed text-[#6B605A]">{sec.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+
+        {/* Phones start with the first few of each group — the bundle lists 18. */}
+        {hiddenOnMobile > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowAllSections((v) => !v)}
+            className={`mt-5 w-full rounded-xl border-2 bg-white py-3 text-[14px] font-extrabold sm:hidden ${FOCUS_RING}`}
+            style={{ borderColor: band, color: ink }}
+          >
+            {showAllSections ? "Show fewer sections" : `Show all ${totalSections} sections`}
+          </button>
+        )}
       </section>
 
       {/* ------------------------------------------------ review wall */}
       <section className="border-y" style={{ background: tint, borderColor: band }}>
-        <div className="mx-auto w-[92%] max-w-6xl py-12 sm:py-16">
+        <div className={`mx-auto w-[92%] max-w-6xl ${SECTION_PAD}`}>
           <div className="text-center">
             <Stars className="justify-center" />
-            <h2 className="mt-2 font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+            <h2 className={`mt-2 ${H2_CLASS}`} style={{ color: ink }}>
               4.9 out of 5 from 3,200+ readers
             </h2>
           </div>
@@ -423,8 +509,8 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       </section>
 
       {/* ---------------------------------------------------- steps */}
-      <section className="mx-auto w-[92%] max-w-5xl py-12 sm:py-16">
-        <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+      <section className={`mx-auto w-[92%] max-w-5xl ${SECTION_PAD}`}>
+        <h2 className={H2_CLASS} style={{ color: ink }}>
           How it works
         </h2>
         <div className="mt-9 grid gap-6 sm:grid-cols-3">
@@ -443,22 +529,12 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
           ))}
         </div>
 
-        {/* guarantee */}
-        <div className="mt-10 flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed p-6 text-center sm:flex-row sm:text-left" style={{ borderColor: band, background: tint }}>
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white shadow-sm">
-            <ShieldCheck className="h-7 w-7" style={{ color: "#16A34A" }} />
-          </span>
-          <div>
-            <h3 className="font-serif text-[17px] font-bold" style={{ color: ink }}>Our guarantee</h3>
-            <p className="mt-1 text-[14px] leading-relaxed text-[#5B504A]">{c.guarantee}</p>
-          </div>
-        </div>
       </section>
 
       {/* ------------------------------------------------------ faq */}
       <section className="border-y" style={{ background: tint, borderColor: band }}>
-        <div className="mx-auto w-[92%] max-w-3xl py-12 sm:py-16">
-          <h2 className="text-center font-serif font-extrabold leading-tight" style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", color: ink }}>
+        <div className={`mx-auto w-[92%] max-w-3xl ${SECTION_PAD}`}>
+          <h2 className={H2_CLASS} style={{ color: ink }}>
             Questions, answered
           </h2>
           <Accordion type="single" collapsible className="mt-8 space-y-2.5">
@@ -521,6 +597,18 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
               <Stars />
               <span className="text-[14px] text-[#5B504A]"><b style={{ color: ink }}>4.9/5</b> from 3,200+ readers</span>
+            </div>
+
+            {/* The guarantee sits beside the price, where the hesitation is —
+                and it fills the column that used to run short next to the form. */}
+            <div className="mt-6 flex items-start gap-4 rounded-2xl border border-[#EFE4D3] bg-white p-5 shadow-sm">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#16A34A]/10">
+                <ShieldCheck className="h-6 w-6" style={{ color: "#16A34A" }} />
+              </span>
+              <div>
+                <h3 className="font-serif text-[16.5px] font-bold" style={{ color: ink }}>Our guarantee</h3>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-[#5B504A]">{c.guarantee}</p>
+              </div>
             </div>
           </div>
 
@@ -600,13 +688,28 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
           </div>
           <button
             onClick={scrollToForm}
-            className="shrink-0 whitespace-nowrap rounded-lg px-5 py-3 text-[14px] font-extrabold text-white shadow-md"
+            className={`shrink-0 whitespace-nowrap rounded-lg px-5 py-3 text-[14px] font-extrabold text-white shadow-md ${FOCUS_RING}`}
             style={{ background: ctaGradient }}
           >
             Get my report
           </button>
         </div>
       </div>
+
+      {/* ------------------------------------------- sample page zoom */}
+      <Dialog open={!!zoom} onOpenChange={(open) => !open && setZoom(null)}>
+        <DialogContent className="max-w-[min(94vw,540px)] border-none bg-transparent p-0 shadow-none">
+          {zoom && (
+            <>
+              <DialogTitle className="sr-only">{zoom.label}</DialogTitle>
+              <ReportPage config={c} page={zoom.page} />
+              <p className="mt-3 text-center text-[13px] font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+                {zoom.label}
+              </p>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

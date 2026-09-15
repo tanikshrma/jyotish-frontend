@@ -112,6 +112,14 @@
       bottom: 1.5rem;
     }
   }
+  /* On phones the widget floats over the card grid while scrolling; shrink it
+     so it hides less of the text underneath. */
+  @media (max-width: 639px) {
+    body.report-buybar-open [data-floating-wa] {
+      transform: scale(0.85);
+      transform-origin: bottom right;
+    }
+  }
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
