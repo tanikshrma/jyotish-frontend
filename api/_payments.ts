@@ -146,6 +146,12 @@ export const fetchPaidOrder = async (
  * spending report credits. Live keys ignore it, so it can never short-change a
  * real customer.
  */
+/** PDF_DRY_RUN=1 covers every report; a list (e.g. "kundli-pdf") only those. */
+const dryRunCovers = (service: string) => {
+  const v = (process.env.PDF_DRY_RUN ?? "").trim();
+  return v === "1" || v.split(",").map((s) => s.trim()).includes(service);
+};
+
 export type PaidReport =
   | { ok: true; order: PaidOrder; dryRun: boolean }
   | { ok: false; status: number; error: string; retryable: boolean };
@@ -165,5 +171,5 @@ export const paidReportOrder = async (
     console.warn(`[payments] order ${orderId} was for ${paid.order.notes.service}, not ${service}`);
     return { ok: false, status: 402, error: "This payment was not for this report", retryable: false };
   }
-  return { ok: true, order: paid.order, dryRun: isTestMode() && process.env.PDF_DRY_RUN === "1" };
+  return { ok: true, order: paid.order, dryRun: isTestMode() && dryRunCovers(service) };
 };

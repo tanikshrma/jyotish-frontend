@@ -205,7 +205,7 @@ describe("paid fulfilment endpoints", () => {
       created++;
       const body = JSON.parse(String(init?.body));
       expect(body.startTime).toBe(slot);
-      expect(Date.parse(body.endTime) - Date.parse(body.startTime)).toBe(15 * 60_000);
+      expect(Date.parse(body.endTime) - Date.parse(body.startTime)).toBe(30 * 60_000);
       expect(body.title).toContain("ABC");
       return json({ id: "appt1", calendarId: body.calendarId, startTime: body.startTime, endTime: body.endTime });
     });

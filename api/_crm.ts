@@ -7,7 +7,9 @@ import { upsertContact } from "./_ghl.js";
  * Records a completed payment in Prospect IQ so the sale is visible in the CRM.
  *
  * Upserts the contact, then creates a "won" opportunity in the pipeline that
- * matches the service, at its paid stage, with the amount as monetaryValue.
+ * matches the service, at its paid stage, with the amount as monetaryValue —
+ * or, for a returning customer who already has one there, adds the amount to
+ * it. Each payment is also written as a note on the contact.
  * This is how website payments (which go through our own Razorpay checkout,
  * not GHL's) show up inside Prospect IQ: on the pipeline board, in revenue
  * reporting, and as a trigger for "stage changed → paid" automations.
@@ -41,16 +43,33 @@ const headers = () => ({
   "Content-Type": "application/json",
 });
 
-const opportunityExists = async (name: string, paymentId: string): Promise<boolean> => {
+const piq = async (path: string, init: RequestInit = {}) => {
+  const res = await fetch(`${PIQ_BASE}${path}`, {
+    ...init,
+    headers: headers(),
+    signal: AbortSignal.timeout(15_000),
+  });
+  return { ok: res.ok, status: res.status, data: await readJsonResponse(res) };
+};
+
+/** Every payment leaves a note on the contact: an audit trail, and the dedupe key. */
+const noteFor = (rec: PaymentRecord, label: string) =>
+  `Payment received: ${label} — ₹${Number(rec.amountRupees) || 0}` +
+  `\nRazorpay payment ${rec.paymentId ?? "n/a"} · order ${rec.orderId ?? "n/a"}` +
+  (isTestMode() ? "\nTEST — Razorpay test mode, no money moved" : "");
+
+const alreadyRecorded = async (contactId: string, paymentId: string, label: string, name: string) => {
   try {
-    const q = new URLSearchParams({ location_id: String(LOCATION), q: paymentId, limit: "20" });
-    const res = await fetch(`${PIQ_BASE}/opportunities/search?${q}`, {
-      headers: headers(),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) return false; // can't tell — prefer recording to missing a sale
-    const data = await readJsonResponse(res);
-    return ((data.opportunities ?? []) as { name?: string }[]).some((o) => o.name === name);
+    const [notes, opps] = await Promise.all([
+      piq(`/contacts/${encodeURIComponent(contactId)}/notes`),
+      // Sales recorded before notes existed are found by their opportunity name.
+      piq(`/opportunities/search?${new URLSearchParams({ location_id: String(LOCATION), q: paymentId, limit: "20" })}`),
+    ]);
+    const inNotes = ((notes.data.notes ?? []) as { body?: string }[]).some(
+      (n) => n.body?.includes(paymentId) && n.body.includes(label),
+    );
+    const inOpps = ((opps.data.opportunities ?? []) as { name?: string }[]).some((o) => o.name === name);
+    return inNotes || inOpps; // a failed lookup reads as "not recorded": prefer recording to missing a sale
   } catch {
     return false;
   }
@@ -86,14 +105,14 @@ export const recordPaymentInCrm = async (rec: PaymentRecord): Promise<boolean> =
 
     // Once per payment and product: a retried delivery, a refresh or a second
     // tab must not record the same sale twice.
-    if (rec.paymentId && (await opportunityExists(name, rec.paymentId))) {
-      console.log(`[crm] opportunity already recorded: ${name}`);
+    if (rec.paymentId && (await alreadyRecorded(contactId, rec.paymentId, label, name))) {
+      console.log(`[crm] already recorded: ${name}`);
       return true;
     }
 
-    const opp = await fetch(`${PIQ_BASE}/opportunities/`, {
+    const amount = Number(rec.amountRupees) || 0;
+    const created = await piq("/opportunities/", {
       method: "POST",
-      headers: headers(),
       body: JSON.stringify({
         locationId: LOCATION,
         pipelineId,
@@ -101,13 +120,41 @@ export const recordPaymentInCrm = async (rec: PaymentRecord): Promise<boolean> =
         contactId,
         name,
         status: "won",
-        monetaryValue: Number(rec.amountRupees) || 0,
+        monetaryValue: amount,
       }),
     });
-    if (!opp.ok) {
-      console.error("[crm] opportunity create failed", opp.status, await opp.text());
-      return false;
+
+    if (!created.ok) {
+      // The location allows one opportunity per contact per pipeline, so a
+      // repeat customer's next purchase is added to the deal they already have.
+      const existingId = created.data?.meta?.existingId;
+      if (created.data?.code !== "OPPORTUNITY_NO_DUPLICATE" || !existingId) {
+        console.error("[crm] opportunity create failed", created.status, JSON.stringify(created.data).slice(0, 300));
+        return false;
+      }
+      const current = await piq(`/opportunities/${encodeURIComponent(existingId)}`);
+      const previous = Number(current.data?.opportunity?.monetaryValue) || 0;
+      const updated = await piq(`/opportunities/${encodeURIComponent(existingId)}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          pipelineId,
+          pipelineStageId: paidStageId,
+          status: "won",
+          monetaryValue: previous + amount,
+        }),
+      });
+      if (!updated.ok) {
+        console.error("[crm] opportunity update failed", updated.status, JSON.stringify(updated.data).slice(0, 300));
+        return false;
+      }
+      console.log(`[crm] added ₹${amount} to existing opportunity ${existingId} (now ₹${previous + amount})`);
     }
+
+    await piq(`/contacts/${encodeURIComponent(contactId)}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ body: noteFor(rec, label) }),
+    }).catch(() => undefined);
+
     console.log(`[crm] payment recorded: ${label} ₹${rec.amountRupees} for contact ${contactId}`);
     return true;
   } catch (error) {

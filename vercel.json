@@ -3,12 +3,25 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "functions": {
-    "api/kundli-pdf.ts": { "maxDuration": 300 },
-    "api/matchmaking-pdf.ts": { "maxDuration": 300 }
+    "api/kundli-pdf.ts": {
+      "maxDuration": 300
+    },
+    "api/matchmaking-pdf.ts": {
+      "maxDuration": 300
+    },
+    "api/book-consultation.ts": {
+      "maxDuration": 60
+    },
+    "api/create-order.ts": {
+      "maxDuration": 60
+    },
+    "api/verify-payment.ts": {
+      "maxDuration": 60
+    }
   },
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js)$).*)" ,
+      "source": "/((?!api/|assets/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js)$).*)",
       "destination": "/index.html"
     }
   ]

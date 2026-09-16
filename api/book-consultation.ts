@@ -8,11 +8,12 @@ import {
   createAppointment,
   ghlToken,
   slotIsBookable,
+  removeContactTags,
   tagContact,
   upsertContact,
 } from "./_ghl.js";
 import { PIQ_FIELDS } from "../shared/prospectiq-schema.js";
-import { addMinutes, formatSlotIST, isSlotString } from "../shared/consultation.js";
+import { SLOT_MINUTES, addMinutes, formatSlotIST, isSlotString, slotsNeeded } from "../shared/consultation.js";
 
 /**
  * POST /api/book-consultation
@@ -44,6 +45,9 @@ import { addMinutes, formatSlotIST, isSlotString } from "../shared/consultation.
 
 const MANUAL_TAG = "Consultation: needs manual scheduling";
 const PAID_SLOT_LEAD_MINUTES = 15;
+
+const istDate = (slot: string) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(Date.parse(slot)));
 
 const jobKey = (paymentId: string) => `consult:${paymentId}`;
 
@@ -163,7 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // spent paying. A newly picked slot gets the full check.
   const lead = slot === notes.slot ? PAID_SLOT_LEAD_MINUTES : undefined;
   const check = await slotIsBookable(consultation.calendarId, slot, consultation.minutes, lead);
-  if (!check.ok) {
+  if (check.ok === false) {
     if (check.reason === "unavailable") {
       return res.status(503).json({ error: "Could not check the calendar right now — please retry", retryable: true });
     }
@@ -172,7 +176,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // 5. Book it.
   const title = `${consultation.label} · ${customer.name || "Client"} · ${shortRef}${isTestMode() ? " · TEST" : ""}`;
-  const endTime = addMinutes(slot, consultation.minutes);
+  // Dr. Sandeep's calendars only accept whole 30-minute slots, so a 15-minute
+  // call holds its full slot (GHL rejects any other duration).
+  const endTime = addMinutes(slot, slotsNeeded(consultation.minutes) * SLOT_MINUTES);
   const created = await createAppointment({
     calendarId: consultation.calendarId,
     contactId,
@@ -180,12 +186,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     endTime,
     title,
   });
-  if (!created.ok) {
+  if (created.ok === false) {
     console.error("[book-consultation] appointment create failed", created.status, created.detail);
     if (created.status >= 500) {
       return res.status(502).json({ error: "Could not book right now — please retry", retryable: true });
     }
-    return slotLost(`create failed ${created.status}`);
+    // A conflict means someone took the slot between our check and the
+    // booking. Anything else is a calendar problem the customer can't fix by
+    // picking another time, so it goes to the team instead.
+    if (created.status === 409 || /not available|already booked|no longer available|conflict/i.test(created.detail)) {
+      return slotLost(`create conflict ${created.status}`);
+    }
+    await updateJob(key, { status: "failed", code: "BOOKING_FAILED", error: `create failed ${created.status}` });
+    await tagContact(contactId, [MANUAL_TAG]);
+    return res.status(502).json({
+      code: "BOOKING_FAILED",
+      error: "We couldn't book the call automatically. Your payment is safe — our team will call you to schedule it",
+    });
   }
 
   const booking = {
@@ -196,13 +213,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     label: consultation.label,
   };
   await updateJob(key, { status: "ready", booking, code: undefined, error: undefined });
+  // A retry that succeeded no longer needs the team to schedule it by hand.
+  if (existing?.status === "failed") void removeContactTags(contactId, [MANUAL_TAG]);
 
   // 6. Record the date on the contact and the sale in the consultations
   //    pipeline, at the server's price for the call. Neither blocks the reply.
   void upsertContact({
     ...customer,
     customFields: [
-      { id: PIQ_FIELDS.consultationDate, value: slot.slice(0, 10) },
+      { id: PIQ_FIELDS.consultationDate, value: istDate(slot) },
       { id: PIQ_FIELDS.preferredCallTime, value: formatSlotIST(slot) },
     ],
   });

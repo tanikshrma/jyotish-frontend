@@ -200,3 +200,15 @@ export const tagContact = async (contactId: string, tags: string[]) => {
     console.error("[ghl] tagging failed", (error as Error).message);
   }
 };
+
+export const removeContactTags = async (contactId: string, tags: string[]) => {
+  if (!ghlToken() || !tags.length) return;
+  try {
+    await call(`/contacts/${encodeURIComponent(contactId)}/tags`, {
+      method: "DELETE",
+      body: JSON.stringify({ tags }),
+    });
+  } catch (error) {
+    console.error("[ghl] untagging failed", (error as Error).message);
+  }
+};

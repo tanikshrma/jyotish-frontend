@@ -80,7 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     slot = body.slot;
     const check = await slotIsBookable(quote.consultation.calendarId, slot, quote.consultation.minutes);
-    if (!check.ok) {
+    if (check.ok === false) {
       const message =
         check.reason === "too-soon"
           ? "That time is too soon — please pick a slot at least 2 hours from now"
