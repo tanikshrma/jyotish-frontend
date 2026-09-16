@@ -4,6 +4,7 @@ import { readJsonBody, readJsonResponse, requirePost } from "./_razorpay.js";
 import { RUN_INLINE, createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
 import { recordPaymentInCrm } from "./_crm.js";
 import { getPriceInRupees } from "../shared/pricing.js";
+import { brandMatchingPdf } from "../shared/pdf-recolor.js";
 import {
   BRAND,
   PDF_LANG,
@@ -155,14 +156,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // The upstream link is only valid for ~2 hours and its S3 path contains
       // spaces, both handled by downloadWhenReady.
-      const bytes = await downloadWhenReady(String(data.response));
-      if (!bytes) {
+      const downloaded = await downloadWhenReady(String(data.response));
+      if (!downloaded) {
         await updateJob(paymentId, {
           status: "failed",
           error: "Report generated but could not be retrieved",
         });
         return;
       }
+      // The matching template ignores `color` and prints teal — recolour it to
+      // the JyotishNow red before it is stored or emailed. Falls back to the
+      // original file on any error, so delivery is never blocked.
+      const bytes = await brandMatchingPdf(downloaded);
 
       const fileName = `JyotishNow_Kundli_Matching_${safeName(String(body.boy_name))}_${safeName(String(body.girl_name))}.pdf`;
       const stored = await uploadToProspectIQ(bytes, fileName);
