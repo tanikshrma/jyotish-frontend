@@ -10,6 +10,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ReportPurchaseForm } from "@/components/ReportPurchaseForm";
 import { ReportPage } from "@/components/ReportMockup";
+import { ConsultationSection } from "@/components/consultation/ConsultationSection";
 import {
   REPORT_CONTACT, LOGO, PREMIUM_SECTION_LIST, type ReportLandingConfig,
 } from "@/pages/landing/reportLandingConfig";
@@ -530,6 +531,9 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
         </div>
 
       </section>
+
+      {/* -------------------------------------------- consultation */}
+      <ConsultationSection theme={c.theme} source={c.slug} />
 
       {/* ------------------------------------------------------ faq */}
       <section className="border-y" style={{ background: tint, borderColor: band }}>

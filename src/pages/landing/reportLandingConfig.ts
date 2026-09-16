@@ -327,7 +327,7 @@ const SHARED_FAQS: ReportFaq[] = [
   },
   {
     q: "Can I get a consultation as well?",
-    a: "Yes. Many people read the report first and then book a call to go through it. You can reach us on WhatsApp or call the number at the top of this page.",
+    a: "Yes. At checkout you can add a 15-minute audio call with Dr. Sandeep Sawhney for ₹999 to go through your report — pick your time from his live calendar and it is booked the moment you pay. For a full 30-minute or 1-hour consultation, book it in the consultation section on this page.",
   },
 ];
 

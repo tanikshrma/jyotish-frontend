@@ -11,31 +11,41 @@ import { PhoneInput } from "@/components/PhoneInput";
 import { DateInputField, TimeInputField } from "@/components/FormDateInput";
 import { cn } from "@/lib/utils";
 import { vedicAstroApi } from "@/lib/vedicAstroApi";
-import { createOrder, loadRazorpayScript, verifyPayment } from "@/lib/razorpay";
+import { verifyPayment, type RazorpaySuccess } from "@/lib/razorpay";
+import { CheckoutError, payWithRazorpay } from "@/lib/consultation";
 import {
   deliverKundliPdf, KundliPdfError, openInNewTab, type DeliveredPdf,
 } from "@/lib/kundliPdf";
 import { submitProspectIQLead, splitName, type LeadData } from "@/lib/prospectiq";
 import { TrackingFields } from "@/components/TrackingFields";
+import { ConsultationAddon, addonDetails } from "@/components/consultation/ConsultationAddon";
+import { BookingStatus } from "@/components/consultation/BookingStatus";
 import { submitWhenValid } from "@/lib/tracking";
 import {
   DEFAULT_COUNTRY_ISO, validateEmail, validatePhone, toE164,
 } from "@/lib/validation";
 import { formatINR } from "../../shared/pricing";
+import { CONSULTATION_ADDON } from "../../shared/consultation";
 import type { ReportLandingConfig } from "@/pages/landing/reportLandingConfig";
 
 /* ------------------------------------------------------------------ utils */
 
 /** DD/MM/YYYY for the astro API, from the date picker's YYYY-MM-DD. */
-const toApiDob = (isoDate: string): string => {
+export const toApiDob = (isoDate: string): string => {
   if (!isoDate) return "";
   const [y, m, d] = isoDate.split("-");
   return y && m && d ? `${d}/${m}/${y}` : "";
 };
 
-type GeoPick = { label: string; lat: number; lon: number; tz: number };
+export type GeoPick = { label: string; lat: number; lon: number; tz: number };
 
 type Status = "idle" | "starting" | "delivering" | "done";
+
+/** A paid call waiting to be (or already) booked. */
+export type PaidCall = {
+  payment: RazorpaySuccess;
+  customer: { name: string; email: string; phone: string };
+};
 
 /* ------------------------------------------------------------- component */
 
@@ -47,6 +57,10 @@ type Status = "idle" | "starting" | "delivering" | "done";
  * visitor is already committed. The lead is pushed to Prospect IQ at the end of
  * step one — before checkout — so abandoned carts are still captured; the
  * contact endpoint upserts, so the post-payment push updates the same record.
+ *
+ * Step two also offers the ₹999 add-on: a 15-minute call with Dr. Sandeep
+ * Sawhney. Its slot is chosen before paying (it is part of the order) and the
+ * server books it once the payment is confirmed, alongside the report.
  */
 export function ReportPurchaseForm({
   config,
@@ -70,6 +84,13 @@ export function ReportPurchaseForm({
   // Open the calendar in a plausible birth decade rather than on today's month.
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(1995, 0, 1));
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [withCall, setWithCall] = useState(false);
+  const [slot, setSlot] = useState<string | null>(null);
+  const [slotRefresh, setSlotRefresh] = useState(0);
+  const [paidCall, setPaidCall] = useState<PaidCall | null>(null);
+  const addon = addonDetails("kundli-pdf", config.variant);
+  const total = config.price + (withCall && addon ? addon.rupees : 0);
 
   const [placeQuery, setPlaceQuery] = useState("");
   const [places, setPlaces] = useState<GeoPick[]>([]);
@@ -149,6 +170,7 @@ export function ReportPurchaseForm({
     if (emailErr) e.email = emailErr;
     const phoneErr = validatePhone(form.phone, countryIso);
     if (phoneErr) e.phone = phoneErr;
+    if (withCall && !slot) e.slot = "Please pick a time for your call";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -185,13 +207,16 @@ export function ReportPurchaseForm({
     if (!validateStep2()) return;
 
     setStatus("starting");
-    const priceLabel = formatINR(config.price);
     const [firstName, ...rest] = form.name.trim().split(/\s+/);
     const tob = `${form.hour}:${form.minute}`;
     const dobApi = toApiDob(form.dob);
+    const phone = toE164(form.phone, countryIso);
+    const customer = { name: form.name.trim(), email: form.email.trim(), phone };
 
+    let place: GeoPick;
+    let resp: RazorpaySuccess;
     try {
-      const place = await resolvePlace();
+      place = await resolvePlace();
 
       // Capture the lead before checkout so an abandoned payment is still a
       // contact. Fire-and-forget — a CRM hiccup must never block the sale.
@@ -199,126 +224,116 @@ export function ReportPurchaseForm({
         firstName: firstName || "Client",
         lastName: rest.join(" "),
         email: form.email,
-        phone: toE164(form.phone, countryIso),
+        phone,
         dateOfBirth: dobApi,
         timeOfBirth: tob,
         placeOfBirth: place.label,
         service: "kundli",
         serviceLabel: config.name,
         sourceForm: `Landing: ${config.slug}`,
-        tags: ["Kundli PDF: Checkout Started", `Tier: ${config.name}`],
+        tags: [
+          "Kundli PDF: Checkout Started",
+          `Tier: ${config.name}`,
+          ...(withCall ? ["Consultation add-on: Checkout Started"] : []),
+        ],
       }).catch(() => undefined);
 
-      await loadRazorpayScript();
-      const order = await createOrder({
+      resp = await payWithRazorpay({
         service: "kundli-pdf",
         variant: config.variant,
-        notes: {
-          type: `Kundli PDF: ${config.name}`,
+        addons: withCall ? [CONSULTATION_ADDON.key] : [],
+        slot: withCall ? slot : null,
+        notes: { type: `Kundli PDF: ${config.name}`, name: form.name, email: form.email, phone },
+        description: withCall ? `${config.name} + 15-min call` : `${config.name} — Kundli PDF`,
+        prefill: { name: form.name, email: form.email, contact: phone },
+        themeColor: config.theme.ink,
+      });
+    } catch (caught) {
+      const err = caught as { code?: string; message?: string };
+      setStatus("idle");
+      if (caught instanceof CheckoutError && caught.code === "DISMISSED") return;
+      if (err?.code === "SLOT_UNAVAILABLE" || err?.code === "SLOT_REQUIRED") {
+        // Taken while they were filling the form — offer fresh times.
+        setSlot(null);
+        setSlotRefresh((k) => k + 1);
+        setErrors((e) => ({ ...e, slot: err.message }));
+        return;
+      }
+      toast.error(err?.message || "Something went wrong. Please try again.");
+      return;
+    }
+
+    // Paid. The receipt, booking and report each confirm this payment with
+    // Razorpay on the server, so none of them waits on another.
+    void verifyPayment({ ...resp, customer }).catch(() => undefined);
+    if (withCall) setPaidCall({ payment: resp, customer });
+
+    void submitProspectIQLead({
+      firstName: firstName || "Client",
+      lastName: rest.join(" "),
+      email: form.email,
+      phone,
+      dateOfBirth: dobApi,
+      timeOfBirth: tob,
+      placeOfBirth: place.label,
+      service: "kundli",
+      serviceLabel: config.name,
+      amountPaid: formatINR(total),
+      sourceForm: `Landing: ${config.slug}`,
+      tags: ["Paid: Kundli PDF", `Tier: ${config.name}`, "Paid Customer"],
+    }).catch(() => undefined);
+
+    setStatus("delivering");
+    setElapsed(0);
+
+    try {
+      const delivery = await deliverKundliPdf(
+        {
           name: form.name,
           email: form.email,
-          phone: form.phone,
+          dob: dobApi,
+          tob,
+          lat: place.lat,
+          lon: place.lon,
+          tz: place.tz,
+          pob: place.label,
+          variant: config.variant,
+          razorpay_order_id: resp.razorpay_order_id,
+          razorpay_payment_id: resp.razorpay_payment_id,
+          razorpay_signature: resp.razorpay_signature,
         },
+        (ms) => setElapsed(Math.round(ms / 1000)),
+      );
+
+      const pdfs = delivery.downloadUrls?.length
+        ? delivery.downloadUrls
+        : [{
+            name: delivery.tierName ?? config.name,
+            url: delivery.downloadUrl,
+            fileName: delivery.fileName,
+          }];
+      setDelivered(pdfs);
+      setEmailed(Boolean(delivery.emailed));
+      setStatus("done");
+      // deliverKundliPdf already opens each PDF in a tab and saves a copy
+      // to disk. Opening again here gave every customer two tabs per
+      // report; the success card below is the deliberate re-open path.
+      toast.success(`Your ${config.name} is ready`, {
+        description: delivery.emailed
+          ? "Downloaded and emailed to you. The links never expire."
+          : "Downloaded to your device. Save it — the link never expires.",
+        duration: 12000,
       });
-      if (!window.Razorpay) throw new Error("Payment gateway unavailable");
-
-      const checkout = new window.Razorpay({
-        key: order.key_id,
-        amount: order.amount,
-        currency: order.currency,
-        name: "JyotishNow",
-        description: `${config.name} — Kundli PDF`,
-        order_id: order.order_id,
-        prefill: { name: form.name, email: form.email, contact: form.phone },
-        theme: { color: config.theme.ink },
-        modal: { ondismiss: () => setStatus("idle") },
-        handler: async (resp) => {
-          try {
-            await verifyPayment({
-              ...resp,
-              customer: { name: form.name, email: form.email, phone: form.phone },
-              service: `Kundli PDF: ${config.name}`,
-              amount: priceLabel,
-            });
-
-            void submitProspectIQLead({
-              firstName: firstName || "Client",
-              lastName: rest.join(" "),
-              email: form.email,
-              phone: toE164(form.phone, countryIso),
-              dateOfBirth: dobApi,
-              timeOfBirth: tob,
-              placeOfBirth: place.label,
-              service: "kundli",
-              serviceLabel: config.name,
-              amountPaid: priceLabel,
-              sourceForm: `Landing: ${config.slug}`,
-              tags: ["Paid: Kundli PDF", `Tier: ${config.name}`, "Paid Customer"],
-            }).catch(() => undefined);
-
-            setStatus("delivering");
-            setElapsed(0);
-
-            const delivery = await deliverKundliPdf(
-              {
-                name: form.name,
-                email: form.email,
-                dob: dobApi,
-                tob,
-                lat: place.lat,
-                lon: place.lon,
-                tz: place.tz,
-                pob: place.label,
-                variant: config.variant,
-                razorpay_order_id: resp.razorpay_order_id,
-                razorpay_payment_id: resp.razorpay_payment_id,
-                razorpay_signature: resp.razorpay_signature,
-              },
-              (ms) => setElapsed(Math.round(ms / 1000)),
-            );
-
-            const pdfs = delivery.downloadUrls?.length
-              ? delivery.downloadUrls
-              : [{
-                  name: delivery.tierName ?? config.name,
-                  url: delivery.downloadUrl,
-                  fileName: delivery.fileName,
-                }];
-            setDelivered(pdfs);
-            setEmailed(Boolean(delivery.emailed));
-            setStatus("done");
-            // deliverKundliPdf already opens each PDF in a tab and saves a copy
-            // to disk. Opening again here gave every customer two tabs per
-            // report; the success card below is the deliberate re-open path.
-            toast.success(`Your ${config.name} is ready`, {
-              description: delivery.emailed
-                ? "Downloaded and emailed to you. The links never expire."
-                : "Downloaded to your device. Save it — the link never expires.",
-              duration: 12000,
-            });
-          } catch (err) {
-            setStatus("done");
-            const detail =
-              err instanceof KundliPdfError
-                ? err.message
-                : "Your payment went through. Please contact us and we'll send the report right away.";
-            toast.error("Couldn't prepare your report", {
-              description: detail,
-              duration: 20000,
-            });
-          }
-        },
+    } catch (err) {
+      setStatus("done");
+      const detail =
+        err instanceof KundliPdfError
+          ? err.message
+          : "Your payment went through. Please contact us and we'll send the report right away.";
+      toast.error("Couldn't prepare your report", {
+        description: detail,
+        duration: 20000,
       });
-
-      checkout.on("payment.failed", () => {
-        setStatus("idle");
-        toast.error("Payment failed", { description: "No money was taken. Please try again." });
-      });
-
-      checkout.open();
-    } catch (err: any) {
-      setStatus("idle");
-      toast.error(err?.message || "Something went wrong. Please try again.");
     }
   };
 
@@ -340,49 +355,59 @@ export function ReportPurchaseForm({
     serviceLabel: config.name,
   };
 
-  if (status === "done" && delivered.length) {
-    return (
-      <div className="rounded-2xl sm:rounded-3xl bg-white p-6 sm:p-8 shadow-2xl text-center">
-        <div
-          className="mx-auto grid h-14 w-14 place-items-center rounded-full"
-          style={{ background: `${gold}33` }}
-        >
-          <Check className="h-7 w-7" style={{ color: config.theme.ink }} strokeWidth={3} />
-        </div>
-        <h3 className="mt-4 font-serif text-xl sm:text-2xl font-bold" style={{ color: config.theme.ink }}>
-          Your report is ready
-        </h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {emailed ? (
-            <>
-              It's on its way to <b className="break-all">{form.email}</b> and usually arrives within a few
-              minutes. The download links below never expire.
-            </>
-          ) : (
-            <>
-              We couldn't email it this time, so please save the download links below — they never
-              expire. Message us on WhatsApp and we'll send it over.
-            </>
-          )}
-        </p>
-        <div className="mt-5 space-y-2.5">
-          {delivered.map((p) => (
-            <Button
-              key={p.url}
-              onClick={() => openInNewTab(p.url)}
-              className="h-auto w-full justify-between gap-3 rounded-xl px-4 py-3.5 text-left text-white"
-              style={{ background: `linear-gradient(180deg, ${config.theme.cta}, ${config.theme.ctaDark})` }}
-            >
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
-              <FileDown className="h-4 w-4 shrink-0" />
-            </Button>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Kept in one position whichever view shows, so the booking runs once and
+  // its result survives the switch to the "report ready" card.
+  const callPanel = paidCall && addon && (
+    <div className="mt-3">
+      <BookingStatus
+        payment={paidCall.payment}
+        customer={paidCall.customer}
+        calendarId={addon.calendarId}
+        minutes={addon.minutes}
+        theme={config.theme}
+      />
+    </div>
+  );
 
-  return (
+  const view = status === "done" && delivered.length ? (
+    <div className="rounded-2xl sm:rounded-3xl bg-white p-6 sm:p-8 shadow-2xl text-center">
+      <div
+        className="mx-auto grid h-14 w-14 place-items-center rounded-full"
+        style={{ background: `${gold}33` }}
+      >
+        <Check className="h-7 w-7" style={{ color: config.theme.ink }} strokeWidth={3} />
+      </div>
+      <h3 className="mt-4 font-serif text-xl sm:text-2xl font-bold" style={{ color: config.theme.ink }}>
+        Your report is ready
+      </h3>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {emailed ? (
+          <>
+            It's on its way to <b className="break-all">{form.email}</b> and usually arrives within a few
+            minutes. The download links below never expire.
+          </>
+        ) : (
+          <>
+            We couldn't email it this time, so please save the download links below — they never
+            expire. Message us on WhatsApp and we'll send it over.
+          </>
+        )}
+      </p>
+      <div className="mt-5 space-y-2.5">
+        {delivered.map((p) => (
+          <Button
+            key={p.url}
+            onClick={() => openInNewTab(p.url)}
+            className="h-auto w-full justify-between gap-3 rounded-xl px-4 py-3.5 text-left text-white"
+            style={{ background: `linear-gradient(180deg, ${config.theme.cta}, ${config.theme.ctaDark})` }}
+          >
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
+            <FileDown className="h-4 w-4 shrink-0" />
+          </Button>
+        ))}
+      </div>
+    </div>
+  ) : (
     // deliberately no overflow-hidden here: it would clip the place-of-birth
     // suggestion list, which hangs below the input.
     <form
@@ -566,6 +591,27 @@ export function ReportPurchaseForm({
             </Field>
             </div>
 
+            {!paidCall && (
+              <ConsultationAddon
+                idPrefix={idPrefix}
+                service="kundli-pdf"
+                variant={config.variant}
+                checked={withCall}
+                onCheckedChange={(v) => {
+                  setWithCall(v);
+                  setErrors((e) => (e.slot ? { ...e, slot: "" } : e));
+                }}
+                slot={slot}
+                onSlotChange={(v) => {
+                  setSlot(v);
+                  if (v) setErrors((e) => (e.slot ? { ...e, slot: "" } : e));
+                }}
+                theme={config.theme}
+                refreshKey={slotRefresh}
+                error={errors.slot || undefined}
+              />
+            )}
+
             <div className="rounded-xl px-4 py-3" style={{ background: `${gold}1f` }}>
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="font-semibold" style={{ color: config.theme.ink }}>{config.name}</span>
@@ -573,6 +619,14 @@ export function ReportPurchaseForm({
                   {formatINR(config.price)}
                 </span>
               </div>
+              {withCall && addon && (
+                <div className="mt-1 flex items-center justify-between gap-3 text-sm">
+                  <span className="font-semibold" style={{ color: config.theme.ink }}>15-min call with Dr. Sandeep</span>
+                  <span className="font-serif text-lg font-extrabold" style={{ color: config.theme.ink }}>
+                    {formatINR(addon.rupees)}
+                  </span>
+                </div>
+              )}
               <p className="mt-0.5 text-[11px] text-muted-foreground">
                 {config.pages} · one-time payment · no subscription
               </p>
@@ -590,7 +644,7 @@ export function ReportPurchaseForm({
               ) : status === "delivering" ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Building your report… {elapsed}s</>
               ) : (
-                <><Lock className="mr-2 h-4 w-4" /> {config.cta} · {formatINR(config.price)}</>
+                <><Lock className="mr-2 h-4 w-4" /> {config.cta} · {formatINR(total)}</>
               )}
             </Button>
 
@@ -600,7 +654,7 @@ export function ReportPurchaseForm({
               </p>
             )}
 
-            {!busy && (
+            {!busy && !paidCall && (
               <button
                 type="button"
                 onClick={() => setStep(1)}
@@ -622,11 +676,18 @@ export function ReportPurchaseForm({
       </div>
     </form>
   );
+
+  return (
+    <div>
+      {view}
+      {callPanel}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------ field shell */
 
-function Field({
+export function Field({
   label, htmlFor, error, children, className,
 }: {
   label: string; htmlFor?: string; error?: string; children: React.ReactNode; className?: string;

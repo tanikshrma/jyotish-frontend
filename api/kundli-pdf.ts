@@ -1,12 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import crypto from "node:crypto";
-import {
-  RAZORPAY_KEY_ID,
-  RAZORPAY_KEY_SECRET as RZP_SECRET,
-  readJsonBody,
-  readJsonResponse,
-  requirePost,
-} from "./_razorpay.js";
+import { readJsonBody, readJsonResponse, requirePost } from "./_razorpay.js";
+import { paidReportOrder } from "./_payments.js";
 import {
   getKundliPdfTier,
   type KundliPdfTier,
@@ -14,7 +8,6 @@ import {
 } from "../shared/pricing.js";
 import { RUN_INLINE, createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
 import { recordPaymentInCrm } from "./_crm.js";
-import { getPriceInRupees } from "../shared/pricing.js";
 import { DEFAULT_PDF_LANG, DEFAULT_PDF_THEME_HUE } from "../shared/pdf-theme.js";
 
 /**
@@ -37,14 +30,12 @@ const BASE_URL = "https://api.vedicastroapi.com/v3-json";
 const PIQ_BASE = "https://services.leadconnectorhq.com";
 
 const API_KEY = process.env.VEDICASTRO_API_KEY;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 const PIQ_TOKEN = process.env.PROSPECTIQ_PRIVATE_TOKEN;
 const PIQ_LOCATION = process.env.PROSPECTIQ_LOCATION_ID;
 const PIQ_FROM = process.env.PROSPECTIQ_EMAIL_FROM || "myjyotishnow@gmail.com";
 
-// NOTE: "prediction" is singular. VedicAstro's own Postman docs say
-// "predictions", which the API rejects with 400 "Invalid PDF Size".
-const PDF_TYPES = ["small", "medium", "large", "prediction"] as const;
+/** The tier every pre-tiers kundli order was sold as. */
+const LEGACY_TIER_VARIANT = "premium";
 
 /**
  * The contact block printed on the report's last page. VedicAstro controls its
@@ -82,20 +73,6 @@ const piqHeaders = () => ({
   Authorization: `Bearer ${PIQ_TOKEN}`,
   Version: "2021-07-28",
 });
-
-const paymentIsValid = (body: Record<string, unknown>): boolean => {
-  const orderId = String(body.razorpay_order_id ?? "");
-  const paymentId = String(body.razorpay_payment_id ?? "");
-  const signature = String(body.razorpay_signature ?? "");
-  if (!orderId || !paymentId || !signature || !RAZORPAY_KEY_SECRET) return false;
-  const expected = crypto
-    .createHmac("sha256", RAZORPAY_KEY_SECRET)
-    .update(`${orderId}|${paymentId}`)
-    .digest("hex");
-  const a = Buffer.from(expected, "utf8");
-  const b = Buffer.from(signature, "utf8");
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-};
 
 export const safeName = (name: string) =>
   (name || "Kundli").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 60);
@@ -303,31 +280,6 @@ const PDF_TYPE_NAME: Record<KundliPdfType, string> = {
   prediction: "Life Predictions",
 };
 
-/**
- * Reads the Razorpay order's `notes.variant` — the tier the customer ACTUALLY
- * paid for. Binding generation to this (not a client-supplied field) stops a
- * ₹99 purchase from requesting the ₹499 bundle. Returns null if the lookup
- * can't run (e.g. local dev without live keys), in which case the handler
- * falls back to the client's requested tier.
- */
-const getOrderVariant = async (orderId: string): Promise<string | null> => {
-  if (!RAZORPAY_KEY_ID || !RZP_SECRET || !orderId) return null;
-  try {
-    const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RZP_SECRET}`).toString("base64");
-    const r = await fetch(`https://api.razorpay.com/v1/orders/${orderId}`, {
-      headers: { Authorization: `Basic ${auth}` },
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
-    });
-    if (!r.ok) return null;
-    const order = await readJsonResponse(r);
-    const v = order?.notes?.variant;
-    return typeof v === "string" && v ? v : null;
-  } catch (error) {
-    console.error("[kundli-pdf] order lookup failed", error);
-    return null;
-  }
-};
-
 type GenOk = {
   ok: true;
   url: string;
@@ -356,6 +308,8 @@ export const READY_CHECK_TIMEOUT_MS = 15_000;
 export const DOWNLOAD_TIMEOUT_MS = 60_000;
 export const DOWNLOAD_ATTEMPTS = 3;
 export const API_TIMEOUT_MS = 30_000;
+/** Stand-in link returned by a dry run (see paidReportOrder). */
+export const DRY_RUN_URL = "https://jyotishnow.com/";
 export const UPLOAD_TIMEOUT_MS = 90_000;
 
 export const downloadWhenReady = async (
@@ -505,8 +459,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const body = readJsonBody(req);
 
-  if (!paymentIsValid(body)) {
-    return res.status(402).json({ error: "Valid payment required for PDF export" });
+  // The signature proves a payment happened; the order (read from Razorpay,
+  // never the browser) says it was for a kundli report, and which tier.
+  const paid = await paidReportOrder(body, "kundli-pdf");
+  if (paid.ok === false) {
+    return res.status(paid.status).json({ error: paid.error, retryable: paid.retryable });
   }
 
   const missing = (["dob", "tob", "lat", "lon", "tz", "name"] as const).filter(
@@ -516,30 +473,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: `Missing required fields: ${missing.join(", ")}` });
   }
 
-  // Resolve WHICH reports to generate. Prefer the paid tier from the Razorpay
-  // order notes (authoritative); fall back to the client's requested tier /
-  // pdf_type only when the order lookup can't run.
-  const paidVariant = await getOrderVariant(String(body.razorpay_order_id ?? ""));
-  let tier: KundliPdfTier | null = paidVariant ? getKundliPdfTier(paidVariant) : null;
+  // Orders from the older single-report checkout (default / report-only /
+  // report-consultation) were all the Premium Kundli.
+  const paidVariant = paid.order.notes.variant;
+  const tier: KundliPdfTier | null =
+    getKundliPdfTier(paidVariant) ?? getKundliPdfTier(LEGACY_TIER_VARIANT);
   if (!tier) {
-    const requested = String(body.variant ?? "");
-    tier = getKundliPdfTier(requested);
+    console.error("[kundli-pdf] no tier for paid variant", paidVariant);
+    return res.status(500).json({ error: "Report tier is not configured" });
   }
-
-  let pdfTypes: KundliPdfType[];
-  let tierName: string;
-  if (tier) {
-    pdfTypes = tier.pdfTypes;
-    tierName = tier.name;
-  } else {
-    // Legacy single-type path.
-    const pdfType = String(body.pdf_type ?? "large");
-    if (!PDF_TYPES.includes(pdfType as (typeof PDF_TYPES)[number])) {
-      return res.status(400).json({ error: `pdf_type must be one of: ${PDF_TYPES.join(", ")}` });
-    }
-    pdfTypes = [pdfType as KundliPdfType];
-    tierName = PDF_TYPE_NAME[pdfType as KundliPdfType] ?? "Kundli Report";
-  }
+  const pdfTypes: KundliPdfType[] = tier.pdfTypes;
+  const tierName = tier.name;
 
   const paymentId = String(body.razorpay_payment_id ?? "");
   const orderId = String(body.razorpay_order_id ?? "");
@@ -551,11 +495,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(existing.status === "pending" ? 202 : 200).json(jobResponse(existing));
   }
 
-  const job = await createJob(paymentId, orderId, tier?.variant ?? paidVariant ?? undefined, tierName);
+  const job = await createJob(paymentId, orderId, tier.variant, tierName);
 
   // Reflect the sale in Prospect IQ regardless of how generation goes — the
-  // customer has already paid.
-  const paidRupees = getPriceInRupees("kundli-pdf", tier?.variant ?? paidVariant ?? "default") ?? 0;
+  // customer has already paid. Only the report's share: a consultation add-on
+  // is recorded by /api/book-consultation.
+  const paidRupees = paid.order.quote?.lines[0]?.rupees ?? paid.order.amountRupees;
   void recordPaymentInCrm({
     email: String(body.email ?? ""),
     phone: String(body.phone ?? ""),
@@ -570,6 +515,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Render, download, re-host and email. A Complete Bundle takes 60-120s.
   const deliver = async () => {
     try {
+      if (paid.dryRun) {
+        await updateJob(paymentId, {
+          status: "ready",
+          pdfs: pdfTypes.map((pt) => ({ name: `[dry run] ${PDF_TYPE_NAME[pt]}`, url: DRY_RUN_URL, fileName: "dry-run.pdf" })),
+          emailed: false,
+        });
+        console.log(`[kundli-pdf] dry run for ${paymentId}: would render ${pdfTypes.join("+")}`);
+        return;
+      }
       // Reports render in parallel so total time ≈ the slowest single report.
       const settled = await Promise.all(pdfTypes.map((pt) => generatePdf(pt, body)));
       const results = settled.filter((r): r is GenOk => r.ok);

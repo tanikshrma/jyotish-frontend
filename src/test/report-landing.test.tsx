@@ -69,9 +69,20 @@ describe("Kundli report landing pages", () => {
     expect(screen.getAllByText(/₹499/).length).toBeGreaterThan(0);
   });
 
-  it("still renders the consultation landers sharing the /lp/ namespace", () => {
+  it("still renders the topic landers sharing the /lp/ namespace", () => {
     window.history.pushState({}, "", "/lp/career");
     const { container } = render(<App />);
     expect(container).toBeTruthy();
+    // Topic pages now sell the report up top and a full consultation below.
+    expect(screen.getAllByText(/₹299/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/₹2,599/).length).toBeGreaterThan(0);
+  });
+
+  it("renders /lp/kundli-matching with the ₹299 report and the ₹999 call add-on", () => {
+    window.history.pushState({}, "", "/lp/kundli-matching");
+    const { container } = render(<App />);
+    expect(container).toBeTruthy();
+    expect(screen.getAllByText(/₹299/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/₹999/).length).toBeGreaterThan(0);
   });
 });

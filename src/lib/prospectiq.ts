@@ -182,34 +182,3 @@ export const fetchProspectIQCalendarSlots = async (
   }
 };
 
-export const bookProspectIQAppointment = async (booking: BookingData) => {
-  try {
-    // 1. First ensure contact exists in Prospect IQ
-    const contactResult = await submitProspectIQLead({
-      ...booking,
-      tags: [...(booking.tags || []), "Calendar Booking"],
-    });
-
-    const contactId = contactResult?.contact?.id;
-
-    const targetCalendarId = booking.calendarId || getCalendarIdForService(booking.service);
-
-    // 2. Create appointment
-    const res = await fetch("/api/prospectiq", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "create-appointment",
-        calendarId: targetCalendarId,
-        contactId,
-        selectedSlot: booking.selectedSlot,
-        title: `Astrology Consultation - ${booking.firstName} ${booking.lastName || ""}`.trim(),
-      }),
-    });
-
-    return await res.json();
-  } catch (error) {
-    console.error("[ProspectIQ bookAppointment error]", error);
-    return { error: "Failed to create calendar appointment" };
-  }
-};

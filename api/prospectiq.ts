@@ -4,6 +4,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 /**
  * Prospect IQ / GoHighLevel API v2 integration serverless route.
  * Handles server-to-server calls to https://services.leadconnectorhq.com securely.
+ * Public: lead capture and calendar availability only.
  */
 
 const BASE_URL = "https://services.leadconnectorhq.com";
@@ -118,73 +119,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json(data);
       }
 
-      case "create-appointment": {
-        const payload = {
-          calendarId: body.calendarId || process.env.PROSPECTIQ_CALENDAR_ID,
-          locationId: body.locationId || locationId,
-          contactId: body.contactId,
-          startTime: body.selectedSlot || body.startTime,
-          endTime: body.endTime,
-          title: body.title || "JyotishNow Consultation",
-          appointmentStatus: body.appointmentStatus || "confirmed",
-        };
-
-        if (!token) {
-          console.warn("[ProspectIQ API] No PROSPECTIQ_PRIVATE_TOKEN set. Returning mock appointment creation.");
-          return res.status(200).json({
-            success: true,
-            mock: true,
-            appointment: { id: "mock_appt_" + Date.now(), ...payload },
-          });
-        }
-
-        const response = await fetch(`${BASE_URL}/calendars/events/appointments`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(payload),
-        });
-
-        const data = await readJsonResponse(response);
-        if (!response.ok) {
-          console.error("[ProspectIQ API] Create Appointment Failed:", data);
-          return res.status(response.status).json({ error: "Failed to create appointment", details: data });
-        }
-
-        return res.status(200).json({ success: true, appointment: data.event || data });
-      }
-
-      case "create-opportunity": {
-        const payload = {
-          pipelineId: body.pipelineId,
-          pipelineStageId: body.pipelineStageId,
-          locationId: body.locationId || locationId,
-          name: body.name || "New Lead Opportunity",
-          status: body.status || "open",
-          contactId: body.contactId,
-          monetaryValue: body.monetaryValue || 0,
-        };
-
-        if (!token) {
-          return res.status(200).json({
-            success: true,
-            mock: true,
-            opportunity: { id: "mock_opp_" + Date.now(), ...payload },
-          });
-        }
-
-        const response = await fetch(`${BASE_URL}/opportunities/`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(payload),
-        });
-
-        const data = await readJsonResponse(response);
-        if (!response.ok) {
-          return res.status(response.status).json({ error: "Failed to create opportunity", details: data });
-        }
-
-        return res.status(200).json({ success: true, opportunity: data.opportunity || data });
-      }
+      // Appointments and opportunities are no longer created through this
+      // public endpoint — anyone could book Dr. Sandeep's calendar or add
+      // fake sales without paying. Paid bookings go through
+      // /api/book-consultation, which verifies the payment first.
+      case "create-appointment":
+      case "create-opportunity":
+        return res.status(410).json({ error: `${action} is not available; use /api/book-consultation` });
 
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });

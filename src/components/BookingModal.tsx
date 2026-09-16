@@ -86,7 +86,9 @@ interface BookingModalProps {
   consultationVariant?: string;
 }
 
-import { fetchProspectIQCalendarSlots, bookProspectIQAppointment, submitProspectIQLead, getCalendarIdForService } from "@/lib/prospectiq";
+import { fetchProspectIQCalendarSlots, submitProspectIQLead, getCalendarIdForService } from "@/lib/prospectiq";
+import { BookingError, bookConsultation, bookableStarts } from "@/lib/consultation";
+import { isQuote, quoteOrder } from "../../shared/consultation";
 import { loadRazorpayScript, createOrder, verifyPayment } from "@/lib/razorpay";
 import { getPriceInRupees, formatINR, SERVICES, type ServiceId } from "../../shared/pricing";
 
@@ -218,7 +220,14 @@ export const BookingModal = React.forwardRef<HTMLDivElement, BookingModalProps>(
       const startMs = today.getTime();
       const endMs = startMs + 45 * 24 * 60 * 60 * 1000;
       const data = await fetchCalendarFreeSlots(activeCalendarId, startMs, endMs);
-      const slotMap = normalizeSlotMap(data);
+      const pricing = mapServiceToPricing(targetService, effectiveVariant);
+      const quote = quoteOrder(pricing.serviceId, pricing.variant);
+      const minutes = isQuote(quote) && quote.consultation ? quote.consultation.minutes : 30;
+      const slotMap = Object.fromEntries(
+        Object.entries(normalizeSlotMap(data))
+          .map(([day, list]) => [day, bookableStarts(list, minutes)] as const)
+          .filter(([, list]) => list.length > 0),
+      );
       setSlotsData(slotMap);
 
       const availableDateKeys = Object.keys(slotMap)
@@ -333,12 +342,14 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
       const order = await createOrder({
         service: pricing.serviceId,
         variant: pricing.variant,
+        // The slot is part of the order: the server checks it is still free
+        // before charging, and books it once the payment is confirmed.
+        slot: selectedSlot,
         notes: {
           service,
           customer_name: `${firstName} ${lastName}`,
           customer_email: email,
           customer_phone: toE164(phone, countryIso),
-          selected_slot: selectedSlot,
         },
       });
 
@@ -364,32 +375,30 @@ function mapServiceToPricing(serviceName: string, customVariant?: string): { ser
         theme: { color: "#7A0808" },
         handler: async (response: any) => {
           try {
-            const verificationResult = await verifyPayment({
-              ...response,
-              customer: {
-                name: `${firstName} ${lastName}`.trim(),
-                email,
-                phone: toE164(phone, countryIso),
-              },
-              service: `${service} (Consultation)`,
-              amount: formatINR(order.amount / 100),
-            });
-            
-            // Confirm appointment on Prospect IQ calendar upon payment confirmation
-            const activeCalendarId = getCalendarIdForService(service);
-            await bookProspectIQAppointment({
-              calendarId: activeCalendarId,
-              firstName,
-              lastName,
+            const customer = {
+              name: `${firstName} ${lastName}`.trim(),
               email,
               phone: toE164(phone, countryIso),
-              selectedSlot,
-              service,
-            });
+            };
+            await verifyPayment({ ...response, customer });
+
+            // Booked by the server after it confirms the payment with Razorpay.
+            let when = "";
+            try {
+              const booked = await bookConsultation({ ...response, customer });
+              when = booked.when;
+            } catch (bookErr) {
+              const e = bookErr instanceof BookingError ? bookErr : null;
+              toast.warning("Payment received — your slot needs confirming", {
+                description: `${e?.message ?? "We couldn't book that time automatically"}. Our team will call you to schedule it. Payment ID: ${response.razorpay_payment_id}.`,
+                duration: 20000,
+              });
+              return;
+            }
 
             setIsOpen(false);
             toast.success("Consultation Booked & Payment Confirmed!", {
-              description: `Payment ID: ${response.razorpay_payment_id}. Receipt emailed to you.`,
+              description: `${when}. Payment ID: ${response.razorpay_payment_id}. Receipt emailed to you.`,
               icon: <Sparkles className="w-5 h-5 text-secondary" />,
             });
           } catch (err: any) {

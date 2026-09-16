@@ -21,7 +21,8 @@ export type ServiceId =
   | "lalkitab-consultation"
   | "complete-horoscope"
   | "kundli-pdf"
-  | "matchmaking-pdf";
+  | "matchmaking-pdf"
+  | "consultation-addon";
 
 export type Service = {
   label: string;
@@ -30,6 +31,12 @@ export type Service = {
 };
 
 export const SERVICES: Record<ServiceId, Service> = {
+  "consultation-addon": {
+    label: "15-min Consultation with Dr. Sandeep Sawhney",
+    // Only sold alongside a report (see shared/consultation.ts). Shorter than
+    // the 30-min consultation-call, so the add-on price never undercuts it.
+    variants: { "15 Min|Audio": 999, default: 999 },
+  },
   "matchmaking-pdf": {
     label: "Official Kundli Matching PDF Report",
     // Single Ashtakoot report (~23 pages) from VedicAstro's matching-queue.
@@ -131,6 +138,8 @@ export const DEFAULT_VARIANT = "default";
  * binds the requested report to the tier that was actually paid for, so a
  * cheaper purchase can't unlock a pricier report).
  */
+// NOTE: "prediction" is singular. VedicAstro's own Postman docs say
+// "predictions", which the API rejects with 400 "Invalid PDF Size".
 export type KundliPdfType = "small" | "medium" | "large" | "prediction";
 
 export type KundliPdfTier = {

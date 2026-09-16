@@ -1,19 +1,90 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import crypto from "node:crypto";
-import {
-  RAZORPAY_KEY_SECRET,
-  hasCredentials,
-  readJsonBody,
-  requirePost,
-  readJsonResponse,
-} from "./_razorpay.js";
+import { hasCredentials, readJsonBody, requirePost } from "./_razorpay.js";
 import { recordPaymentInCrm } from "./_crm.js";
+import { TEST_TAG, fetchPaidOrder, isTestMode, signatureIsValid } from "./_payments.js";
+import { ghlLocation, ghlToken, upsertContact } from "./_ghl.js";
+import { formatINR, getServiceLabel } from "../shared/pricing.js";
+import { ADDON_BASE_SERVICES, formatSlotIST } from "../shared/consultation.js";
 
 /**
  * POST /api/verify-payment
- * Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, customer?: { name, email, phone }, service?, amount? }
- * Returns: { verified: true, payment_id, order_id } on a signature match.
+ * Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, customer?: { name, email, phone } }
+ * Returns: { verified: true, payment_id, order_id, receiptDetails, ... }
+ *
+ * Confirms the payment with Razorpay and sends the receipt. What was bought and
+ * what was paid come from the Razorpay order, never from the request body, so
+ * a receipt can't be made to show a different product or amount.
+ *
+ * CRM: reports and consultations are recorded by the endpoints that fulfil
+ * them (/api/kundli-pdf, /api/matchmaking-pdf, /api/book-consultation), each at
+ * its own price — recording them here too would double-count the sale. Only
+ * orders nothing else fulfils are recorded here.
  */
+
+const PIQ_BASE = "https://services.leadconnectorhq.com";
+const SUPPORT_EMAIL = "myjyotishnow@gmail.com";
+const SUPPORT_PHONE = "+91 70155 44187";
+
+const esc = (v: string) =>
+  v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+
+const row = (label: string, value: string, style = "") => `
+                <tr>
+                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;vertical-align:top;">${label}</td>
+                  <td style="padding:6px 0 6px 12px;border-bottom:1px solid #f0f0f0;text-align:right;${style}">${value}</td>
+                </tr>`;
+
+type Receipt = {
+  items: { label: string; rupees: number }[];
+  amountStr: string;
+  paymentId: string;
+  orderId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  callTime: string | null;
+  testMode: boolean;
+};
+
+const receiptHtml = (r: Receipt) => `
+      <div style="margin:0;padding:12px;background:#fdfbf7;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e6d5b8;border-radius:12px;border-collapse:separate;overflow:hidden;">
+          <tr>
+            <td style="background:#7A0808;padding:14px 16px;text-align:center;">
+              <div style="font-family:Georgia,serif;font-size:20px;line-height:24px;color:#ffffff;font-weight:bold;">JyotishNow</div>
+              <div style="font-size:10px;line-height:14px;color:#f5c27a;letter-spacing:.5px;text-transform:uppercase;margin-top:2px;">${r.testMode ? "TEST receipt · no money was charged" : "Official Payment Receipt"}</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px;">
+              <div style="font-size:15px;line-height:20px;color:#2e7d32;font-weight:bold;margin:0 0 4px;">Payment Successful</div>
+              <div style="font-size:12px;line-height:17px;color:#555555;margin:0 0 12px;">Thank you for choosing JyotishNow. Here is your receipt.</div>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;font-size:12px;line-height:16px;">
+                ${r.items.map((i) => row(esc(i.label), formatINR(i.rupees), "color:#7A0808;font-weight:bold;")).join("")}
+                ${r.callTime ? row("Your call", esc(r.callTime), "font-weight:bold;") : ""}
+                ${row("Amount Paid", esc(r.amountStr), "color:#2e7d32;font-weight:bold;font-size:14px;")}
+                ${row("Payment ID", esc(r.paymentId), "font-family:monospace;font-size:11px;word-break:break-all;")}
+                ${row("Order ID", esc(r.orderId), "font-family:monospace;font-size:11px;word-break:break-all;")}
+                ${row("Name", esc(r.customerName))}
+                ${row("Email", esc(r.customerEmail || "N/A"), "word-break:break-all;")}
+                ${row("Phone", esc(r.customerPhone || "N/A"))}
+                <tr>
+                  <td style="padding:6px 0;color:#777777;white-space:nowrap;">Status</td>
+                  <td style="padding:6px 0;text-align:right;color:#2e7d32;font-weight:bold;">CONFIRMED &amp; PAID</td>
+                </tr>
+              </table>
+
+              <div style="margin-top:14px;padding-top:10px;border-top:1px solid #f0f0f0;font-size:11px;line-height:15px;color:#888888;text-align:center;">
+                Dr. Sandeep Sawhney &middot; JyotishNow<br>
+                ${SUPPORT_EMAIL} &middot; ${SUPPORT_PHONE}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!requirePost(req, res)) return;
 
@@ -33,235 +104,138 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: "razorpay_order_id, razorpay_payment_id and razorpay_signature are required",
       });
     }
-
-    const secret = String(RAZORPAY_KEY_SECRET || "");
-    if (!secret) {
-      return res.status(500).json({ error: "Razorpay secret key missing" });
-    }
-
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(`${orderId}|${paymentId}`)
-      .digest("hex");
-
-    const expectedBuf = Buffer.from(expected, "utf8");
-    const receivedBuf = Buffer.from(signature, "utf8");
-    const verified =
-      expectedBuf.length === receivedBuf.length &&
-      crypto.timingSafeEqual(expectedBuf, receivedBuf);
-
-    if (!verified) {
+    if (!signatureIsValid(orderId, paymentId, signature)) {
       console.warn("Razorpay signature mismatch for order", orderId);
       return res.status(400).json({ error: "Payment verification failed" });
     }
 
-    // Payment is authentic. Hook order fulfillment & Prospect IQ CRM sync here.
-    const token = process.env.PROSPECTIQ_PRIVATE_TOKEN || process.env.GHL_PRIVATE_TOKEN;
-    const locationId = process.env.PROSPECTIQ_LOCATION_ID || "FTD8wmuYqCT7XoIpXJQG";
+    // The signature is authentic; confirm the payment itself and read what
+    // the order was for.
+    const paid = await fetchPaidOrder(orderId, paymentId);
+    if (paid.ok === false) {
+      return res.status(paid.status).json({ error: paid.error, retryable: paid.retryable });
+    }
+    const { quote, notes, amountRupees } = paid.order;
+    const testMode = isTestMode();
 
-    const customer = (body.customer && typeof body.customer === "object") ? (body.customer as Record<string, unknown>) : {};
-    const customerName = String(customer.name || body.name || "Valued Client");
-    const customerEmail = String(customer.email || body.email || "");
-    const customerPhone = String(customer.phone || body.phone || "");
-    const host = (req.headers && req.headers.host) ? String(req.headers.host) : "";
-    const isLocalDev = process.env.NODE_ENV !== "production" || host.includes("localhost") || host.includes("127.0.0.1");
+    const customer =
+      body.customer && typeof body.customer === "object" ? (body.customer as Record<string, unknown>) : {};
+    const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+    const customerName = str(customer.name || body.name, 100) || "Valued Client";
+    const customerEmail = str(customer.email || body.email, 200);
+    const customerPhone = str(customer.phone || body.phone, 20);
 
-    const adminEmail = process.env.ADMIN_EMAIL || (isLocalDev ? "" : "myjyotishnow@gmail.com");
-    const adminPhone = process.env.ADMIN_PHONE || (isLocalDev ? "" : "+917015544187");
+    const items = quote
+      ? quote.lines.map((l) => ({ label: l.label, rupees: l.rupees }))
+      : [{ label: (notes.service && getServiceLabel(notes.service)) || "JyotishNow Service", rupees: amountRupees }];
+    const serviceName = items.map((i) => i.label).join(" + ");
+    const amountStr = formatINR(amountRupees);
+    const callTime = quote?.consultation && notes.slot ? formatSlotIST(notes.slot) : null;
+    const receipt: Receipt = {
+      items, amountStr, paymentId, orderId, customerName, customerEmail, customerPhone, callTime, testMode,
+    };
+    const subject = `${testMode ? "[TEST] " : ""}Receipt: ${serviceName} (${amountStr}) - JyotishNow`;
+    const html = receiptHtml(receipt);
 
-    const serviceName = String(body.service || "Astrology Consultation");
-    const rawAmount = body.amount ? String(body.amount) : "";
-    const amountStr = rawAmount ? (rawAmount.startsWith("₹") ? rawAmount : `₹${rawAmount}`) : "Paid";
+    const hasEmail = customerEmail.includes("@");
+    let receiptSent = false;
 
-    const htmlEmailContent = `
-      <div style="margin:0;padding:12px;background:#fdfbf7;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e6d5b8;border-radius:12px;border-collapse:separate;overflow:hidden;">
-          <tr>
-            <td style="background:#7A0808;padding:14px 16px;text-align:center;">
-              <div style="font-family:Georgia,serif;font-size:20px;line-height:24px;color:#ffffff;font-weight:bold;">JyotishNow</div>
-              <div style="font-size:10px;line-height:14px;color:#f5c27a;letter-spacing:.5px;text-transform:uppercase;margin-top:2px;">Official Payment Receipt</div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:16px;">
-              <div style="font-size:15px;line-height:20px;color:#2e7d32;font-weight:bold;margin:0 0 4px;">Payment Successful</div>
-              <div style="font-size:12px;line-height:17px;color:#555555;margin:0 0 12px;">Thank you for choosing JyotishNow. Here is your receipt.</div>
-
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;font-size:12px;line-height:16px;">
-                <tr>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Service</td>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;color:#7A0808;font-weight:bold;">${serviceName}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Amount Paid</td>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;color:#2e7d32;font-weight:bold;font-size:14px;">${amountStr}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Payment ID</td>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-family:monospace;font-size:11px;word-break:break-all;">${paymentId}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Order ID</td>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-family:monospace;font-size:11px;word-break:break-all;">${orderId}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Name</td>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;">${customerName}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Email</td>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;word-break:break-all;">${customerEmail || 'N/A'}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;color:#777777;white-space:nowrap;">Phone</td>
-                  <td style="padding:6px 0;border-bottom:1px solid #f0f0f0;text-align:right;">${customerPhone || 'N/A'}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;color:#777777;white-space:nowrap;">Status</td>
-                  <td style="padding:6px 0;text-align:right;color:#2e7d32;font-weight:bold;">CONFIRMED &amp; PAID</td>
-                </tr>
-              </table>
-
-              <div style="margin-top:14px;padding-top:10px;border-top:1px solid #f0f0f0;font-size:11px;line-height:15px;color:#888888;text-align:center;">
-                Dr. Sandeep Sawhney &middot; JyotishNow<br>
-                myjyotishnow@gmail.com &middot; +91 7015544187
-              </div>
-            </td>
-          </tr>
-        </table>
-      </div>
-    `;
-
-    // 1. Sync Contact & Trigger ProspectIQ Direct Email / SMS / WhatsApp Dispatch
-    if (token) {
+    // 1. Receipt through Prospect IQ, on the customer's own contact record.
+    const token = ghlToken();
+    if (token && (hasEmail || customerPhone)) {
       try {
-        const pHeaders = {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "Version": "2021-07-28",
-        };
-
-        const contactRes = await fetch("https://services.leadconnectorhq.com/contacts/upsert", {
-          method: "POST",
-          headers: pHeaders,
-          body: JSON.stringify({
-            locationId,
-            email: customerEmail || "paid@jyotishnow.com",
-            phone: customerPhone || "+917015544187",
-            name: customerName,
-            tags: [
-              "Paid Client",
-              `Paid: ${serviceName}`,
-              "Trigger WhatsApp Receipt",
-              "Payment Receipt Sent",
-              adminEmail ? `Admin Copy Sent (${adminEmail})` : "Local Dev Test"
-            ],
-            customFields: [
-              { id: "payment_id", value: paymentId },
-              { id: "order_id", value: orderId },
-              { id: "amount_paid", value: amountStr },
-            ],
-          }),
+        const contactId = await upsertContact({
+          name: customerName,
+          email: hasEmail ? customerEmail : undefined,
+          phone: customerPhone || undefined,
+          tags: ["Paid Client", `Paid: ${serviceName}`, "Payment Receipt Sent", testMode ? TEST_TAG : ""],
         });
 
-        const contactData = await readJsonResponse(contactRes);
-        const contactId = contactData?.contact?.id || contactData?.id;
-
         if (contactId) {
-          // Send Direct SMS/WhatsApp receipt via ProspectIQ Conversation API
-          const textMessage = `*JyotishNow Payment Receipt* 📜\n--------------------------------\n*Service:* ${serviceName}\n*Amount Paid:* ${amountStr}\n*Payment ID:* ${paymentId}\n*Customer Name:* ${customerName}\n*Status:* CONFIRMED ✅\n\nThank you for choosing JyotishNow (Dr. Sandeep Sawhney)! For support, contact us at myjyotishnow@gmail.com or +91-7015544187.`;
-
-          await fetch("https://services.leadconnectorhq.com/conversations/messages", {
-            method: "POST",
-            headers: pHeaders,
-            body: JSON.stringify({
-              type: "SMS",
-              contactId,
-              message: textMessage,
-              locationId,
-            }),
-          });
-          console.log("✅ Direct SMS/WhatsApp message queued via ProspectIQ for contact:", contactId);
-
-          // Send Direct Email receipt via ProspectIQ Conversation API
-          if (customerEmail && customerEmail.includes("@")) {
-            await fetch("https://services.leadconnectorhq.com/conversations/messages", {
+          const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Version: "2021-07-28" };
+          // Test payments don't text real phones.
+          if (customerPhone && !testMode) {
+            const text = `*JyotishNow Payment Receipt*\n*Service:* ${serviceName}\n*Amount Paid:* ${amountStr}\n${callTime ? `*Your call:* ${callTime}\n` : ""}*Payment ID:* ${paymentId}\n*Status:* CONFIRMED\n\nThank you for choosing JyotishNow (Dr. Sandeep Sawhney)! Support: ${SUPPORT_EMAIL} / ${SUPPORT_PHONE}.`;
+            await fetch(`${PIQ_BASE}/conversations/messages`, {
               method: "POST",
-              headers: pHeaders,
+              headers,
+              body: JSON.stringify({ type: "SMS", contactId, message: text, locationId: ghlLocation() }),
+              signal: AbortSignal.timeout(20_000),
+            }).catch((e) => console.error("[verify-payment] SMS receipt failed", (e as Error).message));
+          }
+          if (hasEmail) {
+            const sent = await fetch(`${PIQ_BASE}/conversations/messages`, {
+              method: "POST",
+              headers,
               body: JSON.stringify({
                 type: "Email",
                 contactId,
                 // Same sender as the report email, so moving to a verified
                 // domain is one env change rather than a hunt through the code.
-                emailFrom: process.env.PROSPECTIQ_EMAIL_FROM || "myjyotishnow@gmail.com",
-                subject: `Receipt: ${serviceName} (${amountStr}) - JyotishNow`,
-                html: htmlEmailContent,
-                locationId,
+                emailFrom: process.env.PROSPECTIQ_EMAIL_FROM || SUPPORT_EMAIL,
+                subject,
+                html,
+                locationId: ghlLocation(),
               }),
+              signal: AbortSignal.timeout(20_000),
             });
-            console.log("✅ Direct Email receipt queued via ProspectIQ for contact:", contactId);
+            receiptSent = sent.ok;
+            if (!sent.ok) console.error("[verify-payment] email receipt failed", sent.status);
           }
         }
       } catch (err) {
-        console.error("[ProspectIQ Messaging Error on Payment]", err);
+        console.error("[verify-payment] Prospect IQ receipt failed", (err as Error).message);
       }
     }
 
-    // 2. Send Email Receipt via Resend API if RESEND_API_KEY is configured
+    // 2. Admin copy (and a fallback customer copy) via Resend, if configured.
     const resendApiKey = process.env.RESEND_API_KEY;
-    const emailRecipients: string[] = [];
-    if (adminEmail) emailRecipients.push(adminEmail);
-    if (customerEmail && customerEmail.includes("@")) {
-      emailRecipients.push(customerEmail);
-    }
-
-    if (resendApiKey && emailRecipients.length > 0) {
+    const adminEmail = process.env.ADMIN_EMAIL || "";
+    const recipients = [adminEmail, !receiptSent && hasEmail ? customerEmail : ""].filter(Boolean);
+    if (resendApiKey && recipients.length > 0) {
       try {
         await fetch("https://api.resend.com/emails", {
           method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "JyotishNow Receipts <onboarding@resend.dev>",
-            to: emailRecipients,
-            subject: `Receipt: ${serviceName} (${amountStr}) - JyotishNow`,
-            html: htmlEmailContent,
-          }),
+          headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: "JyotishNow Receipts <onboarding@resend.dev>", to: recipients, subject, html }),
+          signal: AbortSignal.timeout(20_000),
         });
-        console.log("✅ Email receipt sent via Resend to:", emailRecipients);
       } catch (emailErr) {
-        console.error("Failed to send email receipt via Resend:", emailErr);
+        console.error("[verify-payment] Resend receipt failed", (emailErr as Error).message);
       }
     }
 
-    // Format WhatsApp receipt URLs
-    const adminWaText = encodeURIComponent(`*JyotishNow Payment Notification* 🔔\n--------------------------------\n*Service:* ${serviceName}\n*Amount:* ${amountStr}\n*Payment ID:* ${paymentId}\n*Order ID:* ${orderId}\n*Customer:* ${customerName}\n*Email:* ${customerEmail || 'N/A'}\n*Phone:* ${customerPhone || 'N/A'}\n*Status:* PAID & CONFIRMED ✅`);
-    const whatsappAdminUrl = `https://wa.me/917015544187?text=${adminWaText}`;
+    // WhatsApp share links for the success screen.
+    const waText = (title: string) =>
+      encodeURIComponent(
+        `*${title}*\n*Service:* ${serviceName}\n*Amount:* ${amountStr}\n${callTime ? `*Call:* ${callTime}\n` : ""}*Payment ID:* ${paymentId}\n*Order ID:* ${orderId}\n*Customer:* ${customerName}\n*Status:* PAID & CONFIRMED`,
+      );
+    const whatsappAdminUrl = `https://wa.me/917015544187?text=${waText("JyotishNow Payment Notification")}`;
+    const digits = customerPhone.replace(/\D/g, "");
+    const custPhone = digits.length === 10 ? `91${digits}` : digits;
+    const whatsappCustomerUrl = custPhone
+      ? `https://wa.me/${custPhone}?text=${waText("JyotishNow Payment Receipt")}`
+      : whatsappAdminUrl;
 
-    const cleanCustomerPhone = customerPhone.replace(/\D/g, "");
-    const targetCustPhone = cleanCustomerPhone.length === 10 ? `91${cleanCustomerPhone}` : cleanCustomerPhone;
-    const custWaText = encodeURIComponent(`*JyotishNow Payment Receipt* 📜\n--------------------------------\n*Service:* ${serviceName}\n*Amount Paid:* ${amountStr}\n*Payment ID:* ${paymentId}\n*Customer Name:* ${customerName}\n*Status:* CONFIRMED ✅\n\nThank you for choosing JyotishNow (Dr. Sandeep Sawhney)! For support, contact us at myjyotishnow@gmail.com or +91-7015544187.`);
-    const whatsappCustomerUrl = targetCustPhone ? `https://wa.me/${targetCustPhone}?text=${custWaText}` : whatsappAdminUrl;
-
-    // Reflect the sale in Prospect IQ (won opportunity with the amount). Not
-    // awaited-critical: the payment already succeeded, so a CRM hiccup must not
-    // break the response.
-    const amountRupees = Number(rawAmount.replace(/[^0-9.]/g, "")) || 0;
-    void recordPaymentInCrm({
-      email: customerEmail,
-      phone: customerPhone,
-      name: customerName,
-      service: String(body.service || ""),
-      serviceLabel: serviceName,
-      amountRupees,
-      paymentId,
-      orderId,
-    });
+    // Record the sale only where no fulfilment endpoint will.
+    const fulfilledElsewhere =
+      !!notes.service && (ADDON_BASE_SERVICES.has(notes.service) || !!quote?.consultation);
+    if (!fulfilledElsewhere) {
+      void recordPaymentInCrm({
+        email: hasEmail ? customerEmail : undefined,
+        phone: customerPhone || undefined,
+        name: customerName,
+        service: notes.service ?? undefined,
+        serviceLabel: serviceName,
+        amountRupees,
+        paymentId,
+        orderId,
+      });
+    }
 
     return res.status(200).json({
       verified: true,
+      test_mode: testMode,
       order_id: orderId,
       payment_id: paymentId,
       whatsappAdminUrl,
@@ -272,15 +246,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         customerPhone,
         serviceName,
         amountStr,
-        adminEmail,
-        adminPhone
-      }
+        callTime,
+        receiptSent,
+      },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[verify-payment Exception]", err);
-    return res.status(500).json({
-      error: "Payment verification failed",
-      details: err?.message || String(err)
-    });
+    return res.status(500).json({ error: "Payment verification failed" });
   }
 }

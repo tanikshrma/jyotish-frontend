@@ -34,6 +34,14 @@ export type Job = {
   error?: string;
   /** Set when the upstream subscription is exhausted, so the UI can explain. */
   code?: string;
+  /** A booked consultation (jobs keyed `consult:<paymentId>`). */
+  booking?: {
+    appointmentId: string;
+    calendarId: string;
+    startTime: string;
+    endTime: string;
+    label: string;
+  };
   createdAt: string;
   updatedAt: string;
 };

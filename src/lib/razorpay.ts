@@ -104,6 +104,10 @@ const parseError = async (response: Response, fallback: string) => {
 export const createOrder = async (input: {
   service: string;
   variant?: string;
+  /** Add-on keys, e.g. ["consultation-15"]. */
+  addons?: string[];
+  /** The consultation slot, when the order includes a call. */
+  slot?: string;
   receipt?: string;
   notes?: Record<string, string>;
 }): Promise<CreateOrderResponse> => {
@@ -114,7 +118,16 @@ export const createOrder = async (input: {
   });
 
   if (!response.ok) {
-    throw new Error(await parseError(response, "Could not start payment"));
+    let message = "Could not start payment";
+    let code: string | undefined;
+    try {
+      const data = (await response.json()) as { error?: string; code?: string };
+      message = data.error || message;
+      code = data.code;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw Object.assign(new Error(message), { code });
   }
 
   return (await response.json()) as CreateOrderResponse;

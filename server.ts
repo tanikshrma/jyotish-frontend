@@ -26,6 +26,7 @@ import geocode from "./api/geocode.js";
 import kundliPdf from "./api/kundli-pdf.js";
 import kundliPdfStatus from "./api/kundli-pdf-status.js";
 import matchmakingPdf from "./api/matchmaking-pdf.js";
+import bookConsultation from "./api/book-consultation.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(__dirname, "dist");
@@ -67,6 +68,7 @@ app.all("/api/geocode", adapt(geocode as VercelLikeHandler));
 app.all("/api/kundli-pdf", adapt(kundliPdf as VercelLikeHandler));
 app.all("/api/kundli-pdf-status", adapt(kundliPdfStatus as VercelLikeHandler));
 app.all("/api/matchmaking-pdf", adapt(matchmakingPdf as VercelLikeHandler));
+app.all("/api/book-consultation", adapt(bookConsultation as VercelLikeHandler));
 
 
 /** Health check for uptime monitors and load balancers. */

@@ -1,5 +1,7 @@
 import { readJsonResponse } from "./_razorpay.js";
 import { pipelineForService } from "../shared/prospectiq-schema.js";
+import { TEST_TAG, isTestMode } from "./_payments.js";
+import { upsertContact } from "./_ghl.js";
 
 /**
  * Records a completed payment in Prospect IQ so the sale is visible in the CRM.
@@ -16,8 +18,8 @@ import { pipelineForService } from "../shared/prospectiq-schema.js";
  */
 
 const PIQ_BASE = "https://services.leadconnectorhq.com";
-const TOKEN = process.env.PROSPECTIQ_PRIVATE_TOKEN;
-const LOCATION = process.env.PROSPECTIQ_LOCATION_ID;
+const TOKEN = process.env.PROSPECTIQ_PRIVATE_TOKEN || process.env.GHL_PRIVATE_TOKEN;
+const LOCATION = process.env.PROSPECTIQ_LOCATION_ID || "FTD8wmuYqCT7XoIpXJQG";
 
 export type PaymentRecord = {
   email?: string;
@@ -39,31 +41,39 @@ const headers = () => ({
   "Content-Type": "application/json",
 });
 
+const opportunityExists = async (name: string, paymentId: string): Promise<boolean> => {
+  try {
+    const q = new URLSearchParams({ location_id: String(LOCATION), q: paymentId, limit: "20" });
+    const res = await fetch(`${PIQ_BASE}/opportunities/search?${q}`, {
+      headers: headers(),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return false; // can't tell — prefer recording to missing a sale
+    const data = await readJsonResponse(res);
+    return ((data.opportunities ?? []) as { name?: string }[]).some((o) => o.name === name);
+  } catch {
+    return false;
+  }
+};
+
 export const recordPaymentInCrm = async (rec: PaymentRecord): Promise<boolean> => {
   if (!TOKEN || !LOCATION) return false;
   if (!rec.email && !rec.phone) return false; // need something to key the contact on
 
   try {
     // 1. Upsert the contact so the opportunity has someone to attach to.
-    const upsert = await fetch(`${PIQ_BASE}/contacts/upsert`, {
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({
-        locationId: LOCATION,
-        ...(rec.email ? { email: rec.email } : {}),
-        ...(rec.phone ? { phone: rec.phone } : {}),
-        name: rec.name || "Website Customer",
-        tags: Array.from(
-          new Set([
-            "Paid Customer",
-            rec.serviceLabel ? `Paid: ${rec.serviceLabel}` : null,
-            ...(rec.tags ?? []),
-          ].filter(Boolean) as string[]),
-        ),
-      }),
+    const contactId = await upsertContact({
+      email: rec.email,
+      phone: rec.phone,
+      name: rec.name || "Website Customer",
+      tags: [
+        "Paid Customer",
+        rec.serviceLabel ? `Paid: ${rec.serviceLabel}` : "",
+        ...(rec.tags ?? []),
+        // Test-mode sales are tagged so they can be told apart and cleaned up.
+        isTestMode() ? TEST_TAG : "",
+      ],
     });
-    const contact = await readJsonResponse(upsert);
-    const contactId = contact?.contact?.id ?? contact?.id;
     if (!contactId) {
       console.error("[crm] could not resolve contact for payment record");
       return false;
@@ -73,6 +83,13 @@ export const recordPaymentInCrm = async (rec: PaymentRecord): Promise<boolean> =
     const { pipelineId, paidStageId } = pipelineForService(rec.service);
     const label = rec.serviceLabel || rec.service || "Website Payment";
     const name = rec.paymentId ? `${label} · ${rec.paymentId}` : label;
+
+    // Once per payment and product: a retried delivery, a refresh or a second
+    // tab must not record the same sale twice.
+    if (rec.paymentId && (await opportunityExists(name, rec.paymentId))) {
+      console.log(`[crm] opportunity already recorded: ${name}`);
+      return true;
+    }
 
     const opp = await fetch(`${PIQ_BASE}/opportunities/`, {
       method: "POST",

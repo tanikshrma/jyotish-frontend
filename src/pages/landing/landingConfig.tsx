@@ -22,6 +22,11 @@ export type LandingConfig = {
   service: string;              // ServiceId used for serviceInterest mapping
   serviceInterest: string;      // exact SINGLE_OPTIONS value
   primaryConcern: string;       // exact SINGLE_OPTIONS value
+  /**
+   * The report sold at the top of the page, with the ₹999 call add-on:
+   * "kundli" is the Premium Kundli PDF, "match" the Kundli Matching PDF.
+   */
+  report: "kundli" | "match";
   /** Consultation charges, mirroring the prices used across the website. */
   pricing: {
     /** ServiceId in shared/pricing.ts — also the BookingModal defaultService. */
@@ -64,13 +69,14 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
       "Know the best timing for a job change or new venture",
       "Remove planetary obstacles blocking your growth",
     ],
+    report: "kundli",
     service: "career-guidance",
     serviceInterest: "Career Guidance",
     primaryConcern: "Career",
     pricing: { serviceId: "career-guidance", options: [{ label: "Career Guidance Consultation" }] },
-    formTitle: "Book Your Career Consultation",
-    formSub: "Speak with Dr. Sandeep — only a few slots open each day.",
-    cta: "Book My Consultation",
+    formTitle: "Get Your Career Kundli Report",
+    formSub: "Your full 74-page Premium Kundli — career houses, dasha timing and remedies — in minutes. Add a call with Dr. Sandeep to go through it.",
+    cta: "Get My Kundli",
     concernLabel: "What's your main career concern?",
     concerns: ["Job change / new opportunity", "Business growth & expansion", "Promotion / feeling stuck", "Career direction & confusion", "Foreign job / relocation", "Something else"],
     benefitsTitle: "What Your Career Reading Reveals",
@@ -86,8 +92,8 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     ],
     faqs: [
       { q: "What do I need to share?", a: "Just your date, time and place of birth — and your main career question. Nothing else." },
-      { q: "What does the consultation cost?", a: "The fee is shown while you book — choose your slot and you will see the exact amount before any payment." },
-      { q: "How does booking work?", a: "Choose a date and time from the live calendar, confirm payment, and your appointment is booked with Dr. Sandeep." },
+      { q: "What does it cost?", a: "The report is ₹299. Add a 15-minute call with Dr. Sandeep for ₹999 at checkout, or book a full consultation from ₹2,599 for 30 minutes — you choose your time from his live calendar before paying." },
+      { q: "How does booking work?", a: "Choose a date and time from Dr. Sandeep's live calendar, pay securely, and your appointment is booked the moment the payment goes through." },
     ],
   },
 
@@ -106,6 +112,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
       "Practical remedies — no breaking or demolition",
       "Invite wealth, health & harmony back in",
     ],
+    report: "kundli",
     service: "vastu-consultancy",
     serviceInterest: "Vastu Consultancy",
     primaryConcern: "Property/Vastu",
@@ -113,9 +120,9 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
       { variant: "online", label: "Online Discussion", note: "Virtual consultation from your floor plan" },
       { variant: "site-visit", label: "On-Site Visit", note: "+ travelling expenses (as per location)" },
     ] },
-    formTitle: "Book Your Vastu Consultation",
-    formSub: "Talk to our Vastu expert — limited slots each day.",
-    cta: "Book My Vastu Consultation",
+    formTitle: "Start With Your Kundli Report",
+    formSub: "Your full 74-page Premium Kundli, including the 4th house of home and property. Add a call with Dr. Sandeep to discuss your space.",
+    cta: "Get My Kundli",
     concernLabel: "What's troubling your space?",
     concerns: ["Financial loss / money not staying", "Health problems in the family", "Conflicts & lack of peace", "Career / business not growing", "Buying or building a new property", "Something else"],
     benefitsTitle: "What Your Vastu Consultation Covers",
@@ -132,7 +139,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     faqs: [
       { q: "Do I need to break walls?", a: "No. Our remedies are practical and non-destructive — placement, colours and simple corrections you can do easily." },
       { q: "Can it be done online?", a: "Yes. Share your floor plan and directions and we can do a detailed online Vastu analysis." },
-      { q: "What does the consultation cost?", a: "Charges depend on whether you choose an online discussion or an on-site visit. You will see the exact amount while booking, before any payment." },
+      { q: "What does it cost?", a: "The kundli report is ₹299, with an optional 15-minute call with Dr. Sandeep for ₹999. A full consultation starts at ₹2,599 for 30 minutes. For an on-site Vastu visit, message us on WhatsApp." },
     ],
   },
 
@@ -151,13 +158,14 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
       "Manglik & dosha check with real remedies",
       "Remove delays and bring marital harmony",
     ],
+    report: "match",
     service: "matchmaking-consultation",
     serviceInterest: "Matchmaking Consultation",
     primaryConcern: "Marriage/Relationship",
     pricing: { serviceId: "matchmaking-consultation", options: [{ label: "Matchmaking Consultation" }] },
-    formTitle: "Book Your Marriage Consultation",
-    formSub: "Speak with Dr. Sandeep — limited slots open daily.",
-    cta: "Book My Consultation",
+    formTitle: "Get Your Kundli Matching Report",
+    formSub: "All 36 gunas scored, Manglik check and both charts — in minutes. Add a call with Dr. Sandeep to go through the match.",
+    cta: "Match Our Kundlis",
     concernLabel: "What would you like help with?",
     concerns: ["Delay in marriage", "Kundli matching for a proposal", "Manglik dosha concern", "Love marriage / family approval", "Problems in married life", "Something else"],
     benefitsTitle: "What Your Marriage Reading Reveals",
@@ -174,7 +182,7 @@ export const LANDING_CONFIGS: Record<string, LandingConfig> = {
     faqs: [
       { q: "What details do you need?", a: "Birth date, time and place — for one or both people if it's a matchmaking question." },
       { q: "Do you help with love marriages too?", a: "Yes. We guide on compatibility, timing and remedies for family approval and harmony." },
-      { q: "What does the consultation cost?", a: "The fee is shown while you book — choose your slot and you will see the exact amount before any payment." },
+      { q: "What does it cost?", a: "The report is ₹299. Add a 15-minute call with Dr. Sandeep for ₹999 at checkout, or book a full consultation from ₹2,599 for 30 minutes — you choose your time from his live calendar before paying." },
     ],
   },
 };

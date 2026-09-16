@@ -19,6 +19,7 @@ const ROUTES: Record<string, string> = {
   "/api/kundli-pdf": "/api/kundli-pdf.ts",
   "/api/kundli-pdf-status": "/api/kundli-pdf-status.ts",
   "/api/matchmaking-pdf": "/api/matchmaking-pdf.ts",
+  "/api/book-consultation": "/api/book-consultation.ts",
 };
 
 const readBody = (req: Connect.IncomingMessage): Promise<unknown> =>

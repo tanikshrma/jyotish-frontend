@@ -1,9 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import crypto from "node:crypto";
 import { readJsonBody, readJsonResponse, requirePost } from "./_razorpay.js";
 import { RUN_INLINE, createJob, isStale, readJob, updateJob, type DeliveredPdf } from "./_jobs.js";
 import { recordPaymentInCrm } from "./_crm.js";
-import { getPriceInRupees } from "../shared/pricing.js";
+import { paidReportOrder } from "./_payments.js";
 import { brandMatchingPdf } from "../shared/pdf-recolor.js";
 import {
   BRAND,
@@ -12,6 +11,7 @@ import {
   emailReport,
   downloadWhenReady,
   API_TIMEOUT_MS,
+  DRY_RUN_URL,
   jobResponse,
   safeName,
   uploadToProspectIQ,
@@ -23,7 +23,7 @@ import {
  * Paid Ashtakoot matchmaking report, rendered by VedicAstro's
  * `pdf/matching-queue`. Same delivery contract as the kundli export:
  *
- *   1. verify the Razorpay signature,
+ *   1. verify the payment, and that its order was for this report,
  *   2. create a job and return 202 immediately,
  *   3. render, re-host on the Prospect IQ CDN and email in the background.
  *
@@ -37,23 +37,8 @@ import {
 
 const BASE_URL = "https://api.vedicastroapi.com/v3-json";
 const API_KEY = process.env.VEDICASTRO_API_KEY;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 const REPORT_NAME = "Kundli Matching Report";
-
-const paymentIsValid = (body: Record<string, unknown>): boolean => {
-  const orderId = String(body.razorpay_order_id ?? "");
-  const paymentId = String(body.razorpay_payment_id ?? "");
-  const signature = String(body.razorpay_signature ?? "");
-  if (!orderId || !paymentId || !signature || !RAZORPAY_KEY_SECRET) return false;
-  const expected = crypto
-    .createHmac("sha256", RAZORPAY_KEY_SECRET)
-    .update(`${orderId}|${paymentId}`)
-    .digest("hex");
-  const a = Buffer.from(expected, "utf8");
-  const b = Buffer.from(signature, "utf8");
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-};
 
 /** Both charts are required — a match cannot be computed from one. */
 const REQUIRED = [
@@ -71,8 +56,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const body = readJsonBody(req);
 
-  if (!paymentIsValid(body)) {
-    return res.status(402).json({ error: "Valid payment required for the matching report" });
+  // Signature, and an order that was actually for this report.
+  const paid = await paidReportOrder(body, "matchmaking-pdf");
+  if (paid.ok === false) {
+    return res.status(paid.status).json({ error: paid.error, retryable: paid.retryable });
   }
 
   const missing = REQUIRED.filter((k) => !body[k] && body[k] !== 0);
@@ -98,13 +85,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     name: `${body.boy_name ?? ""} & ${body.girl_name ?? ""}`.trim(),
     service: "matchmaking-pdf",
     serviceLabel: REPORT_NAME,
-    amountRupees: getPriceInRupees("matchmaking-pdf") ?? 0,
+    // The report's share only; a consultation add-on is recorded on booking.
+    amountRupees: paid.order.quote?.lines[0]?.rupees ?? paid.order.amountRupees,
     paymentId,
     orderId,
   });
   // Render, re-host and email the report.
   const deliver = async () => {
     try {
+      if (paid.dryRun) {
+        await updateJob(paymentId, {
+          status: "ready",
+          pdfs: [{ name: `[dry run] ${REPORT_NAME}`, url: DRY_RUN_URL, fileName: "dry-run.pdf" }],
+          emailed: false,
+        });
+        return;
+      }
       const params = new URLSearchParams({
         api_key: API_KEY,
         boy_name: String(body.boy_name),

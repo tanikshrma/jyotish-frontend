@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Phone, MessageCircle, Check, Star, ShieldCheck, ArrowRight,
@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { BookingModal } from "@/components/BookingModal";
+import { ReportPurchaseForm } from "@/components/ReportPurchaseForm";
+import { MatchPurchaseForm } from "@/components/MatchPurchaseForm";
+import { ConsultationSection } from "@/components/consultation/ConsultationSection";
+import { BRAND_THEME, REPORT_LANDING_CONFIGS } from "@/pages/landing/reportLandingConfig";
 import { LOGO, DOCTOR_PHOTO, CONTACT, type LandingConfig } from "@/pages/landing/landingConfig";
 
 /* Fade-up as the element scrolls into view */
@@ -42,9 +45,9 @@ const STATS = [
 ];
 
 const STEPS = [
-  { n: "1", t: "Pick Your Slot", d: "Choose a date and time that suits you from the live appointment calendar." },
-  { n: "2", t: "Confirm & Pay", d: "Share your details and pay securely — your appointment is confirmed instantly." },
-  { n: "3", t: "Get Clear Guidance", d: "Talk to Dr. Sandeep and receive honest insights and practical remedies." },
+  { n: "1", t: "Enter Your Details", d: "Birth date, time and place — add a call with Dr. Sandeep and pick its time." },
+  { n: "2", t: "Pay Securely", d: "One payment through Razorpay. Your report is generated and your call booked instantly." },
+  { n: "3", t: "Get Clear Guidance", d: "Read your report, then talk it through with Dr. Sandeep for practical remedies." },
 ];
 
 export default function AdLanding({ config }: { config: LandingConfig }) {
@@ -53,13 +56,24 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
 
   useEffect(() => { document.title = `${c.theme} · JyotishNow`; }, [c.theme]);
 
+  const formRef = useRef<HTMLDivElement>(null);
+  const scrollTo = (el: HTMLElement | null) => el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const toForm = () => scrollTo(formRef.current);
+  const toConsult = () => scrollTo(document.getElementById("consultation"));
+  // Career and Vastu sell the Premium Kundli: tier, price and delivery come
+  // from the premium lander; only the card's copy is this topic's.
+  const kundliConfig = {
+    ...REPORT_LANDING_CONFIGS["premium-kundli"],
+    slug: c.slug, formTitle: c.formTitle, formSub: c.formSub, cta: c.cta,
+  };
+
   const waHref = `https://wa.me/${CONTACT.phoneDigits}?text=${encodeURIComponent(`Hi, I'd like to book a ${c.theme} consultation.`)}`;
 
   return (
     <div className="font-sans text-foreground bg-[#FFF9F0] min-h-screen">
       {/* announcement */}
       <div className="bg-[#5A0606] text-white text-center text-[13px] py-2 px-4">
-        <span className="opacity-90">Book a consultation with </span>
+        <span className="opacity-90">Reports &amp; consultations with </span>
         <b className="text-secondary">Dr. Sandeep Sawhney</b>
         <span className="opacity-90"> · 25+ Years · 1,00,000+ Consultations</span>
       </div>
@@ -113,30 +127,22 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
             </div>
           </div>
 
-          {/* BOOKING CARD */}
+          {/* PURCHASE CARD */}
           <motion.div
+            ref={formRef}
             initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .6, delay: .1 }}
-            className="bg-white text-foreground rounded-3xl p-6 shadow-[0_30px_60px_-25px_rgba(122,8,8,.55)] border border-white/60">
-            <h2 className="font-serif text-2xl text-primary leading-tight">{c.formTitle}</h2>
-            <p className="text-sm text-muted-foreground mt-1 mb-5">{c.formSub}</p>
-
-            <ul className="rounded-2xl border border-secondary/40 bg-secondary/10 px-5 py-4 mb-5 space-y-2 text-sm text-foreground/80">
-              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> One-on-one session with Dr. Sandeep Sawhney</li>
-              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Personalised chart analysis &amp; practical remedies</li>
-              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-primary mt-0.5 flex-none" /> Choose your own date &amp; time</li>
-            </ul>
-
-            <BookingModal defaultService={c.pricing.serviceId}>
-              <Button className="w-full h-auto py-3.5 rounded-xl text-base font-bold text-white bg-gradient-to-b from-primary to-[#5A0606] hover:from-[#5A0606] hover:to-[#3d0404] shadow-lg">
-                {c.cta} <CalendarDays className="w-4 h-4" />
-              </Button>
-            </BookingModal>
-
-            <ul className="mt-4 space-y-2 text-[13px] text-muted-foreground">
-              <li className="flex items-center gap-2"><CalendarDays className="w-4 h-4 text-primary" /> Pick your slot from the live calendar</li>
-              <li className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-primary" /> Secure payment · instant confirmation</li>
-              <li className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> 100% private. We never share your details.</li>
-            </ul>
+            className="scroll-mt-24 text-foreground">
+            {c.report === "match" ? (
+              <MatchPurchaseForm theme={BRAND_THEME} source={c.slug} idPrefix="hero" title={c.formTitle} sub={c.formSub} />
+            ) : (
+              <ReportPurchaseForm config={kundliConfig} idPrefix="hero" />
+            )}
+            <button
+              type="button"
+              onClick={toConsult}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-secondary/40 bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/15">
+              <CalendarDays className="w-4 h-4 text-secondary" /> Prefer a full consultation? From ₹2,599
+            </button>
           </motion.div>
         </div>
       </section>
@@ -238,6 +244,13 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
         </div>
       </section>
 
+      {/* CONSULTATION */}
+      <ConsultationSection
+        theme={BRAND_THEME}
+        source={c.slug}
+        title={`Talk to Dr. Sandeep about your ${c.theme.toLowerCase()}`}
+      />
+
       {/* FAQ */}
       <section className="py-16">
         <div className="mx-auto w-[92%] max-w-3xl">
@@ -263,13 +276,14 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
         <div className="mx-auto w-[92%] max-w-3xl">
           <Reveal>
             <h2 className="font-serif text-3xl md:text-4xl text-white">Your Answers Are Just One Session Away</h2>
-            <p className="text-white/85 mt-3 mb-6 max-w-xl mx-auto">Book your consultation with Dr. Sandeep Sawhney — pick a slot from the calendar and get clarity.</p>
+            <p className="text-white/85 mt-3 mb-6 max-w-xl mx-auto">Get your report in minutes, or book a consultation with Dr. Sandeep Sawhney — pick a slot from his live calendar and get clarity.</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <BookingModal defaultService={c.pricing.serviceId}>
-                <Button className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-secondary text-[#5A0606] hover:bg-secondary hover:brightness-105 shadow-lg">
-                  {c.cta} <CalendarDays className="w-4 h-4" />
-                </Button>
-              </BookingModal>
+              <Button onClick={toForm} className="h-auto py-3.5 px-8 rounded-full text-base font-bold bg-secondary text-[#5A0606] hover:bg-secondary hover:brightness-105 shadow-lg">
+                {c.cta} <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button onClick={toConsult} variant="outline" className="h-auto py-3.5 px-8 rounded-full text-base font-bold border-2 border-white/60 bg-transparent text-white hover:bg-white hover:text-[#5A0606]">
+                Book a Consultation <CalendarDays className="w-4 h-4" />
+              </Button>
               <a href={waHref} target="_blank" rel="noopener"
                 className="inline-flex items-center gap-2 h-auto py-3.5 px-8 rounded-full text-base font-bold border-2 border-secondary/60 text-secondary hover:bg-secondary hover:text-[#5A0606] transition">
                 Chat on WhatsApp <ArrowRight className="w-4 h-4" />
@@ -294,9 +308,7 @@ export default function AdLanding({ config }: { config: LandingConfig }) {
 
       {/* STICKY MOBILE BAR */}
       <div className="fixed bottom-0 inset-x-0 z-50 grid grid-cols-2 gap-2 p-2.5 bg-white border-t border-[#eadfce] shadow-[0_-8px_24px_rgba(0,0,0,.08)] md:hidden">
-        <BookingModal defaultService={c.pricing.serviceId}>
-          <button className="flex items-center justify-center gap-2 h-12 w-full rounded-xl bg-primary text-white font-bold"><CalendarDays className="w-4 h-4" /> Book Now</button>
-        </BookingModal>
+        <button onClick={toForm} className="flex items-center justify-center gap-2 h-12 w-full rounded-xl bg-primary text-white font-bold"><CalendarDays className="w-4 h-4" /> Get Started</button>
         <a href={waHref} target="_blank" rel="noopener" className="flex items-center justify-center gap-2 h-12 rounded-xl bg-[#25D366] text-white font-bold"><MessageCircle className="w-4 h-4" /> WhatsApp</a>
       </div>
       <div className="h-16 md:hidden" />
