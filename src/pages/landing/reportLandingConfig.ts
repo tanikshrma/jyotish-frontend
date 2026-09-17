@@ -607,7 +607,7 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     pdfCount: 2,
     theme: BRAND_THEME,
     photo: "/lp/report-photo.jpg",
-    eyebrow: "Complete Bundle · Two Reports",
+    eyebrow: "Bundle · Two Reports",
     h1a: "Know Your Chart.",
     h1b: "Understand What's Ahead.",
     sub: "Your birth chart can tell you more than who you are.\nThe Complete Kundli combines a detailed personalised birth-chart analysis with Life Predictions to help you explore your career, wealth, marriage, health, planetary periods and important life timings.",

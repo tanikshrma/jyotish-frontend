@@ -93,6 +93,13 @@ const SUB_CLASS =
 const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7A0808]";
 
+const MOBILE_TRUST_BENEFITS = [
+  { i: Zap, t: "Instant delivery", d: "Under 2 minutes" },
+  { i: Mail, t: "Emailed to you", d: "PDF attachment" },
+  { i: Download, t: "Never expires", d: "Yours forever" },
+  { i: RefreshCw, t: "Full refund", d: "If it doesn't arrive" },
+];
+
 /* --------------------------------------------------------------- page */
 
 export default function ReportLanding({ config }: { config: ReportLandingConfig }) {
@@ -170,7 +177,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
   const BigCta = ({ label, className = "" }: { label: string; className?: string }) => (
     <button
       onClick={scrollToForm}
-      className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[16px] font-extrabold text-white shadow-lg transition-transform hover:scale-[1.015] active:scale-[0.99] sm:text-[17px] ${FOCUS_RING} ${className}`}
+      className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 text-[13px] font-extrabold text-white tracking-wide sm:tracking-normal shadow-lg transition-transform hover:scale-[1.015] active:scale-[0.99] sm:text-[14px] ${FOCUS_RING} ${className}`}
       style={{ background: ctaGradient, boxShadow: `0 12px 28px -10px ${cta}` }}
     >
       {label}
@@ -231,7 +238,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             the two pitch blocks stack in column 1 and the form rides column 2. */}
         <div className="mx-auto grid w-[92%] max-w-6xl items-start gap-8 py-7 sm:py-12 lg:grid-cols-[1fr_520px] lg:gap-14 lg:py-14">
           {/* pitch — headline */}
-          <div className="lg:col-start-1 lg:row-start-1">
+          <div className="lg:col-start-1 lg:row-start-1 max-md:flex max-md:min-h-[calc(100svh-6rem)] max-md:flex-col max-md:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className="rounded-full px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[11.5px]"
@@ -254,19 +261,37 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
               {c.h1a} <span style={{ color: cta }}>{c.h1b}</span>
             </h1>
 
-            <p className="mt-3.5 max-w-xl text-[15px] leading-relaxed text-[#5B504A] sm:mt-4 sm:text-[17px]">
+            <p className="mt-3.5 max-w-xl text-[15px] leading-[1.5] text-[#5B504A] sm:mt-4 sm:text-[17px]">
               {c.sub}
             </p>
 
             <p className="mt-2 text-[13px] font-semibold text-[#6B605A]">{content.heroSupporting}</p>
-            <p className="mt-3 text-[18px] font-extrabold" style={{ color: ink }}>{content.heroOffer}</p>
+            <p className="mt-3 text-[16px] font-extrabold" style={{ color: ink }}>{content.heroOffer}</p>
 
-            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-5">
+            <div className="mt-0 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-5">
               <Stars />
               <span className="text-[14px] font-semibold" style={{ color: ink }}>4.9/5</span>
               <span className="text-[14px] text-[#6B605A]">from 3,200+ readers</span>
             </div>
             <p className="mt-2 text-[12px] font-semibold text-[#6B605A]">{content.heroTrust}</p>
+
+            <div className="mt-4 md:hidden">
+              <BigCta label={content.final.cta} />
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:hidden">
+              {MOBILE_TRUST_BENEFITS.map((x) => (
+                <div key={x.t} className="flex min-w-0 items-center gap-2 rounded-lg border border-[#EFE4D3] bg-white px-2.5 py-2.5">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#FFF4E3]">
+                    <x.i className="h-4 w-4" style={{ color: cta }} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-[12px] font-extrabold" style={{ color: ink }}>{x.t}</div>
+                    <div className="truncate text-[11px] text-[#6B605A]">{x.d}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* offer + form */}
