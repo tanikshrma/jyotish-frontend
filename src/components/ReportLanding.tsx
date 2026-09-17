@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check, X, Star, Phone, ShieldCheck, Clock3, Users2, Globe, ArrowRight,
-  FileText, Mail, CreditCard, Download, MessageCircle, Zap, BadgeCheck,
+  FileText, Mail, Download, MessageCircle, Zap, BadgeCheck,
   Lock, RefreshCw, ZoomIn,
 } from "lucide-react";
 import {
@@ -75,12 +75,6 @@ const STATS = [
   { icon: Globe, n: "15+", l: "Countries served" },
 ];
 
-const STEPS = [
-  { icon: FileText, t: "Enter your birth details", d: "Name, date, time and place of birth. That's all the chart needs." },
-  { icon: CreditCard, t: "Pay by UPI or card", d: "One payment through Razorpay. No subscription, nothing recurring." },
-  { icon: Mail, t: "Report lands in minutes", d: "It opens, downloads and arrives in your inbox — usually under two minutes." },
-];
-
 /** The three spreads shown as samples — genuinely different pages, not one repeated. */
 const SAMPLE_PAGES = [
   { page: "chart", label: "Charts & planetary positions" },
@@ -103,6 +97,7 @@ const FOCUS_RING =
 
 export default function ReportLanding({ config }: { config: ReportLandingConfig }) {
   const c = config;
+  const content = c.content;
   const { ink, cta, ctaDark, tint, band, gold } = c.theme;
   const formRef = useRef<HTMLDivElement>(null);
   const [showBar, setShowBar] = useState(false);
@@ -222,7 +217,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
               className={`rounded-lg px-4 py-2.5 text-[13px] font-extrabold text-white shadow-md transition-transform hover:scale-[1.03] sm:px-5 sm:text-[14px] ${FOCUS_RING} focus-visible:ring-offset-[#7A0808]`}
               style={{ background: ctaGradient }}
             >
-              Get it · {formatINR(c.price)}
+              {content.final.cta}
             </button>
           </div>
         </div>
@@ -263,11 +258,15 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
               {c.sub}
             </p>
 
+            <p className="mt-2 text-[13px] font-semibold text-[#6B605A]">{content.heroSupporting}</p>
+            <p className="mt-3 text-[18px] font-extrabold" style={{ color: ink }}>{content.heroOffer}</p>
+
             <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-5">
               <Stars />
               <span className="text-[14px] font-semibold" style={{ color: ink }}>4.9/5</span>
               <span className="text-[14px] text-[#6B605A]">from 3,200+ readers</span>
             </div>
+            <p className="mt-2 text-[12px] font-semibold text-[#6B605A]">{content.heroTrust}</p>
           </div>
 
           {/* offer + form */}
@@ -318,6 +317,148 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
         </div>
       </section>
 
+      {/* ------------------------------------------ requested content */}
+      <section className={`mx-auto w-[92%] max-w-6xl ${SECTION_PAD}`}>
+        <h2 className={H2_CLASS} style={{ color: ink }}>{content.revealTitle}</h2>
+        <p className={SUB_CLASS} style={{ whiteSpace: "pre-line" }}>{content.revealIntro}</p>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {content.revealSections.map((sec) => (
+            <div key={sec.title} className="flex gap-3 rounded-xl border border-[#EFE4D3] bg-white p-4 shadow-sm">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: `${cta}17` }}>
+                <sec.icon className="h-[18px] w-[18px]" style={{ color: cta }} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-serif text-[15.5px] font-bold leading-snug" style={{ color: ink }}>{sec.title}</h3>
+                <p className="mt-1 text-[13px] leading-relaxed text-[#6B605A]">{sec.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {content.revealClosing && <p className="mt-6 text-center text-[14px] text-[#5B504A]">{content.revealClosing}</p>}
+      </section>
+
+      {content.identity && (
+        <section className="border-y" style={{ background: tint, borderColor: band }}>
+          <div className={`mx-auto w-[92%] max-w-5xl ${SECTION_PAD}`}>
+            <h2 className={H2_CLASS} style={{ color: ink }}>{content.identity.title}</h2>
+            <h3 className="mt-3 text-center font-serif text-xl font-bold" style={{ color: cta }}>{content.identity.subtitle}</h3>
+            <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-center text-[15px] leading-relaxed text-[#5B504A]">{content.identity.body}</p>
+            <p className="mt-6 text-center text-[14px] font-semibold text-[#5B504A]">{content.identity.supporting}</p>
+            {content.identity.items.length > 0 && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {content.identity.items.map((item) => <div key={item} className="rounded-xl border border-[#EFE4D3] bg-white p-4 text-center text-[13px] font-extrabold" style={{ color: ink }}>{item}</div>)}
+              </div>
+            )}
+            {content.identity.highlight && <p className="mt-6 text-center text-lg font-extrabold" style={{ color: ink }}>{content.identity.highlight}</p>}
+            {content.identity.closing && <p className="mt-5 text-center text-[14px] leading-relaxed text-[#5B504A]">{content.identity.closing}</p>}
+          </div>
+        </section>
+      )}
+
+      <section className={`mx-auto w-[92%] max-w-6xl ${SECTION_PAD}`}>
+        <h2 className={H2_CLASS} style={{ color: ink }}>{content.detailTitle}</h2>
+        {content.detailDescription && <p className={SUB_CLASS}>{content.detailDescription}</p>}
+        {c.sectionGroups ? c.sectionGroups.map((g, gi) => (
+          <div key={g.title} className={gi === 0 ? "mt-10" : "mt-12"}>
+            <div className="mb-5 border-l-4 pl-4" style={{ borderColor: cta }}>
+              <h3 className="font-serif text-[19px] font-extrabold leading-tight" style={{ color: ink }}>{g.title}</h3>
+              <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-[#6B605A]">{g.note}</p>
+            </div>
+            <div className={`grid gap-3 sm:grid-cols-2 ${gi === 0 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+              {g.sections.map((sec) => (
+                <div key={sec.title} className="flex min-h-[76px] items-start gap-3 rounded-xl border border-[#EFE4D3] bg-[#FFFDF9] p-4">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: `${cta}17` }}>
+                    <sec.icon className="h-[18px] w-[18px]" style={{ color: cta }} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="font-serif text-[14.5px] font-bold leading-snug" style={{ color: ink }}>{sec.title}</h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )) : (
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {content.detailSections.map((sec) => (
+              <div key={sec.title} className="flex gap-3 rounded-xl border border-[#EFE4D3] bg-white p-4 shadow-sm">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg" style={{ background: `${cta}17` }}>
+                  <sec.icon className="h-[18px] w-[18px]" style={{ color: cta }} />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-serif text-[15.5px] font-bold leading-snug" style={{ color: ink }}>{sec.title}</h3>
+                  <p className="mt-1 text-[13px] leading-relaxed text-[#6B605A]">{sec.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {content.detailHighlight && <div className="mt-9 rounded-2xl border border-[#E9DCC7] bg-[#FFF4E3] p-5 text-center sm:p-6">
+          <p className="text-[15px] font-extrabold tracking-wide" style={{ color: ink }}>{content.detailHighlight}</p>
+          <div className="mx-auto mt-5 max-w-sm"><BigCta label={content.detailCta} /></div>
+        </div>}
+        {!content.detailHighlight && <div className="mx-auto mt-6 max-w-sm"><BigCta label={content.detailCta} /></div>}
+      </section>
+
+      {content.narrative && (
+        <section className="border-y" style={{ background: tint, borderColor: band }}>
+          <div className={`mx-auto w-[92%] max-w-4xl ${SECTION_PAD}`}>
+            <h2 className={H2_CLASS} style={{ color: ink }}>{content.narrative.title}</h2>
+            <p className="mx-auto mt-5 max-w-2xl whitespace-pre-line text-center text-[15px] leading-relaxed text-[#5B504A]">{content.narrative.body}</p>
+          </div>
+        </section>
+      )}
+
+      {content.upgrade && (
+        <section className={`mx-auto w-[92%] max-w-5xl ${SECTION_PAD}`}>
+          <h2 className={H2_CLASS} style={{ color: ink }}>{content.upgrade.title}</h2>
+          <p className="mx-auto mt-4 max-w-2xl whitespace-pre-line text-center text-[15px] leading-relaxed text-[#5B504A]">{content.upgrade.body}</p>
+          <div className="mt-6 rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: band, background: tint }}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="font-serif text-xl font-extrabold" style={{ color: ink }}>{content.upgrade.offer}</span>
+              <span className="text-[14px] font-bold" style={{ color: ink }}>{content.upgrade.pages}</span>
+            </div>
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+              {content.upgrade.includes.map((item) => <li key={item} className="text-[13.5px] text-[#3D3531]">{item}</li>)}
+            </ul>
+          </div>
+          <h3 className="mt-8 text-center font-serif text-lg font-bold" style={{ color: ink }}>{content.upgrade.comparisonTitle}</h3>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-[#EFE4D3] shadow-sm">
+            <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr] text-[12px] font-extrabold uppercase tracking-wide sm:text-[13px]">
+              <div className="bg-[#F7F1E7] px-3 py-3.5" />
+              {content.upgrade.columns.map((column) => <div key={column} className="bg-[#F7F1E7] px-2 py-3.5 text-center" style={{ color: ink }}>{column}</div>)}
+            </div>
+            {content.upgrade.comparison.map((row, i) => (
+              <div key={row.label} className="grid grid-cols-[1.2fr_0.9fr_0.9fr] border-t border-[#F0E7DA] text-[13px] sm:text-[14px]" style={{ background: i % 2 ? "#FFFDF9" : "#FFFFFF" }}>
+                <div className="px-3 py-3.5 font-bold text-[#3D3531]">{row.label}</div>
+                <div className="px-2 py-3.5 text-center text-[#6B605A]">{row.free}</div>
+                <div className="px-2 py-3.5 text-center font-semibold" style={{ background: `${tint}99`, color: ink }}>{row.paid}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mx-auto mt-6 max-w-sm"><BigCta label={content.upgrade.cta} /></div>
+        </section>
+      )}
+
+      {content.difference && (
+        <section className="border-y" style={{ background: tint, borderColor: band }}>
+          <div className={`mx-auto w-[92%] max-w-5xl ${SECTION_PAD}`}>
+            <h2 className={H2_CLASS} style={{ color: ink }}>{content.difference.title}</h2>
+            <div className="mt-8 grid gap-3 md:grid-cols-3">
+              {content.difference.points.map((point) => <div key={point.title} className="rounded-xl border border-[#EFE4D3] bg-white p-5 shadow-sm"><h3 className="font-serif text-[16px] font-bold" style={{ color: ink }}>{point.title}</h3><p className="mt-2 text-[13.5px] leading-relaxed text-[#6B605A]">{point.desc}</p></div>)}
+            </div>
+            <p className="mt-6 text-center text-[14px] leading-relaxed text-[#5B504A]">{content.difference.closing}</p>
+          </div>
+        </section>
+      )}
+
+      {content.birthDetails && (
+        <section className={`mx-auto w-[92%] max-w-4xl ${SECTION_PAD}`}>
+          <h2 className={H2_CLASS} style={{ color: ink }}>{content.birthDetails.title}</h2>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">{content.birthDetails.items.map((item) => <div key={item} className="rounded-xl border border-[#EFE4D3] bg-white p-4 text-center text-[13px] font-extrabold" style={{ color: ink }}>{item}</div>)}</div>
+          <p className="mx-auto mt-5 max-w-2xl whitespace-pre-line text-center text-[15px] leading-relaxed text-[#5B504A]">{content.birthDetails.body}</p>
+        </section>
+      )}
+
       {/* ---------------------------------------------- trust strip */}
       <div className="border-y" style={{ background: tint, borderColor: band }}>
         <div className="mx-auto grid w-[92%] max-w-6xl grid-cols-2 gap-4 py-6 sm:grid-cols-4">
@@ -341,7 +482,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       </div>
 
       {/* ------------------------------------------------ comparison */}
-      <section className={`mx-auto w-[92%] max-w-4xl ${SECTION_PAD}`}>
+      {!content.upgrade && !content.difference && <section className={`mx-auto w-[92%] max-w-4xl ${SECTION_PAD}`}>
         <h2 className={H2_CLASS} style={{ color: ink }}>
           You've already tried the free ones
         </h2>
@@ -379,10 +520,10 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
 
         <div className="mt-8 flex justify-center">
           <div className="w-full max-w-sm">
-            <BigCta label={`${c.cta} · ${formatINR(c.price)}`} />
+            <BigCta label={content.final.cta} />
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* --------------------------------------------- sample pages */}
       <section className="border-y" style={{ background: tint, borderColor: band }}>
@@ -425,7 +566,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       </section>
 
       {/* ------------------------------------------------- what's in */}
-      <section className={`mx-auto w-[92%] max-w-6xl ${SECTION_PAD}`}>
+      {!content.detailSections.length && !c.sectionGroups && <section className={`mx-auto w-[92%] max-w-6xl ${SECTION_PAD}`}>
         <h2 className={H2_CLASS} style={{ color: ink }}>
           {c.sectionsTitle}
         </h2>
@@ -476,7 +617,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             {showAllSections ? "Show fewer sections" : `Show all ${totalSections} sections`}
           </button>
         )}
-      </section>
+      </section>}
 
       {/* ------------------------------------------------ review wall */}
       <section className="border-y" style={{ background: tint, borderColor: band }}>
@@ -512,24 +653,24 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
       {/* ---------------------------------------------------- steps */}
       <section className={`mx-auto w-[92%] max-w-5xl ${SECTION_PAD}`}>
         <h2 className={H2_CLASS} style={{ color: ink }}>
-          How it works
+          {content.stepsTitle}
         </h2>
         <div className="mt-9 grid gap-6 sm:grid-cols-3">
-          {STEPS.map((st, i) => (
-            <div key={st.t} className="relative rounded-xl border border-[#EFE4D3] bg-white p-5 text-center shadow-sm sm:text-left">
+          {content.steps.map((st, i) => (
+            <div key={st.title} className="relative rounded-xl border border-[#EFE4D3] bg-white p-5 text-center shadow-sm sm:text-left">
               <span
                 className="absolute -top-3 left-1/2 grid h-7 w-7 -translate-x-1/2 place-items-center rounded-full text-[13px] font-extrabold text-white sm:left-5 sm:translate-x-0"
                 style={{ background: ctaGradient }}
               >
                 {i + 1}
               </span>
-              <st.icon className="mx-auto mt-3 h-6 w-6 sm:mx-0" style={{ color: cta }} />
-              <h3 className="mt-3 font-serif text-[16.5px] font-bold" style={{ color: ink }}>{st.t}</h3>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#6B605A]">{st.d}</p>
+              <FileText className="mx-auto mt-3 h-6 w-6 sm:mx-0" style={{ color: cta }} />
+              <h3 className="mt-3 font-serif text-[16.5px] font-bold" style={{ color: ink }}>{st.title}</h3>
+              {st.desc && <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#6B605A]">{st.desc}</p>}
             </div>
           ))}
         </div>
-
+        <p className="mt-6 text-center text-[14px] text-[#5B504A]">{content.stepsClosing}</p>
       </section>
 
       {/* -------------------------------------------- consultation */}
@@ -566,9 +707,11 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
         <div className="grid items-start gap-9 lg:grid-cols-[1fr_520px] lg:gap-14">
           <div>
             <h2 className="font-serif font-extrabold leading-[1.08]" style={{ fontSize: "clamp(1.8rem,4.4vw,2.8rem)", color: ink }}>
-              Your chart is already written.
-              <span className="block" style={{ color: cta }}>Read it properly.</span>
+              {content.final.title}
+              {content.final.subtitle && <span className="block" style={{ color: cta }}>{content.final.subtitle}</span>}
             </h2>
+
+            <p className="mt-4 whitespace-pre-line text-[15px] leading-relaxed text-[#5B504A]">{content.final.description}</p>
 
             <div className="mt-6 rounded-2xl border-2 p-5 sm:p-6" style={{ borderColor: band, background: tint }}>
               <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
@@ -577,7 +720,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
                 <span className="mb-1 rounded-md bg-[#16A34A] px-2 py-1 text-[12px] font-extrabold text-white">SAVE {savePct}%</span>
               </div>
               <p className="mt-2 text-[13.5px] font-semibold" style={{ color: ink }}>
-                {c.pages} · one-time payment · ends in <span className="tabular-nums">{h}:{m}:{s}</span>
+                {content.final.offer} · {content.final.details} · one-time payment · ends in <span className="tabular-nums">{h}:{m}:{s}</span>
               </p>
 
               <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
@@ -594,7 +737,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
               </ul>
 
               <div className="mt-5">
-                <BigCta label={`${c.cta} · ${formatINR(c.price)}`} />
+                <BigCta label={content.final.cta} />
               </div>
             </div>
 
@@ -695,7 +838,7 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             className={`shrink-0 whitespace-nowrap rounded-lg px-5 py-3 text-[14px] font-extrabold text-white shadow-md ${FOCUS_RING}`}
             style={{ background: ctaGradient }}
           >
-            Get my report
+            {content.final.cta}
           </button>
         </div>
       </div>

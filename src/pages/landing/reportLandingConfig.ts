@@ -21,8 +21,62 @@ import { getPriceInRupees, getKundliPdfTier } from "../../../shared/pricing";
 export type ReportSection = { icon: LucideIcon; title: string; desc: string };
 export type ReportFaq = { q: string; a: string };
 export type ReportProof = { quote: string; name: string; place: string };
+export type ReportStep = { title: string; desc?: string };
 /** One row of the "free kundli app vs this report" comparison. */
 export type CompareRow = { label: string; free: string | false; paid: string };
+
+export type ReportLandingContent = {
+  heroSupporting: string;
+  heroOffer: string;
+  heroTrust: string;
+  revealTitle: string;
+  revealIntro: string;
+  revealSections: ReportSection[];
+  revealClosing?: string;
+  identity?: {
+    title: string;
+    subtitle: string;
+    body: string;
+    supporting: string;
+    items: string[];
+    closing?: string;
+    highlight?: string;
+  };
+  detailTitle: string;
+  detailDescription: string;
+  detailSections: ReportSection[];
+  detailHighlight?: string;
+  detailCta: string;
+  narrative?: { title: string; body: string };
+  upgrade?: {
+    title: string;
+    body: string;
+    offer: string;
+    pages: string;
+    includes: string[];
+    comparison: CompareRow[];
+    comparisonTitle: string;
+    columns: [string, string];
+    cta: string;
+  };
+  difference?: {
+    title: string;
+    points: ReportSection[];
+    closing: string;
+  };
+  birthDetails?: { title: string; items: string[]; body: string; highlight?: string };
+  stepsTitle: string;
+  steps: ReportStep[];
+  stepsClosing: string;
+  final: {
+    title: string;
+    subtitle?: string;
+    description: string;
+    offer: string;
+    details: string;
+    cta: string;
+  };
+};
 
 export type ReportLandingConfig = {
   slug: string;
@@ -72,6 +126,7 @@ export type ReportLandingConfig = {
   guarantee: string;
   seoTitle: string;
   seoDesc: string;
+  content: ReportLandingContent;
 };
 
 /**
@@ -346,6 +401,152 @@ const complete = tierMeta("complete");
 /** Only its page count is used — for labelling the bundle's two halves. */
 const predictions = tierMeta("predictions");
 
+const PREMIUM_CONTENT: ReportLandingContent = {
+  heroSupporting: "Created using your exact date, time and place of birth.",
+  heroOffer: "₹299 | 74+ Pages",
+  heroTrust: "Personalised Report • Delivered Digitally • Lifetime Access",
+  revealTitle: "What Does Your Kundli Actually Reveal?",
+  revealIntro: "Your Kundli is more than your Sun sign or a daily horoscope.\nIt gives you a deeper look at the planetary influences shaping different areas of your life.",
+  revealSections: [
+    { icon: Briefcase, title: "Career & Growth", desc: "Understand your professional strengths, career direction and planetary influences." },
+    { icon: HeartHandshake, title: "Marriage & Relationships", desc: "Explore relationship patterns and the planetary influences connected to marriage." },
+    { icon: Coins, title: "Wealth & Finances", desc: "Understand financial patterns and the planetary factors influencing them." },
+    { icon: Star, title: "Personality & Strengths", desc: "Discover the qualities, tendencies and strengths reflected in your birth chart." },
+    { icon: ShieldCheck, title: "Doshas & Remedies", desc: "Identify relevant doshas and understand the remedies associated with your chart." },
+    { icon: Map, title: "Life Patterns", desc: "Look at the combinations and planetary influences that make your chart uniquely yours." },
+  ],
+  identity: {
+    title: "Not A Generic Horoscope.",
+    subtitle: "Your Chart. Your Details. Your Kundli.",
+    body: "Two people can have the same zodiac sign and completely different birth charts.",
+    supporting: "Your Kundli is created using your:",
+    items: ["DATE OF BIRTH", "TIME OF BIRTH", "PLACE OF BIRTH"],
+    closing: "These details help create your individual birth chart and form the basis of your personalised report.",
+  },
+  detailTitle: "74 Pages. One Detailed Look At Your Birth Chart.",
+  detailDescription: "Your Premium Personalised Kundli brings together the key elements of your birth chart in one detailed report.",
+  detailSections: [
+    { icon: Compass, title: "Lagna & Navamsa Charts", desc: "Understand the foundational charts used in Vedic astrology." },
+    { icon: Star, title: "Planetary Positions", desc: "See where the planets were positioned at the time of your birth." },
+    { icon: BookOpen, title: "All 12 Houses", desc: "Understand the different areas of life represented by your houses." },
+    { icon: Activity, title: "House-by-House Analysis", desc: "Go beyond the chart and understand the influence of different houses." },
+    { icon: Sparkles, title: "Yogas & Planetary Aspects", desc: "Explore important planetary combinations and influences in your chart." },
+    { icon: ScrollText, title: "Ashtakvarga", desc: "Get a deeper understanding of planetary strength and influence." },
+    { icon: ShieldCheck, title: "Dosha Analysis", desc: "Identify important doshas reflected in your birth chart." },
+    { icon: HeartHandshake, title: "Personalised Remedies", desc: "Understand relevant remedies based on your chart." },
+  ],
+  detailCta: "GET MY ₹299 KUNDLI",
+  narrative: {
+    title: "Your Birth Chart Has Layers.",
+    body: "A Kundli isn't meant to be understood by looking at one planet or one house alone.\nYour planets, houses, aspects, yogas and other combinations work together to create a unique picture.\nThe Premium Kundli brings these elements together so you can explore your chart in greater detail.",
+  },
+  upgrade: {
+    title: "Want To Go Beyond Your Birth Chart?",
+    body: "The ₹299 Premium Kundli gives you a detailed understanding of your birth chart.\nBut if you also want forward-looking predictions, life-area predictions and timing of important events, there's a more comprehensive option.",
+    offer: "₹499 COMPLETE KUNDLI",
+    pages: "98+ Pages",
+    includes: ["Life Predictions", "Career & wealth predictions", "Marriage & relationship predictions", "Health predictions", "Dasha-wise predictions", "Timing of key events"],
+    comparisonTitle: "₹299 Premium vs ₹499 Complete",
+    columns: ["Premium", "Complete"],
+    comparison: [
+      { label: "Detailed Personalised Kundli", free: "✓", paid: "✓" },
+      { label: "Lagna & Navamsa", free: "✓", paid: "✓" },
+      { label: "Planetary Positions", free: "✓", paid: "✓" },
+      { label: "12 Houses", free: "✓", paid: "✓" },
+      { label: "House-by-House Analysis", free: "✓", paid: "✓" },
+      { label: "Yogas & Planetary Aspects", free: "✓", paid: "✓" },
+      { label: "Ashtakvarga", free: "✓", paid: "✓" },
+      { label: "Dosha Analysis", free: "✓", paid: "✓" },
+      { label: "Personalised Remedies", free: "✓", paid: "✓" },
+      { label: "Life Predictions", free: "—", paid: "✓" },
+      { label: "Career & Wealth Predictions", free: "—", paid: "✓" },
+      { label: "Marriage & Relationship Predictions", free: "—", paid: "✓" },
+      { label: "Health Predictions", free: "—", paid: "✓" },
+      { label: "Dasha-wise Predictions", free: "—", paid: "✓" },
+      { label: "Timing of Key Events", free: "—", paid: "✓" },
+    ],
+    cta: "EXPLORE ₹499 COMPLETE KUNDLI",
+  },
+  birthDetails: {
+    title: "Why Your Exact Birth Details Matter",
+    items: ["Your date.", "Your time.", "Your place.", "Your chart."],
+    body: "Your birth chart is calculated from specific astronomical positions at the time and place of your birth.\nThat's why a personalised Kundli is different from a general horoscope.",
+  },
+  stepsTitle: "How It Works",
+  steps: [
+    { title: "Enter Your Birth Details", desc: "Provide your name, date, time and place of birth." },
+    { title: "Choose Your Report", desc: "Select the Premium Personalised Kundli." },
+    { title: "Get Your Report", desc: "Your detailed Kundli is prepared and delivered digitally." },
+  ],
+  stepsClosing: "Your download link never expires.",
+  final: {
+    title: "A Deeper Look At The Chart You Were Born With.",
+    description: "Understand your planets.\nExplore your houses.\nDiscover the patterns in your chart.",
+    offer: "Premium Personalised Kundli",
+    details: "74+ Pages | ₹299",
+    cta: "GET MY PERSONALISED KUNDLI",
+  },
+};
+
+const COMPLETE_CONTENT: ReportLandingContent = {
+  heroSupporting: "Personalised to your exact birth details",
+  heroOffer: "98+ Pages | 2 Detailed Reports | ₹499",
+  heroTrust: "Personalised to your exact birth details",
+  revealTitle: "One Birth Chart. Many Questions.",
+  revealIntro: "You may have questions about:",
+  revealSections: [
+    { icon: Briefcase, title: "Career", desc: "Am I moving in the right direction?" },
+    { icon: Coins, title: "Money", desc: "What does my chart indicate about wealth and finances?" },
+    { icon: HeartHandshake, title: "Marriage", desc: "What does my Kundli reveal about marriage and relationships?" },
+    { icon: Activity, title: "Health", desc: "What planetary influences are connected to this area of life?" },
+    { icon: Map, title: "Life Changes", desc: "Which periods may bring important developments?" },
+    { icon: Clock3, title: "Timing", desc: "When are certain planetary periods more significant?" },
+  ],
+  revealClosing: "The Complete Kundli brings these areas together in one detailed report.",
+  identity: {
+    title: "First Understand Your Chart.",
+    subtitle: "Then Explore Your Life's Patterns.",
+    body: "The Premium Kundli helps you understand your birth chart in detail.\nThe Life Predictions report takes it further by exploring what different planetary periods may indicate across important areas of your life.",
+    supporting: "98+ Pages of Personalised Insights",
+    items: [],
+    highlight: "Your Chart + Your Predictions",
+  },
+  detailTitle: "What's Inside Your Complete Kundli?",
+  detailDescription: "",
+  detailSections: [],
+  detailHighlight: "2 REPORTS. 98+ PAGES. ONE COMPLETE VIEW.",
+  detailCta: "GET MY ₹499 COMPLETE KUNDLI",
+  difference: {
+    title: "What Makes The Complete Kundli Different?",
+    points: [
+      { icon: BookOpen, title: "A Deeper Look At Your Birth Chart", desc: "Understand your planets, houses, yogas, aspects, doshas and planetary strengths." },
+      { icon: Compass, title: "A Broader Look At Your Life", desc: "Explore career, wealth, marriage, relationships and health." },
+      { icon: Clock3, title: "A Closer Look At Timing", desc: "Understand dasha-wise periods and the timing of important events." },
+    ],
+    closing: "Instead of looking at these questions separately, the Complete Kundli brings them into one personalised report package.",
+  },
+  birthDetails: {
+    title: "Your Kundli Starts With Three Details.",
+    items: ["DATE OF BIRTH", "TIME OF BIRTH", "PLACE OF BIRTH"],
+    body: "These details are used to create your individual birth chart.\nBecause your report should be based on your chart, not a generic zodiac prediction.",
+  },
+  stepsTitle: "From Birth Chart To Life Predictions.",
+  steps: [
+    { title: "Enter your exact birth details." },
+    { title: "Choose the Complete Kundli." },
+    { title: "Receive both personalised reports digitally." },
+  ],
+  stepsClosing: "Your download links never expire.",
+  final: {
+    title: "Don't Just Know Your Kundli.",
+    subtitle: "Understand It.",
+    description: "Explore your chart.\nUnderstand your patterns.\nLook at the important phases ahead.",
+    offer: "Complete Personalised Kundli",
+    details: "98+ Pages | 2 Reports | ₹499",
+    cta: "GET MY COMPLETE KUNDLI",
+  },
+};
+
 export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
   "premium-kundli": {
     slug: "premium-kundli",
@@ -358,13 +559,13 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     theme: BRAND_THEME,
     photo: "/lp/report-photo.jpg",
     eyebrow: "Premium Kundli Report",
-    h1a: "Your entire birth chart,",
-    h1b: "read properly. 74 pages.",
-    sub: "Not a four-page summary with your name pasted on top. This is your complete Vedic horoscope — every planet, every house, every dasha period and every yoga in your chart — computed from your exact birth details and delivered as a PDF in under two minutes.",
+    h1a: "Your Kundli Has More To Say",
+    h1b: "Than Your Zodiac Sign.",
+    sub: "Your birth chart is unique to you. Understand your planets, houses, strengths, challenges and important life patterns through a detailed personalised Kundli.",
     heroChips: [premium.pages, "Delivered in minutes", "Yours forever"],
     formTitle: "Get your Premium Kundli",
     formSub: "Enter your birth details exactly as they are. Everything is computed from them.",
-    cta: "Get My Premium Kundli",
+    cta: "GET MY PERSONALISED KUNDLI",
     sectionsTitle: "What's actually inside",
     sectionsSub:
       "Twelve sections, each computed from your chart — this is the full list, not a sample of it.",
@@ -377,7 +578,15 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
       "The gemstone and Rudraksha suited to your chart, not your sun sign",
       "Remedies matched to what your chart actually shows",
     ],
-    faqs: SHARED_FAQS,
+    faqs: [
+      { q: "Is this a personalised Kundli?", a: "Yes. The report is based on your individual birth details and birth chart." },
+      { q: "What information do I need?", a: "You need your name, date of birth, time of birth and place of birth." },
+      { q: "What does the Premium Kundli cover?", a: "It covers your birth charts, planetary positions, houses, house-by-house analysis, yogas, planetary aspects, Ashtakvarga, dosha analysis and personalised remedies." },
+      { q: "How is this different from a horoscope?", a: "A horoscope generally offers broad predictions based on a zodiac sign. A Kundli is based on your individual birth details and provides a much more detailed view of your birth chart." },
+      { q: "How will I receive my Kundli?", a: "Your report is delivered digitally." },
+      { q: "Will I lose access to my report?", a: "No. Your download link does not expire." },
+      { q: "What if I want predictions about the future?", a: "The ₹499 Complete Kundli adds Life Predictions, including career, wealth, marriage, health, dasha-wise predictions and timing of key events." },
+    ],
     proof: PREMIUM_PROOF,
     compare: COMPARE_PREMIUM,
     guarantee:
@@ -385,6 +594,7 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     seoTitle: "Premium Kundli Report — 74-Page Vedic Horoscope PDF | JyotishNow",
     seoDesc:
       "Your complete Vedic birth chart as a ~74 page PDF: divisional charts, house-by-house analysis, Ashtakvarga, dasha timeline, doshas and personalised remedies. Delivered in minutes.",
+    content: PREMIUM_CONTENT,
   },
 
   "complete-kundli": {
@@ -398,20 +608,44 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     theme: BRAND_THEME,
     photo: "/lp/report-photo.jpg",
     eyebrow: "Complete Bundle · Two Reports",
-    h1a: "Your chart read in full —",
-    h1b: "and your future mapped.",
-    sub: "Two complete reports, delivered together. The full 74-page Premium Kundli that reads your chart as it stands, plus a dedicated ~24-page Life Predictions report that reads it forward — career, wealth, marriage, health and the timing of what's coming.",
+    h1a: "Know Your Chart.",
+    h1b: "Understand What's Ahead.",
+    sub: "Your birth chart can tell you more than who you are.\nThe Complete Kundli combines a detailed personalised birth-chart analysis with Life Predictions to help you explore your career, wealth, marriage, health, planetary periods and important life timings.",
     heroChips: [complete.pages, "Delivered together", "Yours forever"],
     formTitle: "Get both reports",
     formSub: "Enter your birth details exactly as they are. Both reports are built from them.",
-    cta: "Get Both My Reports",
+    cta: "GET MY COMPLETE KUNDLI",
     sectionsTitle: "Two reports, delivered together",
     sectionsSub:
       "The Premium Kundli reads your chart as it is. Life Predictions reads it forward. You get both.",
     sections: PREDICTION_SECTIONS,
     sectionGroups: [
-      { title: "Life Predictions report", note: predictions.pages, sections: PREDICTION_SECTIONS },
-      { title: "Premium Kundli report", note: premium.pages, sections: PREMIUM_SECTIONS },
+      {
+        title: "REPORT 01 · PREMIUM PERSONALISED KUNDLI",
+        note: "Understand the foundation of your birth chart.",
+        sections: [
+          { icon: Compass, title: "Lagna & Navamsa charts", desc: "" },
+          { icon: Star, title: "Planetary positions", desc: "" },
+          { icon: BookOpen, title: "All 12 houses", desc: "" },
+          { icon: Activity, title: "House-by-house analysis", desc: "" },
+          { icon: Sparkles, title: "Yogas & planetary aspects", desc: "" },
+          { icon: ScrollText, title: "Ashtakvarga", desc: "" },
+          { icon: ShieldCheck, title: "Dosha analysis", desc: "" },
+          { icon: HeartHandshake, title: "Personalised remedies", desc: "" },
+        ],
+      },
+      {
+        title: "REPORT 02 · LIFE PREDICTIONS",
+        note: "Go beyond your birth chart and explore major areas of life.",
+        sections: [
+          { icon: Briefcase, title: "Career predictions", desc: "" },
+          { icon: Coins, title: "Wealth & financial insights", desc: "" },
+          { icon: HeartHandshake, title: "Marriage & relationship predictions", desc: "" },
+          { icon: Activity, title: "Health insights", desc: "" },
+          { icon: CalendarRange, title: "Dasha-wise life predictions", desc: "" },
+          { icon: Clock3, title: "Timing of key events", desc: "" },
+        ],
+      },
     ],
     answers: [
       "Which years ahead are built for growth — and which are for holding steady",
@@ -421,7 +655,15 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
       "Everything in the Premium report — charts, dashas, doshas, Ashtakvarga, remedies",
       "The specific years your chart concentrates its turning points in",
     ],
-    faqs: SHARED_FAQS,
+    faqs: [
+      { q: "What is included in the ₹499 Complete Kundli?", a: "It combines the Premium Personalised Kundli with the Life Predictions report." },
+      { q: "How is it different from the ₹299 Premium Kundli?", a: "The ₹299 report focuses on detailed analysis of your birth chart. The ₹499 Complete Kundli adds Life Predictions covering career, wealth, marriage, health, dasha-wise predictions and timing of key events." },
+      { q: "What areas of life are covered?", a: "The Complete Kundli covers areas including career, wealth, marriage, relationships and health, along with planetary periods and important timings." },
+      { q: "Is the report personalised?", a: "Yes. It is based on your individual date, time and place of birth." },
+      { q: "What information do I need?", a: "Your name, date of birth, time of birth and place of birth." },
+      { q: "How will I receive the reports?", a: "Both reports are delivered digitally." },
+      { q: "Will my download links expire?", a: "No. Your download links do not expire." },
+    ],
     proof: COMPLETE_PROOF,
     compare: COMPARE_COMPLETE,
     guarantee:
@@ -429,6 +671,7 @@ export const REPORT_LANDING_CONFIGS: Record<string, ReportLandingConfig> = {
     seoTitle: "Complete Kundli Bundle — 98-Page Vedic Report + Life Predictions | JyotishNow",
     seoDesc:
       "Two reports together: the full ~74 page Premium Kundli plus a dedicated ~24 page Life Predictions report covering career, wealth, marriage, health and event timing. ~98 pages, delivered in minutes.",
+    content: COMPLETE_CONTENT,
   },
 };
 

@@ -644,7 +644,7 @@ export function ReportPurchaseForm({
               ) : status === "delivering" ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Building your report… {elapsed}s</>
               ) : (
-                <><Lock className="mr-2 h-4 w-4" /> {config.cta} · {formatINR(total)}</>
+                <><Lock className="mr-2 h-4 w-4" /> {config.slug === "premium-kundli" || config.slug === "complete-kundli" ? config.cta : `${config.cta} · ${formatINR(total)}`}</>
               )}
             </Button>
 
