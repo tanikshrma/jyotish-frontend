@@ -266,7 +266,15 @@ export default function ReportLanding({ config }: { config: ReportLandingConfig 
             </p>
 
             <p className="mt-2 text-[13px] font-semibold text-[#6B605A]">{content.heroSupporting}</p>
-            <p className="mt-3 text-[16px] font-extrabold" style={{ color: ink }}>{content.heroOffer}</p>
+            <p className="mt-3 text-[16px] font-extrabold" style={{ color: ink }}>
+              {c.variant === "premium" || c.variant === "complete" ? (
+                <>
+                  {formatINR(c.price)}{" "}
+                  <span className="line-through font-normal">{formatINR(c.compareAt)}</span>{" "}| {c.variant === "premium" ? "74+ Pages" : "98+ Pages"}
+                  {c.variant === "complete" && " | 2 Detailed Reports"}
+                </>
+              ) : content.heroOffer}
+            </p>
 
             <div className="mt-0 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-5">
               <Stars />
